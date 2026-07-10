@@ -1,0 +1,13 @@
+{
+  "name": "@scoutpi/mcp-server",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "@scoutpi/earth-investigation-core": "workspace:*",
+    "@scoutpi/earth-workspace": "workspace:*",
+    "zod": "4.4.3"
+  }
+}

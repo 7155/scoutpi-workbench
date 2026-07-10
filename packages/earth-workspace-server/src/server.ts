@@ -4,6 +4,7 @@ import { URL } from "node:url";
 import { EarthWorkspace, type EarthStoryArtifact, type InvestigationSpec } from "../../earth-workspace/src/index.ts";
 import { AgentCheckpointStore } from "../../runtime-checkpoint/src/index.ts";
 import { ContextPackStore } from "../../runtime-context/src/index.ts";
+import { SCOUTPI_MCP_PROFILE } from "../../scoutpi-mcp-server/src/profile.ts";
 
 export interface EarthWorkspaceServerOptions {
   host?: string;
@@ -59,6 +60,10 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
       }
       if (request.method === "GET" && url.pathname === "/api/environment") {
         sendJson(response, 200, await workspace.environment(url.searchParams.get("project") || undefined));
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/mcp") {
+        sendJson(response, 200, SCOUTPI_MCP_PROFILE);
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/contracts") {

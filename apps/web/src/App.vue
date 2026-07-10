@@ -143,7 +143,7 @@
     <NewInvestigationDialog :open="newDialog" :saving="saving" @close="newDialog = false" @create="createPlan" />
     <RecipeDialog :open="recipeDialog" :saving="savingRecipe" :recipes="recipes" :workflows="workflows" :workflow-runs="workflowRuns" :current-spec="selectedPlan?.spec" :current-plan="selectedPlan" :current-job="workflowSourceJob" @close="recipeDialog = false" @save="saveRecipe" @instantiate="instantiateRecipe" @compile="compileSelectedWorkflow" @replay="replayCompiledWorkflow" />
     <LocalExportDialog :open="exportDialog" :saving="exportingLocal" :plan="selectedPlan" :selected-role="selectedRole" :selected-year="selectedYear" @close="exportDialog = false" @export="queueLocalExport" />
-    <RuntimeRegistryDialog :open="registryDialog" :saving="savingRegistry || loading" :adapters="adapters" :skills="skills" :backend-manifests="backendManifests" :backend-probes="backendProbes" :telemetry="telemetry" :agent-runs="agentRuns" :checkpoints="checkpoints" :context-packs="contextPacks" :context-writebacks="contextWritebacks" :evidence-count="evidenceRecords.length" :approvals="approvals" @close="registryDialog = false" @refresh="refresh" @import="importRegistry" @probe="probeRegistryAdapter" @probe-backend="probeRuntimeBackend" @state="setRegistryAdapterState" @save-skill="saveGeneratedSkill" @publish="publishGeneratedSkill" @invalid="error = $event" />
+    <RuntimeRegistryDialog :open="registryDialog" :saving="savingRegistry || loading" :adapters="adapters" :skills="skills" :backend-manifests="backendManifests" :backend-probes="backendProbes" :telemetry="telemetry" :agent-runs="agentRuns" :checkpoints="checkpoints" :context-packs="contextPacks" :context-writebacks="contextWritebacks" :evidence-count="evidenceRecords.length" :mcp-profile="mcpProfile" :approvals="approvals" @close="registryDialog = false" @refresh="refresh" @import="importRegistry" @probe="probeRegistryAdapter" @probe-backend="probeRuntimeBackend" @state="setRegistryAdapterState" @save-skill="saveGeneratedSkill" @publish="publishGeneratedSkill" @invalid="error = $event" />
     <div v-if="error" class="toast"><AlertCircle :size="17" /><span>{{ error }}</span><button title="Dismiss" @click="error = ''"><X :size="15" /></button></div>
     <div v-if="running" class="run-progress"><LoaderCircle class="spin" :size="16" /><span>Submitting Earth workspace job</span></div>
   </div>
@@ -162,7 +162,7 @@ import PlanGraph from "./components/PlanGraph.vue";
 import RecipeDialog from "./components/RecipeDialog.vue";
 import RuntimeRegistryDialog from "./components/RuntimeRegistryDialog.vue";
 import RunLedger from "./components/RunLedger.vue";
-import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph as EvidenceGraphState, InvestigationPlan, InvestigationSpec, JobArtifact, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary } from "./types";
+import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph as EvidenceGraphState, InvestigationPlan, InvestigationSpec, JobArtifact, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile } from "./types";
 
 const plans = ref<InvestigationPlan[]>([]);
 const jobs = ref<EarthJob[]>([]);
@@ -183,6 +183,7 @@ const approvals = ref<RuntimeApproval[]>([]);
 const workflows = ref<EarthWorkflowSummary[]>([]);
 const workflowRuns = ref<EarthWorkflowReplay[]>([]);
 const environment = ref<EnvironmentStatus>({});
+const mcpProfile = ref<ScoutPiMcpProfile>();
 const selectedPlanId = ref("");
 const selectedJob = ref<EarthJob>();
 const artifacts = ref<JobArtifact[]>([]);
@@ -256,8 +257,8 @@ function stepYear(delta: number) {
 async function refresh() {
   loading.value = true; error.value = "";
   try {
-    const [nextEnvironment, nextPlans, nextJobs, nextStories, nextRecipes, nextAdapters, nextSkills, nextBackends, nextTelemetry, nextAgentRuns, nextCheckpoints, nextContextPacks, nextContextWritebacks, nextEvidence, nextApprovals, nextWorkflows, nextWorkflowRuns] = await Promise.all([api.environment(), api.plans(), api.jobs(), api.stories(), api.recipes(), api.adapters(), api.skills(), api.backends(), api.telemetry(), api.agentRuns(), api.checkpoints(), api.contextPacks(), api.contextWritebacks(), api.evidence(), api.approvals(), api.workflows(), api.workflowRuns()]);
-    environment.value = nextEnvironment; plans.value = nextPlans; jobs.value = nextJobs; stories.value = nextStories; recipes.value = nextRecipes; adapters.value = nextAdapters; skills.value = nextSkills; backendManifests.value = nextBackends; telemetry.value = nextTelemetry; agentRuns.value = nextAgentRuns; checkpoints.value = nextCheckpoints; contextPacks.value = nextContextPacks; contextWritebacks.value = nextContextWritebacks; evidenceRecords.value = nextEvidence; approvals.value = nextApprovals; workflows.value = nextWorkflows; workflowRuns.value = nextWorkflowRuns;
+    const [nextEnvironment, nextMcp, nextPlans, nextJobs, nextStories, nextRecipes, nextAdapters, nextSkills, nextBackends, nextTelemetry, nextAgentRuns, nextCheckpoints, nextContextPacks, nextContextWritebacks, nextEvidence, nextApprovals, nextWorkflows, nextWorkflowRuns] = await Promise.all([api.environment(), api.mcp(), api.plans(), api.jobs(), api.stories(), api.recipes(), api.adapters(), api.skills(), api.backends(), api.telemetry(), api.agentRuns(), api.checkpoints(), api.contextPacks(), api.contextWritebacks(), api.evidence(), api.approvals(), api.workflows(), api.workflowRuns()]);
+    environment.value = nextEnvironment; mcpProfile.value = nextMcp; plans.value = nextPlans; jobs.value = nextJobs; stories.value = nextStories; recipes.value = nextRecipes; adapters.value = nextAdapters; skills.value = nextSkills; backendManifests.value = nextBackends; telemetry.value = nextTelemetry; agentRuns.value = nextAgentRuns; checkpoints.value = nextCheckpoints; contextPacks.value = nextContextPacks; contextWritebacks.value = nextContextWritebacks; evidenceRecords.value = nextEvidence; approvals.value = nextApprovals; workflows.value = nextWorkflows; workflowRuns.value = nextWorkflowRuns;
     if (selectedJob.value) await selectJob(nextJobs.find((job) => job.jobId === selectedJob.value?.jobId));
     if (!selectedPlanId.value && nextPlans[0]) selectPlan(nextPlans[0].planId);
     else {

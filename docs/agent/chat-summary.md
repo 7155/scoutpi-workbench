@@ -57,3 +57,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - The persisted Evidence Graph distinguishes browser documentation, completed live computation, and EarthStory findings; dry runs are not promoted to computed evidence.
 - Workbench exposes compact coverage and per-hypothesis evidence chains on desktop and mobile, while observability can attach the exact graph to the current Agent run.
 - All 47 tests and the full project check pass. Next: add a narrow MCP compatibility server and durable event triggers while preserving the three-tool Pi surface.
+
+### 2026-07-11 - MCP compatibility
+
+- External MCP hosts can now access four compact, local stdio gateways and two resource templates backed by the same Earth Workspace.
+- Pi still exposes exactly three native tools; MCP live execution and administrative mutations are intentionally absent so governance cannot be bypassed.
+- Artifact and Evidence Graph payloads use resource links and bounded reads instead of entering every tool result.
+- The official MCP client passes both in-memory and real stdio harnesses. Runtime Center desktop/mobile QA clearly separates the Pi and MCP surfaces.
+- Next: durable event triggers with idempotency, execution leases, identity/delegation, and an operator-facing trigger ledger.

@@ -7,6 +7,7 @@
 - Added a dedicated Workbench Context view for packs, durable checkpoints, and writeback review state.
 - Rebuilt the Workbench Runtime Center around runtime posture, operator attention, Context Pack budgets, backend probes, Agent usage, and responsive mobile actions.
 - Added a zero-tool Browser Evidence Bridge, canonical evidence contract, artifact hashing/deduplication, explicit claim relations, Evidence Graph, trace attachment, API access, and Workbench visualization.
+- Added a local stdio MCP compatibility server with four bounded gateways, artifact/evidence resources, an official-client harness, and Runtime Center visibility.
 - Isolated every paid Pi RPC harness case in a fresh temporary workspace and made full-suite execution explicit.
 - Fixed an asynchronous local-export test cleanup race observed on GitHub Actions.
 

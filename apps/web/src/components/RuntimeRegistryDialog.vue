@@ -14,7 +14,7 @@
       </header>
 
       <section class="runtime-summary" aria-label="Runtime summary">
-        <div><Boxes :size="17" /><span>Tool surface</span><strong>3 gateways</strong><small>{{ adapters.length }} adapters</small></div>
+        <div><Boxes :size="17" /><span>Pi tool surface</span><strong>3 gateways</strong><small>{{ mcpProfile ? `${mcpProfile.tools.length} MCP gateways isolated` : `${adapters.length} adapters` }}</small></div>
         <div><BrainCircuit :size="17" /><span>Context budget</span><strong>{{ latestContext ? formatNumber(latestContext.budget.deliveredTokens) : 0 }} tokens</strong><small>{{ latestContext ? `${latestContext.budget.selectedCount} selected items` : 'No active pack' }}</small></div>
         <div><ServerCog :size="17" /><span>Backend probes</span><strong>{{ availableBackends }}/{{ backendManifests.length }}</strong><small>{{ backendManifests.length ? 'available now' : 'No providers' }}</small></div>
         <div :class="{ attention: runtimeAttention > 0 }"><ShieldCheck :size="17" /><span>Operator queue</span><strong>{{ runtimeAttention }}</strong><small>{{ runtimeAttention ? 'review required' : 'No action required' }}</small></div>
@@ -167,14 +167,14 @@
 
 <script setup lang="ts">
 import { computed, markRaw, onBeforeUnmount, onMounted, ref } from "vue";
-import { Activity, ArrowUpRight, Blocks, BookOpen, Boxes, Braces, BrainCircuit, CircleCheck, CircleX, Clock3, Coins, Database, Gauge, HardDriveDownload, History, Hourglass, LoaderCircle, Power, Radar, Radio, RefreshCw, Rocket, Save, ServerCog, ShieldCheck, Upload, Waypoints, X } from "lucide-vue-next";
+import { Activity, ArrowUpRight, Blocks, BookOpen, Boxes, Braces, BrainCircuit, CircleCheck, CircleX, Clock3, Coins, Database, Gauge, HardDriveDownload, History, Hourglass, LoaderCircle, Network, Power, Radar, Radio, RefreshCw, Rocket, Save, ServerCog, ShieldCheck, Upload, Waypoints, X } from "lucide-vue-next";
 import { api } from "../api";
-import type { AgentCheckpointSummary, AgentRunSummary, ContextPackSummary, ContextWritebackSummary, EarthBackendManifest, EarthBackendProbe, EarthSkillSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary } from "../types";
+import type { AgentCheckpointSummary, AgentRunSummary, ContextPackSummary, ContextWritebackSummary, EarthBackendManifest, EarthBackendProbe, EarthSkillSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile } from "../types";
 
 type RuntimeTab = "overview" | "adapters" | "skills" | "backends" | "context" | "telemetry";
 type RuntimeTone = "ready" | "active" | "idle" | "attention" | "blocked";
 
-const props = defineProps<{ open: boolean; saving: boolean; adapters: RegisteredAdapter[]; skills: EarthSkillSummary[]; backendManifests: EarthBackendManifest[]; backendProbes: Record<string, EarthBackendProbe>; telemetry?: RuntimeTelemetrySummary; agentRuns: AgentRunSummary[]; checkpoints: AgentCheckpointSummary[]; contextPacks: ContextPackSummary[]; contextWritebacks: ContextWritebackSummary[]; evidenceCount: number; approvals: RuntimeApproval[] }>();
+const props = defineProps<{ open: boolean; saving: boolean; adapters: RegisteredAdapter[]; skills: EarthSkillSummary[]; backendManifests: EarthBackendManifest[]; backendProbes: Record<string, EarthBackendProbe>; telemetry?: RuntimeTelemetrySummary; agentRuns: AgentRunSummary[]; checkpoints: AgentCheckpointSummary[]; contextPacks: ContextPackSummary[]; contextWritebacks: ContextWritebackSummary[]; evidenceCount: number; mcpProfile?: ScoutPiMcpProfile; approvals: RuntimeApproval[] }>();
 const emit = defineEmits<{ close: []; refresh: []; import: [payload: Record<string, unknown>]; probe: [datasetId: string]; probeBackend: [backendId: string]; state: [datasetId: string, enabled: boolean]; saveSkill: [payload: Record<string, unknown>]; publish: [skillId: string]; invalid: [message: string] }>();
 const active = ref<RuntimeTab>("overview");
 const registryJson = ref("");
@@ -206,6 +206,7 @@ const runtimeLayers = computed(() => [
   { id: "governance", title: "Execution governance", detail: `${props.approvals.length} receipts · ${pendingWritebacks.value.length} memory decisions`, value: runtimeAttention.value ? `${runtimeAttention.value} review` : "Clear", state: runtimeAttention.value ? "attention" : "ready", tone: runtimeAttention.value ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(ShieldCheck) },
   { id: "continuity", title: "Durable continuity", detail: `${props.checkpoints.length} session checkpoints with integrity journals`, value: recoverableCheckpoints.value.length ? `${recoverableCheckpoints.value.length} recover` : "Settled", state: recoverableCheckpoints.value.length ? "attention" : "ready", tone: recoverableCheckpoints.value.length ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(History) },
   { id: "evidence", title: "Evidence bridge", detail: "Browser sources normalized into provenance-bound investigation records", value: `${props.evidenceCount} sources`, state: props.evidenceCount ? "connected" : "idle", tone: props.evidenceCount ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Radio) },
+  { id: "mcp", title: "MCP compatibility", detail: props.mcpProfile ? `${props.mcpProfile.transport} · external clients · state-changing operations blocked` : "Compatibility profile unavailable", value: props.mcpProfile ? `${props.mcpProfile.tools.length} gateways` : "Offline", state: props.mcpProfile ? "available" : "idle", tone: props.mcpProfile ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Network) },
   { id: "backends", title: "Backend providers", detail: `${props.backendManifests.length} reviewed manifests, executable code kept outside the model`, value: `${availableBackends.value}/${props.backendManifests.length}`, state: Object.keys(props.backendProbes).length ? "probed" : "not probed", tone: availableBackends.value ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(ServerCog) },
 ]);
 const operatorQueue = computed(() => [

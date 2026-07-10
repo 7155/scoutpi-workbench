@@ -81,3 +81,14 @@
 - Real Pi RPC smoke initialized `gpt-5.6`, `xhigh`, all six extensions, and no extension errors. Provider model discovery still does not advertise 5.6, so paid evaluation remains blocked rather than silently downgraded.
 - Git snapshot: `main...origin/main`; 24 tracked paths changed plus the evidence package, extension, component, docs, example, and tests. Generated `.scoutpi`, `exports`, and Playwright output remain ignored.
 - Verification: `pnpm check` passes 47 tests, Python compile, Earth harness, and production web build; targeted evidence security tests and `git diff --check` pass.
+
+## 2026-07-11 07:20 - Narrow MCP compatibility surface
+
+- Added a local stdio MCP server on the stable official TypeScript SDK 1.x line. It exposes four high-level gateways for investigation, status, artifact, and evidence access without changing Pi's native three-tool surface.
+- Deliberately omitted live runs, exports, adapter mutation, workflow publication, and approval issuance. State-changing work remains in Pi so lifecycle governance can obtain a real operator decision.
+- Added job artifact and investigation Evidence Graph resources. Tool calls return compact summaries and resource links; text previews and full resource reads have explicit size limits and never expose absolute artifact paths.
+- Added a real official-client stdio harness and in-memory protocol test covering schema discovery, invalid input, planning, dry run, artifact links, resource reads, Evidence Graph summaries, and the Workbench MCP profile endpoint.
+- Runtime Center now distinguishes `3 Pi gateways` from `4 MCP gateways isolated`, and shows the MCP interface as an external compatibility layer rather than another Pi capability bundle.
+- Visual QA: 1440x1000 and 390x844 Runtime Center screenshots show all seven runtime layers without horizontal overflow; browser console reports zero errors and warnings.
+- Git snapshot: `main...origin/main`; 11 tracked paths plus the MCP package, harness, test, and documentation are pending this milestone commit. The official SDK adds the expected stable-v1 lockfile graph.
+- Verification: `pnpm check` passes 48 tests, Earth and MCP harnesses, Python compile, and production build; `pnpm audit --prod` reports no known vulnerabilities; Evidence milestone CI is green.

@@ -42,6 +42,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Event-only durable checkpoint extension with atomic revisions, integrity checks, compaction hints, and one-time recovery context
 - Event-only Context Bridge with provider-neutral candidates, mixed-text token budgets, provenance, and user-reviewed writeback outbox
 - Event-only Browser Evidence Bridge with allowed-root import, artifact hashes, explicit claim/hypothesis relations, and Agent-trace attachment
+- Local stdio MCP compatibility server with four compact gateways, resource links, and no live/admin operations
 - Reviewed Backend Plugin SDK with manifests, validation hooks, bounded progress, cancellation, timeouts, and result limits
 - Progressive-disclosure Earth investigation skill
 - Dynamic `scoutpi.earth.adapter.v1` registry with revisions, SHA-256 fingerprints, enable/disable state, and audit events
@@ -83,6 +84,8 @@ uv run earthengine authenticate
 ```
 
 Set `EARTHENGINE_PROJECT` when the account or deployment requires an explicit Google Cloud project.
+
+External MCP hosts can start the separate local stdio surface with `pnpm mcp:stdio`. It does not alter Pi's three-tool surface and intentionally omits live execution, exports, registry mutation, publication, and approval issuance.
 
 ### Optional Python Profiles
 
@@ -173,6 +176,7 @@ Temporary Earth Engine tile URLs are for visualization. Download/export is used 
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /api/environment` | Earth Engine auth and optional backend capabilities |
+| `GET /api/mcp` | Local MCP compatibility profile, tools, resources, and blocked operations |
 | `GET /api/backends` | Reviewed backend manifests and operation contracts |
 | `POST /api/backends/:id/probe` | Probe one reviewed backend |
 | `GET /api/telemetry` | Aggregate operation token, latency, cache and compute proxies |
@@ -211,6 +215,7 @@ pnpm typecheck
 pnpm test
 pnpm python:check
 pnpm harness:earth
+pnpm harness:mcp
 pnpm web:build
 ```
 
@@ -235,6 +240,7 @@ The current live smoke path also verifies a real Dynamic World tile and a small 
 - [Durable Agent checkpoints](docs/scoutpi/DURABLE_AGENT_CHECKPOINTS.md)
 - [Context Bridge](docs/scoutpi/CONTEXT_BRIDGE.md)
 - [Browser Evidence Bridge](docs/scoutpi/BROWSER_EVIDENCE_BRIDGE.md)
+- [MCP compatibility server](docs/scoutpi/MCP_COMPATIBILITY.md)
 - [Workflow Compiler](docs/scoutpi/WORKFLOW_COMPILER.md)
 - [Pi RPC Harness](docs/scoutpi/PI_RPC_HARNESS.md)
 - [Pi ecosystem reuse audit](docs/scoutpi/PI_OPEN_SOURCE_ECOSYSTEM_REUSE_AUDIT.md)
@@ -251,6 +257,7 @@ The product direction and the `Pi -> typed investigation -> supervised compute -
 | Project | What was studied | ScoutPi boundary |
 | --- | --- | --- |
 | [earendil-works/pi](https://github.com/earendil-works/pi) and upstream [badlogic/pi-mono](https://github.com/badlogic/pi-mono) | Typed extension lifecycle, RPC mode, commands, skills, user UI and active-tool APIs | Pi remains the host Agent loop; ScoutPi contributes domain tools plus event-only governance and tracing. |
+| [modelcontextprotocol/typescript-sdk](https://github.com/modelcontextprotocol/typescript-sdk) | Stable 1.x stdio server, resources, resource links, annotations, and in-memory protocol testing | ScoutPi exposes four high-level compatibility gateways; it does not replace Pi or implement another generic MCP client. |
 | [google/earthengine-api](https://github.com/google/earthengine-api) | Initialization, map IDs, batch exports, task status, and cancellation | The worker exposes typed operations and never evaluates generated Earth Engine code. |
 | [gee-community/geemap](https://github.com/gee-community/geemap) | Analyst-facing Earth Engine maps, charts, and export conventions | Optional review backend; BrowserBridge does not click through geemap widgets. |
 | [leftfield-geospatial/geedim](https://github.com/leftfield-geospatial/geedim) | Tiled local GeoTIFF, NumPy, and Xarray delivery | Used behind a bounded, supervised `export_local` contract. |

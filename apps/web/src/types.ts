@@ -99,6 +99,16 @@ export interface EvidenceGraph {
   edges: Array<{ edgeId: string; from: string; to: string; relation: string }>;
   coverage: { browserEvidence: number; claims: number; computedRuns: number; hypotheses: number; coveredHypotheses: number; uncoveredHypothesisIds: string[] };
 }
+export interface ScoutPiMcpProfile {
+  schemaVersion: "scoutpi.mcp-profile.v1";
+  name: string;
+  version: string;
+  transport: "stdio";
+  tools: string[];
+  resources: string[];
+  blockedOperations: string[];
+  modelSurface: "external_only";
+}
 export interface EarthWorkflowSummary {
   workflowId: string; name: string; description: string; stage: "candidate" | "ready"; revision: number; fingerprint: string; savedAt: string;
   replayCount: number; successCount: number; failureCount: number; executionKind: "run" | "local_export";
