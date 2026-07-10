@@ -28,6 +28,7 @@
     "extensions": [
       "./.pi/extensions/scoutpi-governance/index.ts",
       "./.pi/extensions/scoutpi-observability/index.ts",
+      "./.pi/extensions/scoutpi-checkpoint/index.ts",
       "./.pi/extensions/scoutpi-earth/index.ts"
     ],
     "skills": [
@@ -41,6 +42,7 @@
     "harness:pi": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts",
     "harness:pi-rpc": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts --rpc-smoke",
     "harness:pi-live": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts --live",
+    "harness:pi-live-all": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts --live --all",
     "web:dev": "pnpm --filter @scoutpi/earth-workbench dev",
     "web:build": "pnpm --filter @scoutpi/earth-workbench build",
     "workbench:dev": "node scripts/runEarthWorkbench.mjs",

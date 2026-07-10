@@ -38,6 +38,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Official Pi 0.80 execution contract with TypeBox schemas, `AbortSignal`, streaming progress, lifecycle events, and structured failures
 - Event-only governance extension with parameter-bound, single-use user approval receipts
 - Event-only observability extension with privacy-preserving Agent run traces and provider-reported token/cost usage
+- Event-only durable checkpoint extension with atomic revisions, integrity checks, compaction hints, and one-time recovery context
 - Reviewed Backend Plugin SDK with manifests, validation hooks, bounded progress, cancellation, timeouts, and result limits
 - Progressive-disclosure Earth investigation skill
 - Dynamic `scoutpi.earth.adapter.v1` registry with revisions, SHA-256 fingerprints, enable/disable state, and audit events
@@ -106,7 +107,7 @@ Or install the current checkout:
 pi install /absolute/path/to/scoutpi-workbench
 ```
 
-The package exposes three extensions and one skill. Governance and observability are event-only; the model still sees at most these three Earth tools:
+The package exposes four extensions and one skill. Governance, observability, and checkpoints are event-only; the model still sees at most these three Earth tools:
 
 | Tool | Responsibility |
 | --- | --- |
@@ -157,6 +158,7 @@ Complete plans and results are written below `.scoutpi/earth_workspace`; Pi rece
 └── registry_events.jsonl # adapter audit trail
 
 .scoutpi/runs/            # privacy-preserving Pi Agent traces and exact model usage
+.scoutpi/checkpoints/     # content-minimal session recovery state and journals
 ```
 
 Temporary Earth Engine tile URLs are for visualization. Download/export is used only when a durable local artifact, offline computation, evidence package, or downstream delivery is required.
@@ -170,6 +172,7 @@ Temporary Earth Engine tile URLs are for visualization. Download/export is used 
 | `POST /api/backends/:id/probe` | Probe one reviewed backend |
 | `GET /api/telemetry` | Aggregate operation token, latency, cache and compute proxies |
 | `GET /api/agent-runs` | Pi lifecycle run summaries and provider-reported model usage |
+| `GET /api/checkpoints` | Durable Agent session and interrupted-operation summaries |
 | `GET /api/approvals` | Human approval audit receipts |
 | `GET /api/contracts/:id` | Fetch an adapter, skill, investigation, or export template on demand |
 | `GET/POST /api/adapters` | List or register declarative adapters |
@@ -218,6 +221,7 @@ The current live smoke path also verifies a real Dynamic World tile and a small 
 - [Agent-built adapters and skills](docs/scoutpi/AGENT_TOOL_SKILL_BUILDER.md)
 - [Backend Plugin SDK](docs/scoutpi/BACKEND_PLUGIN_SDK.md)
 - [Runtime governance and observability](docs/scoutpi/RUNTIME_GOVERNANCE_AND_OBSERVABILITY.md)
+- [Durable Agent checkpoints](docs/scoutpi/DURABLE_AGENT_CHECKPOINTS.md)
 - [Workflow Compiler](docs/scoutpi/WORKFLOW_COMPILER.md)
 - [Pi RPC Harness](docs/scoutpi/PI_RPC_HARNESS.md)
 - [Pi ecosystem reuse audit](docs/scoutpi/PI_OPEN_SOURCE_ECOSYSTEM_REUSE_AUDIT.md)

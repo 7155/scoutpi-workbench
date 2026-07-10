@@ -5,6 +5,7 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
-    "@scoutpi/earth-workspace": "workspace:*"
+    "@scoutpi/earth-workspace": "workspace:*",
+    "@scoutpi/runtime-checkpoint": "workspace:*"
   }
 }

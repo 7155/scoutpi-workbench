@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added content-minimal durable Agent checkpoints with atomic writes, integrity verification, compaction preservation, interrupted-call recovery, API access, and Workbench visibility.
+- Isolated every paid Pi RPC harness case in a fresh temporary workspace and made full-suite execution explicit.
+- Fixed an asynchronous local-export test cleanup race observed on GitHub Actions.
+
 ## 0.2.0 - 2026-07-10
 
 - Added a reviewed Backend Plugin SDK with typed manifests, validation, cancellation, progress, timeouts, and bounded results.

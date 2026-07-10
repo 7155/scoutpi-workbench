@@ -89,8 +89,13 @@ importers:
       '@scoutpi/earth-workspace':
         specifier: workspace:*
         version: link:../earth-workspace
+      '@scoutpi/runtime-checkpoint':
+        specifier: workspace:*
+        version: link:../runtime-checkpoint
 
   packages/pi-ecosystem: {}
+
+  packages/runtime-checkpoint: {}
 
   packages/runtime-governance: {}
 

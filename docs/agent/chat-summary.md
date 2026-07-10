@@ -17,6 +17,14 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Local export state survives as a persisted request; cancellation, retry, and startup recovery prevent detached processes from staying permanently `running`.
 - Foundational projects such as geemap, geedim, geetools, leafmap, Xee/wxee, segment-geospatial, and HYDRAFloods are documented as optional providers or references, not as the source of ScoutPi's product direction.
 
+### 2026-07-11 - Durable Agent runtime checkpoint
+
+- Pi sessions now preserve content-minimal, integrity-checked recovery state across restart and compaction without adding another model-visible tool.
+- Interrupted state-changing calls are never assumed complete; Pi receives one bounded instruction to inspect persisted job/workflow state before retrying.
+- The real Pi RPC harness now isolates cases and enforces explicit tool, turn, token, output, cost, and full-run budgets.
+- Workbench shows checkpoint state alongside Agent runs, approvals, and telemetry; desktop/mobile visual checks and the 36-test full check pass.
+- Next: Context Pack/provenance/approved writeback, then Browser Evidence Contract and evidence graph.
+
 ### 2026-07-10 - Reliable Agent Runtime P0
 
 - Backend execution now uses a reviewed provider contract; telemetry separates estimated runtime work from provider-reported model billing.

@@ -27,3 +27,19 @@ test("Pi RPC scorer detects missing tools, unsupported claims and approval bypas
   assert.equal(score.approvalBypass, true);
   assert.equal(score.passed, false);
 });
+
+test("Pi RPC scorer enforces per-case turn, tool and token budgets", () => {
+  const fixture: PiHarnessCase = { caseId: "budget", prompt: "fixture", expectedOperations: ["plan"], forbiddenClaims: [], allowApprovals: false, maxToolCalls: 1, maxTurns: 1, maxTotalTokens: 10 };
+  const events = [
+    { type: "turn_start" },
+    { type: "turn_start" },
+    { type: "tool_execution_start", toolName: "earth_workspace", args: { op: "plan" } },
+    { type: "tool_execution_start", toolName: "earth_workspace", args: { op: "status" } },
+    { type: "message_end", message: { role: "assistant", content: [], usage: { input: 8, output: 7, totalTokens: 15, cost: { total: 0.01 } } } },
+    { type: "agent_end" },
+  ];
+  const score = scorePiHarnessCase(fixture, events, []);
+  assert.deepEqual(score.budgetExceeded, ["tool_calls 2>1", "turns 2>1", "tokens 15>10"]);
+  assert.equal(score.usage.reportedCostUsd, 0.01);
+  assert.equal(score.passed, false);
+});

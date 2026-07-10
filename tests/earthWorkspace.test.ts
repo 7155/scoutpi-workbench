@@ -121,6 +121,7 @@ test("live execution requires adapter evidence while local exports run as superv
     assert.equal(completed.result?.backend, "geedim");
     const retried = await workspace.retryLocalExport(queued.jobId, true);
     assert.notEqual(retried.jobId, queued.jobId);
+    assert.equal((await workspace.waitForLocalExport(retried.jobId)).state, "completed");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

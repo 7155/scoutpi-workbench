@@ -65,6 +65,13 @@ export interface AgentRunSummary {
   promptHash: string; promptChars: number; turns: number; toolCalls: number; failedToolCalls: number; approvalCount: number;
   modelUsage: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; totalTokens: number; reportedCostUsd: number };
 }
+export interface AgentCheckpointSummary {
+  checkpointId: string; sessionId: string; revision: number; state: "idle" | "running" | "tool_running" | "paused" | "settled" | "failed";
+  reason?: string; createdAt: string; updatedAt: string; resumeCount: number; turnIndex?: number;
+  references: Array<{ kind: "investigation" | "plan" | "job" | "workflow" | "replay" | "recipe" | "approval" | "artifact"; id: string; source: string }>;
+  runtime: { model?: string; contextTokens?: number; contextWindow?: number; contextPercent?: number };
+  recovery: { recoverable: boolean; nextAction?: string; injectedAt?: string };
+}
 export interface EarthWorkflowSummary {
   workflowId: string; name: string; description: string; stage: "candidate" | "ready"; revision: number; fingerprint: string; savedAt: string;
   replayCount: number; successCount: number; failureCount: number; executionKind: "run" | "local_export";

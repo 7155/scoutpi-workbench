@@ -1,11 +1,14 @@
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
+import { dirname, join } from "node:path";
 import { URL } from "node:url";
 import { EarthWorkspace, type EarthStoryArtifact, type InvestigationSpec } from "../../earth-workspace/src/index.ts";
+import { AgentCheckpointStore } from "../../runtime-checkpoint/src/index.ts";
 
 export interface EarthWorkspaceServerOptions {
   host?: string;
   port?: number;
   workspace?: EarthWorkspace;
+  checkpointStore?: AgentCheckpointStore;
 }
 
 function sendJson(response: ServerResponse, status: number, value: unknown): void {
@@ -38,7 +41,9 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
   const host = options.host ?? process.env.SCOUTPI_EARTH_HOST ?? "127.0.0.1";
   const port = options.port ?? Number(process.env.SCOUTPI_EARTH_PORT ?? 17420);
   const workspace = options.workspace ?? new EarthWorkspace();
+  const checkpointStore = options.checkpointStore ?? new AgentCheckpointStore(process.env.SCOUTPI_CHECKPOINT_ROOT ?? join(dirname(workspace.root), "checkpoints"));
   await workspace.init();
+  await checkpointStore.init();
   await workspace.recoverInterruptedJobs();
 
   const server = http.createServer(async (request, response) => {
@@ -74,6 +79,15 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
       }
       if (request.method === "GET" && url.pathname === "/api/agent-runs") {
         sendJson(response, 200, { runs: await workspace.listAgentRuns(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/checkpoints") {
+        sendJson(response, 200, { checkpoints: await checkpointStore.list(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
+        return;
+      }
+      const checkpointSessionId = routeId(url.pathname, "/api/checkpoints/");
+      if (request.method === "GET" && checkpointSessionId) {
+        sendJson(response, 200, await checkpointStore.get(checkpointSessionId));
         return;
       }
       const agentRunId = routeId(url.pathname, "/api/agent-runs/");
@@ -288,6 +302,7 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
     host,
     port,
     workspace,
+    checkpointStore,
     server,
     listen: () => new Promise<void>((resolve) => server.listen(port, host, resolve)),
     close: () => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())),

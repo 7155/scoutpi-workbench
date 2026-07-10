@@ -17,6 +17,7 @@
     "packages/earth-workspace-server/**/*.ts",
     "packages/earth-workflow-compiler/**/*.ts",
     "packages/pi-ecosystem/**/*.ts",
+    "packages/runtime-checkpoint/**/*.ts",
     "packages/runtime-governance/**/*.ts",
     "packages/runtime-observability/**/*.ts",
     "packages/runtime-telemetry/**/*.ts",

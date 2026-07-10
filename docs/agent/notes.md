@@ -32,6 +32,17 @@
 - Removed the unbundled duplicate memory extension and unused memory/browser UI panels from the public project; memory remains a Pi ecosystem peer.
 - Verification: `pnpm check` passes 18 tests, Python compile, Earth harness, and production web build; `pnpm audit --prod` reports no known vulnerabilities.
 
+## 2026-07-11 06:00 - Durable Agent checkpoint and bounded Pi evaluation
+
+- Added an event-only Pi checkpoint extension with atomic revisions, SHA-256 integrity checks, allowlisted runtime references, one-time recovery injection, and compaction preservation rules.
+- Added checkpoint API and Workbench telemetry visibility without adding a model-facing tool.
+- Isolated every paid Pi RPC case in a fresh temporary Pi/Earth/runtime directory; added a deterministic export fixture, user-denial scoring, turn/tool/token/cost ceilings, live abort, and full-run budget.
+- Fixed the GitHub Actions race where a retried in-process local export could still write while the test removed its directory; runtime now tracks and drains background export completions.
+- Real provider evidence: `gpt-5.6` remains absent from the configured endpoint model list, while Pi RPC itself starts with `gpt-5.6`, `xhigh`, all four extensions, and no extension error. No key is persisted.
+- Visual QA: desktop and 390x844 Telemetry dialog render with no overlap or console errors; checkpoints have a dedicated operator ledger.
+- Commands: `git status -sb` showed 20 modified tracked paths plus the new checkpoint package/extension/tests; `git diff --stat` showed 410 insertions and 50 deletions before untracked files.
+- Verification: `pnpm check` passes 36 tests, Python compile, Earth harness, and production web build; `pnpm audit --prod` reports no known vulnerabilities; `git diff --check` passes.
+
 ## 2026-07-10 23:42 - Agent Runtime P0 milestone
 
 - Added the reviewed Backend Plugin SDK, mixed-text runtime telemetry, Agent lifecycle tracing, parameter-bound approval receipts, and successful-run Workflow Compiler.

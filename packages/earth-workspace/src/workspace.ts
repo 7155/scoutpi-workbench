@@ -82,6 +82,7 @@ export class EarthWorkspace {
   readonly approvals: ApprovalStore;
   readonly agentRuns: AgentRunStore;
   private readonly activeWorkers = new Map<string, ReturnType<typeof spawn>>();
+  private readonly activeLocalExports = new Map<string, Promise<void>>();
   private readonly visualizationCache = new Map<string, { value: EarthVisualization; expiresAt: number }>();
 
   constructor(root = process.env.SCOUTPI_EARTH_ROOT ?? ".scoutpi/earth_workspace", python = process.env.SCOUTPI_EARTH_PYTHON ?? resolve(".venv/bin/python"), skillPublishRoot = process.env.SCOUTPI_SKILL_PUBLISH_ROOT ?? resolve(".pi", "skills"), backendProviders: EarthBackendProvider[] = []) {
@@ -450,8 +451,40 @@ export class EarthWorkspace {
     };
     await writeJson(join(artifactDir, "job.json"), job);
     await writeJson(join(artifactDir, "export_request.json"), request);
-    void this.finishLocalExport(job, plan, request, runtimeOptions.suppressWorkflowCompile === true);
+    // Track the background completion separately from the child process so tests,
+    // shutdown hooks, and embedding runtimes can drain even when a backend is in-process.
+    const completion = Promise.resolve()
+      .then(async () => await this.finishLocalExport(job, plan, request, runtimeOptions.suppressWorkflowCompile === true))
+      .finally(() => this.activeLocalExports.delete(job.jobId));
+    this.activeLocalExports.set(job.jobId, completion);
     return job;
+  }
+
+  async waitForLocalExport(jobId: string, timeoutMs = 30_000): Promise<EarthJob> {
+    safeId(jobId, "jobId");
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 900_000) {
+      throw Object.assign(new Error("timeoutMs must be between 1 and 900000"), { code: "WAIT_TIMEOUT_INVALID" });
+    }
+    const completion = this.activeLocalExports.get(jobId);
+    if (completion) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          completion,
+          new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(() => reject(Object.assign(new Error(`LOCAL_EXPORT_WAIT_TIMEOUT: ${jobId}`), { code: "LOCAL_EXPORT_WAIT_TIMEOUT" })), timeoutMs);
+          }),
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    }
+    return await this.status(jobId);
+  }
+
+  async drainLocalExports(timeoutMs = 30_000): Promise<void> {
+    const jobIds = [...this.activeLocalExports.keys()];
+    await Promise.all(jobIds.map(async (jobId) => { await this.waitForLocalExport(jobId, timeoutMs); }));
   }
 
   async retryLocalExport(jobId: string, confirmed = false): Promise<EarthJob> {
