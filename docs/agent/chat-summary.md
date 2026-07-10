@@ -49,3 +49,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Mobile keeps all workspace commands through an overflow menu, has no horizontal layout drift at 390 px, and preserves the same Runtime Center information hierarchy.
 - The UI deliberately uses the live Earth map instead of decorative generated imagery; visual emphasis stays on inspectable state and evidence.
 - Next: Browser Evidence Contract, trace import, and an investigation evidence graph integrated into this same operator surface.
+
+### 2026-07-11 - Browser Evidence Bridge
+
+- BrowserBridge output now enters the runtime through a canonical, provenance-bound contract without adding a model-facing tool.
+- Imports enforce real-path roots, size and secret checks, copied artifact hashes, exclusive record creation, payload integrity, deduplication, and explicit claim/hypothesis relations.
+- The persisted Evidence Graph distinguishes browser documentation, completed live computation, and EarthStory findings; dry runs are not promoted to computed evidence.
+- Workbench exposes compact coverage and per-hypothesis evidence chains on desktop and mobile, while observability can attach the exact graph to the current Agent run.
+- All 47 tests and the full project check pass. Next: add a narrow MCP compatibility server and durable event triggers while preserving the three-tool Pi surface.

@@ -25,6 +25,7 @@ Use GitHub private vulnerability reporting from the repository Security tab. Do 
 - Agent traces store hashes, counts, durations, operation IDs and model usage by default. Raw prompt previews require `SCOUTPI_TRACE_DEBUG_TEXT=1`.
 - Durable checkpoints persist only allowlisted runtime IDs, counters and recovery state. They do not persist prompts, arbitrary tool payloads, secrets or artifact contents, and every snapshot carries an integrity checksum.
 - Context candidates are size-limited, provenance-bound, expired before use, checked for common secret patterns, and injected as lower-trust memory rather than policy. Writeback remains pending until direct UI approval and does not silently mutate a provider database.
+- Browser evidence imports are restricted to real paths under configured roots, so symlinks cannot escape the allowlist. Inputs are size-limited, checked again for secret material, copied into the runtime artifact store, and bound by SHA-256. Stored payload integrity is rechecked on read, existing evidence IDs cannot be replaced with different content, and claim relations are always explicit.
 
 ## Secrets
 

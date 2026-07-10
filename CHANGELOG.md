@@ -6,6 +6,7 @@
 - Added a zero-tool Context Bridge with provider-neutral candidate input, provenance, mixed-text token budgeting, exact run-trace attachment, and user-reviewed writeback outbox.
 - Added a dedicated Workbench Context view for packs, durable checkpoints, and writeback review state.
 - Rebuilt the Workbench Runtime Center around runtime posture, operator attention, Context Pack budgets, backend probes, Agent usage, and responsive mobile actions.
+- Added a zero-tool Browser Evidence Bridge, canonical evidence contract, artifact hashing/deduplication, explicit claim relations, Evidence Graph, trace attachment, API access, and Workbench visualization.
 - Isolated every paid Pi RPC harness case in a fresh temporary workspace and made full-suite execution explicit.
 - Fixed an asynchronous local-export test cleanup race observed on GitHub Actions.
 

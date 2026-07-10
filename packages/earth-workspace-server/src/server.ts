@@ -97,6 +97,25 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
         sendJson(response, 200, { writebacks: await contextStore.listWritebacks(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
         return;
       }
+      if (request.method === "GET" && url.pathname === "/api/evidence") {
+        sendJson(response, 200, { evidence: await workspace.listEvidence(url.searchParams.get("investigationId") || undefined, url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/evidence/import") {
+        const body = await readBody(request);
+        sendJson(response, 201, await workspace.importBrowserEvidence(String(body.path || ""), { binding: body.binding, timeReferences: body.timeReferences, placeReferences: body.placeReferences, runId: body.runId, snapshotId: body.snapshotId }));
+        return;
+      }
+      const evidenceGraphId = routeId(url.pathname, "/api/evidence/graph/");
+      if (request.method === "GET" && evidenceGraphId) {
+        sendJson(response, 200, await workspace.evidenceGraph(evidenceGraphId));
+        return;
+      }
+      const bindEvidenceId = routeId(url.pathname, "/api/evidence/", "/bind");
+      if (request.method === "POST" && bindEvidenceId) {
+        sendJson(response, 200, await workspace.bindEvidence(bindEvidenceId, await readBody(request)));
+        return;
+      }
       const contextPackId = routeId(url.pathname, "/api/context/packs/");
       if (request.method === "GET" && contextPackId) {
         sendJson(response, 200, await contextStore.getPack(contextPackId));

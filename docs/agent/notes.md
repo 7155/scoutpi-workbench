@@ -70,3 +70,14 @@
 - Fixed a real 390 px overflow regression: the mobile page had a 407 px min-content width from the top action row; after the menu refactor, `scrollWidth === clientWidth` at 375 px CSS width.
 - Visual QA: 1440x1000 overview/context, 390x844 overview/context, mobile action menu, Escape close, and zero console errors. No generated image was added because the live MapLibre/GEE layer is the product's meaningful visual asset.
 - Verification: `pnpm check` passes 42 tests, Python compile, Earth harness, and production web build; `git diff --check` passes.
+
+## 2026-07-11 07:03 - Browser Evidence Bridge and investigation graph
+
+- Added the canonical `scoutpi.browser.evidence.v1` contract, BrowserBridge card adapter, copied screenshot/text artifacts, SHA-256 provenance, source-fingerprint deduplication, explicit claim relations, and persisted investigation graphs.
+- Added a zero-tool Pi Evidence Bridge plus `evidence_import`, `evidence_bind`, `evidence_list`, and `evidence_graph` operations behind the existing `earth_workspace` gateway; the public model surface remains exactly three tools across six extensions.
+- Connected browser sources, claims, hypotheses, completed live computations, and EarthStory findings without treating dry runs as computed evidence. Exact graphs can be attached to Agent run traces.
+- Hardened import roots with real-path checks against symlink escape, made record creation exclusive and atomic, revalidated payload integrity on read, and fixed rebinding so the old checksum cannot contaminate the new checksum.
+- Workbench Evidence now presents source/claim/run coverage and auditable per-hypothesis chains. Desktop and 390x844 mobile visual checks showed no overflow or console errors; live map state remains the primary visual asset.
+- Real Pi RPC smoke initialized `gpt-5.6`, `xhigh`, all six extensions, and no extension errors. Provider model discovery still does not advertise 5.6, so paid evaluation remains blocked rather than silently downgraded.
+- Git snapshot: `main...origin/main`; 24 tracked paths changed plus the evidence package, extension, component, docs, example, and tests. Generated `.scoutpi`, `exports`, and Playwright output remain ignored.
+- Verification: `pnpm check` passes 47 tests, Python compile, Earth harness, and production web build; targeted evidence security tests and `git diff --check` pass.

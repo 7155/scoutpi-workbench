@@ -41,6 +41,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Event-only observability extension with privacy-preserving Agent run traces and provider-reported token/cost usage
 - Event-only durable checkpoint extension with atomic revisions, integrity checks, compaction hints, and one-time recovery context
 - Event-only Context Bridge with provider-neutral candidates, mixed-text token budgets, provenance, and user-reviewed writeback outbox
+- Event-only Browser Evidence Bridge with allowed-root import, artifact hashes, explicit claim/hypothesis relations, and Agent-trace attachment
 - Reviewed Backend Plugin SDK with manifests, validation hooks, bounded progress, cancellation, timeouts, and result limits
 - Progressive-disclosure Earth investigation skill
 - Dynamic `scoutpi.earth.adapter.v1` registry with revisions, SHA-256 fingerprints, enable/disable state, and audit events
@@ -109,7 +110,7 @@ Or install the current checkout:
 pi install /absolute/path/to/scoutpi-workbench
 ```
 
-The package exposes five extensions and one skill. Context, governance, observability, and checkpoints are event-only; the model still sees at most these three Earth tools:
+The package exposes six extensions and one skill. Context, browser evidence, governance, observability, and checkpoints are event-only; the model still sees at most these three Earth tools:
 
 | Tool | Responsibility |
 | --- | --- |
@@ -162,6 +163,7 @@ Complete plans and results are written below `.scoutpi/earth_workspace`; Pi rece
 .scoutpi/runs/            # privacy-preserving Pi Agent traces and exact model usage
 .scoutpi/checkpoints/     # content-minimal session recovery state and journals
 .scoutpi/context/         # budgeted Context Packs and reviewed provider writebacks
+.scoutpi/evidence/        # normalized browser evidence, copied artifacts and graphs
 ```
 
 Temporary Earth Engine tile URLs are for visualization. Download/export is used only when a durable local artifact, offline computation, evidence package, or downstream delivery is required.
@@ -178,6 +180,10 @@ Temporary Earth Engine tile URLs are for visualization. Download/export is used 
 | `GET /api/checkpoints` | Durable Agent session and interrupted-operation summaries |
 | `GET /api/context/packs` | Token-bounded context, provenance and provider summaries |
 | `GET /api/context/writebacks` | Pending, approved and rejected memory-provider outbox records |
+| `GET /api/evidence` | Investigation-scoped canonical browser evidence records |
+| `POST /api/evidence/import` | Import and artifactize an allowlisted BrowserBridge evidence file |
+| `POST /api/evidence/:id/bind` | Bind a source to an investigation, claim, hypothesis, and explicit relation |
+| `GET /api/evidence/graph/:id` | Browser claims, hypotheses, completed live runs, and finding coverage |
 | `GET /api/approvals` | Human approval audit receipts |
 | `GET /api/contracts/:id` | Fetch an adapter, skill, investigation, or export template on demand |
 | `GET/POST /api/adapters` | List or register declarative adapters |
@@ -228,6 +234,7 @@ The current live smoke path also verifies a real Dynamic World tile and a small 
 - [Runtime governance and observability](docs/scoutpi/RUNTIME_GOVERNANCE_AND_OBSERVABILITY.md)
 - [Durable Agent checkpoints](docs/scoutpi/DURABLE_AGENT_CHECKPOINTS.md)
 - [Context Bridge](docs/scoutpi/CONTEXT_BRIDGE.md)
+- [Browser Evidence Bridge](docs/scoutpi/BROWSER_EVIDENCE_BRIDGE.md)
 - [Workflow Compiler](docs/scoutpi/WORKFLOW_COMPILER.md)
 - [Pi RPC Harness](docs/scoutpi/PI_RPC_HARNESS.md)
 - [Pi ecosystem reuse audit](docs/scoutpi/PI_OPEN_SOURCE_ECOSYSTEM_REUSE_AUDIT.md)

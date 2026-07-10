@@ -5,5 +5,6 @@ export * from "../../earth-backend-sdk/src/index.ts";
 export * from "../../earth-workflow-compiler/src/index.ts";
 export * from "../../earth-investigation-core/src/index.ts";
 export * from "../../runtime-governance/src/index.ts";
+export * from "../../runtime-evidence/src/index.ts";
 export * from "../../runtime-observability/src/index.ts";
 export * from "../../runtime-telemetry/src/index.ts";

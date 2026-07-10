@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "scoutpi.browser.evidence.v1",
+  "evidenceId": "example-browser-evidence",
+  "source": {
+    "url": "https://example.com/project/status",
+    "title": "Example project status",
+    "capturedAt": "2026-07-11T01:00:00.000Z",
+    "sourceType": "public_webpage",
+    "trust": "medium"
+  },
+  "claim": {
+    "text": "The page contains a dated claim that requires independent observation.",
+    "timeReferences": ["2024"],
+    "placeReferences": ["example area"]
+  },
+  "browser": {
+    "commandId": "example-command"
+  },
+  "binding": {
+    "investigationId": "example-investigation",
+    "claimId": "example-claim",
+    "hypothesisId": "h1",
+    "relation": "contextualizes"
+  },
+  "artifacts": [],
+  "provenance": {
+    "importedAt": "2026-07-11T01:01:00.000Z",
+    "adapter": "canonical-v1",
+    "sourcePathHash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sourceFingerprint": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "integrity": {
+    "payloadSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

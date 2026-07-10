@@ -1,4 +1,4 @@
-export type EarthRuntimeContractName = "investigation" | "adapter" | "adapter_pack" | "skill" | "local_export";
+export type EarthRuntimeContractName = "investigation" | "adapter" | "adapter_pack" | "skill" | "local_export" | "browser_evidence";
 
 const contracts: Record<EarthRuntimeContractName, Record<string, unknown>> = {
   investigation: {
@@ -62,6 +62,18 @@ const contracts: Record<EarthRuntimeContractName, Record<string, unknown>> = {
     dtype: "float32 | float64 | int16 | uint16 | uint8",
     maxPixels: 25000000,
     confirmed: false,
+  },
+  browser_evidence: {
+    op: "evidence_import | evidence_bind | evidence_list | evidence_graph",
+    path: "/configured/browser_runs/run_id/evidence_cards.json",
+    binding: {
+      investigationId: "investigation-id",
+      claimId: "claim-id",
+      hypothesisId: "h1",
+      relation: "supports | contradicts | contextualizes | documents",
+    },
+    timeReferences: ["2024"],
+    placeReferences: ["review area"],
   },
 };
 

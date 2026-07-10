@@ -174,6 +174,31 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
           const result = await workspace.publishSkill(String(input.id || ""), true);
           return await respond(`skill published id=${result.skillId} reload_required=${result.reloadRequired}\npath=${result.path}`, { skillId: result.skillId, path: result.path, reloadRequired: true });
         }
+        if (input.op === "evidence_import") {
+          update(onUpdate, "evidence_import", "Validating and importing BrowserBridge evidence...");
+          const path = String(options.path || payload.path || "");
+          const result = await workspace.importBrowserEvidence(path, {
+            binding: objectOf(options.binding || payload.binding),
+            timeReferences: Array.isArray(options.timeReferences) ? options.timeReferences.map(String) : undefined,
+            placeReferences: Array.isArray(options.placeReferences) ? options.placeReferences.map(String) : undefined,
+            runId: options.runId ? String(options.runId) : undefined,
+            snapshotId: options.snapshotId ? String(options.snapshotId) : undefined,
+          });
+          return await respond(`evidence imported=${result.imported} deduplicated=${result.deduplicated}\n${result.records.map((record) => `${record.evidenceId} ${record.source.title}`).join("\n")}`, { evidenceIds: result.records.map((record) => record.evidenceId), imported: result.imported, deduplicated: result.deduplicated });
+        }
+        if (input.op === "evidence_bind") {
+          const record = await workspace.bindEvidence(String(input.id || ""), objectOf(options.binding || payload.binding));
+          return await respond(`evidence bound id=${record.evidenceId} investigation=${record.binding?.investigationId || "n/a"} claim=${record.binding?.claimId || "n/a"} relation=${record.binding?.relation || "n/a"}`, { evidenceId: record.evidenceId, binding: record.binding });
+        }
+        if (input.op === "evidence_list") {
+          const investigationId = input.id || (options.investigationId ? String(options.investigationId) : undefined);
+          const records = await workspace.listEvidence(investigationId, options.limit ? Number(options.limit) : undefined);
+          return await respond(`evidence=${records.length}${investigationId ? ` investigation=${investigationId}` : ""}\n${records.map((record) => `${record.evidenceId} trust=${record.source.trust} claim=${record.claim.text.slice(0, 120)}`).join("\n")}`, { evidenceIds: records.map((record) => record.evidenceId), investigationId });
+        }
+        if (input.op === "evidence_graph") {
+          const graph = await workspace.evidenceGraph(String(input.id || options.investigationId || ""));
+          return await respond(`evidence graph investigation=${graph.investigationId} nodes=${graph.nodes.length} edges=${graph.edges.length} browser=${graph.coverage.browserEvidence} computed=${graph.coverage.computedRuns} covered=${graph.coverage.coveredHypotheses}/${graph.coverage.hypotheses}`, { investigationId: graph.investigationId, graphId: graph.graphId, coverage: graph.coverage });
+        }
         if (input.op === "plan") {
           update(onUpdate, "plan", "Compiling the InvestigationSpec into a dataset plan and analysis graph...");
           const result = await workspace.plan(payload as InvestigationSpec);

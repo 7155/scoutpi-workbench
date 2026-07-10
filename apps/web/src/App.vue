@@ -84,6 +84,10 @@
         <div class="inspector-scroll">
           <div v-if="activeTab === 'evidence'" class="panel-section evidence-section">
             <section>
+              <div class="section-heading"><h2>Evidence graph</h2><span>{{ evidenceGraph?.nodes.length || 0 }} nodes</span></div>
+              <EvidenceGraph :graph="evidenceGraph" :records="selectedEvidence" />
+            </section>
+            <section>
               <div class="section-heading"><h2>Hypotheses</h2><span>{{ selectedPlan.spec.hypotheses.length }}</span></div>
               <article v-for="hypothesis in selectedPlan.spec.hypotheses" :key="hypothesis.id" class="hypothesis">
                 <code>{{ hypothesis.id }}</code><p>{{ hypothesis.statement }}</p>
@@ -139,7 +143,7 @@
     <NewInvestigationDialog :open="newDialog" :saving="saving" @close="newDialog = false" @create="createPlan" />
     <RecipeDialog :open="recipeDialog" :saving="savingRecipe" :recipes="recipes" :workflows="workflows" :workflow-runs="workflowRuns" :current-spec="selectedPlan?.spec" :current-plan="selectedPlan" :current-job="workflowSourceJob" @close="recipeDialog = false" @save="saveRecipe" @instantiate="instantiateRecipe" @compile="compileSelectedWorkflow" @replay="replayCompiledWorkflow" />
     <LocalExportDialog :open="exportDialog" :saving="exportingLocal" :plan="selectedPlan" :selected-role="selectedRole" :selected-year="selectedYear" @close="exportDialog = false" @export="queueLocalExport" />
-    <RuntimeRegistryDialog :open="registryDialog" :saving="savingRegistry || loading" :adapters="adapters" :skills="skills" :backend-manifests="backendManifests" :backend-probes="backendProbes" :telemetry="telemetry" :agent-runs="agentRuns" :checkpoints="checkpoints" :context-packs="contextPacks" :context-writebacks="contextWritebacks" :approvals="approvals" @close="registryDialog = false" @refresh="refresh" @import="importRegistry" @probe="probeRegistryAdapter" @probe-backend="probeRuntimeBackend" @state="setRegistryAdapterState" @save-skill="saveGeneratedSkill" @publish="publishGeneratedSkill" @invalid="error = $event" />
+    <RuntimeRegistryDialog :open="registryDialog" :saving="savingRegistry || loading" :adapters="adapters" :skills="skills" :backend-manifests="backendManifests" :backend-probes="backendProbes" :telemetry="telemetry" :agent-runs="agentRuns" :checkpoints="checkpoints" :context-packs="contextPacks" :context-writebacks="contextWritebacks" :evidence-count="evidenceRecords.length" :approvals="approvals" @close="registryDialog = false" @refresh="refresh" @import="importRegistry" @probe="probeRegistryAdapter" @probe-backend="probeRuntimeBackend" @state="setRegistryAdapterState" @save-skill="saveGeneratedSkill" @publish="publishGeneratedSkill" @invalid="error = $event" />
     <div v-if="error" class="toast"><AlertCircle :size="17" /><span>{{ error }}</span><button title="Dismiss" @click="error = ''"><X :size="15" /></button></div>
     <div v-if="running" class="run-progress"><LoaderCircle class="spin" :size="16" /><span>Submitting Earth workspace job</span></div>
   </div>
@@ -150,6 +154,7 @@ import { computed, markRaw, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { AlertCircle, AlertTriangle, Ban, BarChart3, BookOpen, ChevronLeft, ChevronRight, Database, Download, ExternalLink, FileText, FlaskConical, FolderSearch, GitBranch, Info, KeyRound, Layers3, ListChecks, LoaderCircle, MoreHorizontal, Orbit, PanelLeft, Play, Plus, RefreshCw, RotateCcw, RotateCw, ScanSearch, Search, Server, Waypoints, X } from "lucide-vue-next";
 import { api } from "./api";
 import InvestigationMap from "./components/InvestigationMap.vue";
+import EvidenceGraph from "./components/EvidenceGraph.vue";
 import LocalExportDialog from "./components/LocalExportDialog.vue";
 import MetricsPanel from "./components/MetricsPanel.vue";
 import NewInvestigationDialog from "./components/NewInvestigationDialog.vue";
@@ -157,7 +162,7 @@ import PlanGraph from "./components/PlanGraph.vue";
 import RecipeDialog from "./components/RecipeDialog.vue";
 import RuntimeRegistryDialog from "./components/RuntimeRegistryDialog.vue";
 import RunLedger from "./components/RunLedger.vue";
-import type { AgentCheckpointSummary, AgentRunSummary, ContextPackSummary, ContextWritebackSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, InvestigationPlan, InvestigationSpec, JobArtifact, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary } from "./types";
+import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph as EvidenceGraphState, InvestigationPlan, InvestigationSpec, JobArtifact, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary } from "./types";
 
 const plans = ref<InvestigationPlan[]>([]);
 const jobs = ref<EarthJob[]>([]);
@@ -172,6 +177,8 @@ const agentRuns = ref<AgentRunSummary[]>([]);
 const checkpoints = ref<AgentCheckpointSummary[]>([]);
 const contextPacks = ref<ContextPackSummary[]>([]);
 const contextWritebacks = ref<ContextWritebackSummary[]>([]);
+const evidenceRecords = ref<BrowserEvidenceRecord[]>([]);
+const evidenceGraph = ref<EvidenceGraphState>();
 const approvals = ref<RuntimeApproval[]>([]);
 const workflows = ref<EarthWorkflowSummary[]>([]);
 const workflowRuns = ref<EarthWorkflowReplay[]>([]);
@@ -211,6 +218,7 @@ const tabs = [
 
 const selectedPlan = computed(() => plans.value.find((plan) => plan.planId === selectedPlanId.value));
 const selectedStory = computed(() => stories.value.find((story) => story.investigationId === selectedPlan.value?.spec.investigationId));
+const selectedEvidence = computed(() => evidenceRecords.value.filter((record) => record.binding?.investigationId === selectedPlan.value?.spec.investigationId));
 const geedimReady = computed(() => environment.value.backends?.some((backend) => backend.id === "geedim" && backend.installed) === true);
 const runtimeAttention = computed(() => contextWritebacks.value.filter((item) => item.state === "pending").length + checkpoints.value.filter((item) => item.recovery.recoverable).length + approvals.value.filter((item) => item.state === "pending").length + agentRuns.value.filter((item) => item.state === "interrupted").length);
 const planJobs = computed(() => jobs.value.filter((job) => job.planId === selectedPlanId.value).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
@@ -238,6 +246,7 @@ function selectPlan(id: string) {
   void selectJob(latestJob(id));
   const plan = plans.value.find((item) => item.planId === id);
   if (plan) { selectedYear.value = plan.spec.period.endYear; selectedRole.value = plan.datasets[0]?.role || ""; }
+  if (plan) void loadEvidenceGraph(plan.spec.investigationId);
   showSidebar.value = false;
 }
 function stepYear(delta: number) {
@@ -247,12 +256,21 @@ function stepYear(delta: number) {
 async function refresh() {
   loading.value = true; error.value = "";
   try {
-    const [nextEnvironment, nextPlans, nextJobs, nextStories, nextRecipes, nextAdapters, nextSkills, nextBackends, nextTelemetry, nextAgentRuns, nextCheckpoints, nextContextPacks, nextContextWritebacks, nextApprovals, nextWorkflows, nextWorkflowRuns] = await Promise.all([api.environment(), api.plans(), api.jobs(), api.stories(), api.recipes(), api.adapters(), api.skills(), api.backends(), api.telemetry(), api.agentRuns(), api.checkpoints(), api.contextPacks(), api.contextWritebacks(), api.approvals(), api.workflows(), api.workflowRuns()]);
-    environment.value = nextEnvironment; plans.value = nextPlans; jobs.value = nextJobs; stories.value = nextStories; recipes.value = nextRecipes; adapters.value = nextAdapters; skills.value = nextSkills; backendManifests.value = nextBackends; telemetry.value = nextTelemetry; agentRuns.value = nextAgentRuns; checkpoints.value = nextCheckpoints; contextPacks.value = nextContextPacks; contextWritebacks.value = nextContextWritebacks; approvals.value = nextApprovals; workflows.value = nextWorkflows; workflowRuns.value = nextWorkflowRuns;
+    const [nextEnvironment, nextPlans, nextJobs, nextStories, nextRecipes, nextAdapters, nextSkills, nextBackends, nextTelemetry, nextAgentRuns, nextCheckpoints, nextContextPacks, nextContextWritebacks, nextEvidence, nextApprovals, nextWorkflows, nextWorkflowRuns] = await Promise.all([api.environment(), api.plans(), api.jobs(), api.stories(), api.recipes(), api.adapters(), api.skills(), api.backends(), api.telemetry(), api.agentRuns(), api.checkpoints(), api.contextPacks(), api.contextWritebacks(), api.evidence(), api.approvals(), api.workflows(), api.workflowRuns()]);
+    environment.value = nextEnvironment; plans.value = nextPlans; jobs.value = nextJobs; stories.value = nextStories; recipes.value = nextRecipes; adapters.value = nextAdapters; skills.value = nextSkills; backendManifests.value = nextBackends; telemetry.value = nextTelemetry; agentRuns.value = nextAgentRuns; checkpoints.value = nextCheckpoints; contextPacks.value = nextContextPacks; contextWritebacks.value = nextContextWritebacks; evidenceRecords.value = nextEvidence; approvals.value = nextApprovals; workflows.value = nextWorkflows; workflowRuns.value = nextWorkflowRuns;
     if (selectedJob.value) await selectJob(nextJobs.find((job) => job.jobId === selectedJob.value?.jobId));
     if (!selectedPlanId.value && nextPlans[0]) selectPlan(nextPlans[0].planId);
+    else {
+      const activePlan = nextPlans.find((plan) => plan.planId === selectedPlanId.value);
+      if (activePlan) await loadEvidenceGraph(activePlan.spec.investigationId);
+    }
   } catch (value) { error.value = value instanceof Error ? value.message : String(value); }
   finally { loading.value = false; }
+}
+async function loadEvidenceGraph(investigationId: string) {
+  evidenceGraph.value = undefined;
+  try { evidenceGraph.value = await api.evidenceGraph(investigationId); }
+  catch (value) { error.value = value instanceof Error ? value.message : String(value); }
 }
 async function createPlan(spec: InvestigationSpec) {
   saving.value = true; error.value = "";

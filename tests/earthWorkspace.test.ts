@@ -59,7 +59,7 @@ test("investigation validation rejects ambiguous time and hypothesis contracts",
 test("runtime contracts are disclosed on demand instead of inflating the permanent Pi schema", () => {
   const workspace = new EarthWorkspace(".scoutpi/contract-test", process.execPath);
   const index = workspace.contract() as { contracts: string[] };
-  assert.deepEqual(index.contracts, ["investigation", "adapter", "adapter_pack", "skill", "local_export"]);
+  assert.deepEqual(index.contracts, ["investigation", "adapter", "adapter_pack", "skill", "local_export", "browser_evidence"]);
   const adapter = workspace.contract("adapter") as any;
   assert.equal(adapter.template.schemaVersion, "scoutpi.earth.adapter.v1");
   assert.throws(() => workspace.contract("arbitrary_code"), /CONTRACT_INVALID/);

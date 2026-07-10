@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { contextQueryHash, ContextPackStore } from "../../../packages/runtime-context/src/index.ts";
+import { EvidenceStore } from "../../../packages/runtime-evidence/src/index.ts";
 import { AgentRunStore } from "../../../packages/runtime-observability/src/index.ts";
 
 function modelName(model: unknown): string | undefined {
@@ -23,6 +24,7 @@ function operationOf(value: unknown): { operation?: string; targetId?: string; a
 export default async function setup(pi: ExtensionAPI): Promise<void> {
   const store = new AgentRunStore();
   const contextStore = new ContextPackStore();
+  const evidenceStore = new EvidenceStore();
   await store.init();
   let runId: string | undefined;
   const startedTools = new Map<string, number>();
@@ -73,6 +75,13 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
     startedTools.delete(event.toolCallId);
     if (event.isError && runId) await store.increment(runId, "failedToolCalls").catch(() => undefined);
     await record({ kind: "tool", name: "tool_execution_end", toolCallId: event.toolCallId, toolName: event.toolName, elapsedMs: started === undefined ? undefined : performance.now() - started, outputBytes: store.measure(event.result), isError: event.isError });
+  });
+  pi.on("tool_result", async (event) => {
+    if (!runId || event.isError || event.toolName !== "earth_workspace") return;
+    const fields = operationOf(event.input);
+    if (fields.operation !== "evidence_graph" || !fields.targetId) return;
+    const graph = await evidenceStore.getGraph(fields.targetId).catch(() => undefined);
+    if (graph) await store.attachEvidenceGraph(runId, graph).catch(() => undefined);
   });
 
   pi.on("agent_end", async (event, ctx) => {

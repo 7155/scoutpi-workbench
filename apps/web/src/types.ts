@@ -81,6 +81,24 @@ export interface ContextWritebackSummary {
   writebackId: string; sessionId: string; state: "pending" | "approved" | "rejected"; createdAt: string; decidedAt?: string; providerTargets: string[]; payloadSha256: string;
   candidates: Array<{ candidateId: string; kind: string; text: string; confidence: number; tags: string[] }>;
 }
+export interface BrowserEvidenceRecord {
+  schemaVersion: "scoutpi.browser.evidence.v1";
+  evidenceId: string;
+  source: { url: string; title: string; capturedAt: string; sourceType: "local_ui" | "public_webpage" | "docs" | "dataset_page"; trust: "high" | "medium" | "low" };
+  claim: { text: string; timeReferences: string[]; placeReferences: string[] };
+  browser: { commandId?: string; runId?: string; snapshotId?: string };
+  binding?: { investigationId: string; claimId: string; hypothesisId?: string; relation: "supports" | "contradicts" | "contextualizes" | "documents" };
+  excerpt?: string;
+  artifacts: Array<{ artifactId: string; kind: "screenshot" | "content"; path: string; sha256: string; bytes: number; mediaType: string }>;
+  provenance: { importedAt: string; adapter: string; sourcePathHash: string; sourceFingerprint: string };
+  integrity: { payloadSha256: string };
+}
+export interface EvidenceGraph {
+  schemaVersion: "scoutpi.evidence-graph.v1"; graphId: string; investigationId: string; updatedAt: string;
+  nodes: Array<{ nodeId: string; kind: "browser_evidence" | "claim" | "hypothesis" | "computed_run" | "finding"; label: string; status?: string; ref?: string; metadata?: Record<string, string | number | boolean | undefined> }>;
+  edges: Array<{ edgeId: string; from: string; to: string; relation: string }>;
+  coverage: { browserEvidence: number; claims: number; computedRuns: number; hypotheses: number; coveredHypotheses: number; uncoveredHypothesisIds: string[] };
+}
 export interface EarthWorkflowSummary {
   workflowId: string; name: string; description: string; stage: "candidate" | "ready"; revision: number; fingerprint: string; savedAt: string;
   replayCount: number; successCount: number; failureCount: number; executionKind: "run" | "local_export";

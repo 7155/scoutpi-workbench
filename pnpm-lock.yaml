@@ -74,6 +74,9 @@ importers:
       '@scoutpi/earth-workflow-compiler':
         specifier: workspace:*
         version: link:../earth-workflow-compiler
+      '@scoutpi/runtime-evidence':
+        specifier: workspace:*
+        version: link:../runtime-evidence
       '@scoutpi/runtime-governance':
         specifier: workspace:*
         version: link:../runtime-governance
@@ -106,6 +109,8 @@ importers:
         specifier: workspace:*
         version: link:../runtime-telemetry
 
+  packages/runtime-evidence: {}
+
   packages/runtime-governance: {}
 
   packages/runtime-observability:
@@ -113,6 +118,9 @@ importers:
       '@scoutpi/runtime-context':
         specifier: workspace:*
         version: link:../runtime-context
+      '@scoutpi/runtime-evidence':
+        specifier: workspace:*
+        version: link:../runtime-evidence
 
   packages/runtime-telemetry: {}
 

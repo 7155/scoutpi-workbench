@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@scoutpi/runtime-context": "workspace:*"
+    "@scoutpi/runtime-context": "workspace:*",
+    "@scoutpi/runtime-evidence": "workspace:*"
   }
 }

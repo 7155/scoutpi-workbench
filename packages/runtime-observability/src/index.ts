@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { appendFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { ContextPack } from "../../runtime-context/src/index.ts";
+import type { EvidenceGraph } from "../../runtime-evidence/src/index.ts";
 
 export interface AgentModelUsage {
   inputTokens: number;
@@ -143,6 +144,12 @@ export class AgentRunStore {
     if (pack.schemaVersion !== "scoutpi.context-pack.v1" || !/^[a-f0-9]{64}$/.test(pack.queryHash)) throw Object.assign(new Error("CONTEXT_PACK_INVALID"), { code: "CONTEXT_PACK_INVALID" });
     await this.get(runId);
     await writeFile(join(this.directory(runId), "context_pack.json"), `${JSON.stringify(pack, null, 2)}\n`);
+  }
+
+  async attachEvidenceGraph(runId: string, graph: EvidenceGraph): Promise<void> {
+    if (graph.schemaVersion !== "scoutpi.evidence-graph.v1" || !graph.investigationId) throw Object.assign(new Error("EVIDENCE_GRAPH_INVALID"), { code: "EVIDENCE_GRAPH_INVALID" });
+    await this.get(runId);
+    await writeFile(join(this.directory(runId), "evidence_graph.json"), `${JSON.stringify(graph, null, 2)}\n`);
   }
 
   async increment(runId: string, field: "turns" | "toolCalls" | "failedToolCalls" | "approvalCount", amount = 1): Promise<AgentRunSummary> {

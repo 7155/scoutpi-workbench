@@ -19,6 +19,7 @@
     "packages/pi-ecosystem/**/*.ts",
     "packages/runtime-context/**/*.ts",
     "packages/runtime-checkpoint/**/*.ts",
+    "packages/runtime-evidence/**/*.ts",
     "packages/runtime-governance/**/*.ts",
     "packages/runtime-observability/**/*.ts",
     "packages/runtime-telemetry/**/*.ts",

@@ -8,6 +8,7 @@
     "@scoutpi/earth-backend-sdk": "workspace:*",
     "@scoutpi/earth-investigation-core": "workspace:*",
     "@scoutpi/earth-workflow-compiler": "workspace:*",
+    "@scoutpi/runtime-evidence": "workspace:*",
     "@scoutpi/runtime-governance": "workspace:*",
     "@scoutpi/runtime-observability": "workspace:*",
     "@scoutpi/runtime-telemetry": "workspace:*"

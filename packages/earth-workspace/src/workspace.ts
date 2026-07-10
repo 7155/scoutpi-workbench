@@ -7,6 +7,7 @@ import { compileInvestigation, getEarthRuntimeContract, listEarthRuntimeContract
 import { EarthBackendRegistry, type EarthBackendExecution, type EarthBackendManifest, type EarthBackendProbe, type EarthBackendProgress, type EarthBackendProvider } from "../../earth-backend-sdk/src/index.ts";
 import { RuntimeTelemetryStore, type RuntimeTelemetryEvent, type RuntimeTelemetrySummary } from "../../runtime-telemetry/src/index.ts";
 import { ApprovalStore, type RuntimeApproval } from "../../runtime-governance/src/index.ts";
+import { EvidenceStore, type BrowserEvidenceRecord, type EvidenceBinding, type EvidenceGraph } from "../../runtime-evidence/src/index.ts";
 import { AgentRunStore, type AgentRunSummary } from "../../runtime-observability/src/index.ts";
 import { compileEarthWorkflow, earthWorkflowFingerprint, instantiateWorkflowSpec, type EarthWorkflowReplayRecord, type StoredEarthWorkflow } from "../../earth-workflow-compiler/src/index.ts";
 import { createBuiltinBackendProviders } from "./backends.ts";
@@ -81,6 +82,7 @@ export class EarthWorkspace {
   readonly telemetry: RuntimeTelemetryStore;
   readonly approvals: ApprovalStore;
   readonly agentRuns: AgentRunStore;
+  readonly evidence: EvidenceStore;
   private readonly activeWorkers = new Map<string, ReturnType<typeof spawn>>();
   private readonly activeLocalExports = new Map<string, Promise<void>>();
   private readonly visualizationCache = new Map<string, { value: EarthVisualization; expiresAt: number }>();
@@ -93,6 +95,7 @@ export class EarthWorkspace {
     this.telemetry = new RuntimeTelemetryStore(this.root);
     this.approvals = new ApprovalStore(this.root);
     this.agentRuns = new AgentRunStore(process.env.SCOUTPI_RUNS_ROOT ?? join(dirname(this.root), "runs"));
+    this.evidence = new EvidenceStore(process.env.SCOUTPI_EVIDENCE_ROOT ?? join(dirname(this.root), "evidence"));
     this.backendRegistry = new EarthBackendRegistry([
       ...createBuiltinBackendProviders(async (payload, workerId, signal) => await this.callWorker(payload, workerId, signal)),
       ...backendProviders,
@@ -104,6 +107,7 @@ export class EarthWorkspace {
     await this.telemetry.init();
     await this.approvals.init();
     await this.agentRuns.init();
+    await this.evidence.init();
   }
 
   async recoverInterruptedJobs(): Promise<{ recovered: number; jobIds: string[] }> {
@@ -157,6 +161,38 @@ export class EarthWorkspace {
 
   async getAgentRun(runId: string): Promise<AgentRunSummary> {
     return await this.agentRuns.get(runId);
+  }
+
+  async importBrowserEvidence(path: string, options: { binding?: Partial<EvidenceBinding>; timeReferences?: string[]; placeReferences?: string[]; runId?: string; snapshotId?: string } = {}) {
+    return await this.evidence.importBrowserBridgeFile(path, options);
+  }
+
+  async bindEvidence(evidenceId: string, binding: Partial<EvidenceBinding>): Promise<BrowserEvidenceRecord> {
+    return await this.evidence.bind(evidenceId, binding);
+  }
+
+  async listEvidence(investigationId?: string, limit?: number): Promise<BrowserEvidenceRecord[]> {
+    return await this.evidence.list(investigationId, limit);
+  }
+
+  async evidenceGraph(investigationId: string): Promise<EvidenceGraph> {
+    safeId(investigationId, "investigationId");
+    const plans = (await this.listPlans()).filter((plan) => plan.spec.investigationId === investigationId);
+    const plan = plans.sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    const jobs = plan ? (await this.listJobs()).filter((job) => job.planId === plan.planId) : [];
+    let story: EarthStoryArtifact | undefined;
+    try { story = await this.getStory(investigationId); } catch {}
+    return await this.evidence.buildGraph({
+      investigationId,
+      hypotheses: plan?.spec.hypotheses.map((item) => ({ id: item.id, statement: item.statement })) || [],
+      computedRuns: jobs.filter((job) => job.mode === "live" && job.state === "completed").map((job) => ({
+        jobId: job.jobId,
+        state: job.state,
+        mode: job.mode,
+        hypothesisIds: plan ? [...new Set(plan.datasets.flatMap((item) => item.hypothesisIds))] : [],
+      })),
+      findings: story?.findings.map((finding) => ({ hypothesisId: finding.hypothesisId, status: finding.status, evidenceCount: finding.evidence.length })) || [],
+    });
   }
 
   private async recordTelemetry(input: Parameters<RuntimeTelemetryStore["record"]>[0]): Promise<RuntimeTelemetryEvent | undefined> {
@@ -914,6 +950,10 @@ export class EarthWorkspace {
         const url = new URL(claim.sourceUrl);
         if (!["http:", "https:"].includes(url.protocol)) throw new Error("unsupported protocol");
       } catch { throw Object.assign(new Error("STORY_INVALID: claim sourceUrl must use http or https"), { code: "STORY_INVALID" }); }
+      if (claim.evidenceArtifact) {
+        const evidence = await this.evidence.get(claim.evidenceArtifact).catch(() => undefined);
+        if (!evidence || evidence.binding?.investigationId !== input.investigationId || evidence.source.url !== new URL(claim.sourceUrl).toString()) throw Object.assign(new Error("STORY_INVALID: evidenceArtifact must reference bound browser evidence with the same source URL"), { code: "STORY_INVALID" });
+      }
     }
     for (const finding of input.findings) {
       safeId(finding.hypothesisId, "hypothesisId");
@@ -929,6 +969,7 @@ export class EarthWorkspace {
     ].join("\n");
     await writeJson(jsonPath, input);
     await writeFile(markdownPath, markdown);
+    await this.evidenceGraph(input.investigationId);
     return { story: input, jsonPath, markdownPath };
   }
 
