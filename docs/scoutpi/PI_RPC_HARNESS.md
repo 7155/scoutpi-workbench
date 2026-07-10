@@ -12,7 +12,7 @@ pnpm harness:pi
 
 The default endpoint is the official OpenAI API. Set `SCOUTPI_PI_BASE_URL` for an OpenAI-compatible provider; provider-specific endpoints and credentials are local test configuration and are not committed.
 
-This performs a provider model-list preflight and writes a report under `exports/pi_harness/`. It does not make a model request. To verify that the real Pi RPC process and all four public extensions initialize, run:
+This performs a provider model-list preflight and writes a report under `exports/pi_harness/`. It does not make a model request. To verify that the real Pi RPC process and all five public extensions initialize, run:
 
 ```bash
 SCOUTPI_HARNESS_KEY_FILE=/absolute/path/to/key.md \

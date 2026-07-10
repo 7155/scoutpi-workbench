@@ -6,6 +6,7 @@
   "main": "src/index.ts",
   "dependencies": {
     "@scoutpi/earth-workspace": "workspace:*",
-    "@scoutpi/runtime-checkpoint": "workspace:*"
+    "@scoutpi/runtime-checkpoint": "workspace:*",
+    "@scoutpi/runtime-context": "workspace:*"
   }
 }

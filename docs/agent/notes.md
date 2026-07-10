@@ -51,3 +51,13 @@
 - Added Workbench Backend, Telemetry, Agent Run, Approval, Recipe, and Workflow views. Playwright desktop and 390 px mobile checks passed for the main map and both operational dialogs.
 - Verification: `pnpm check` passes 32 tests, Python compile, Earth harness, and production web build; `pnpm harness:pi-rpc` reports `rpc_ready` with no extension errors.
 - Git snapshot before milestone commit: branch `main`; runtime/UI/docs changes are intentionally scoped to this repository; generated `.scoutpi`, `exports`, build, and Playwright artifacts remain ignored.
+
+## 2026-07-11 06:16 - Provenance-aware Context Bridge
+
+- Added a zero-tool Context Bridge that accepts provider-neutral candidates, ranks them against the current task, enforces a mixed Chinese/English token budget, preserves source provenance, and treats recalled text as memory rather than policy.
+- Added direct UI approval before runtime-derived procedures, failures, project state, or verified workflows enter a provider writeback outbox; no memory database is mutated silently.
+- Attached the exact current Context Pack to privacy-preserving Agent traces and exposed packs/writebacks through the Workbench API and a dedicated Context view alongside durable checkpoints.
+- Real Pi RPC smoke started `gpt-5.6` with `xhigh`, all five public extensions, and no extension errors. The configured provider still does not advertise `gpt-5.6`, so paid evaluation remains blocked rather than silently downgraded.
+- Visual QA covered populated Context Pack/writeback states at desktop and 390x844 mobile widths with zero browser console errors.
+- Git snapshot before commit: `main...origin/main`; 17 tracked files changed plus the new Context package, extension, tests, docs, and example envelope.
+- Verification: `pnpm typecheck`, 42 tests, `pnpm web:build`, `git diff --check`, and `pnpm harness:pi-rpc` pass.

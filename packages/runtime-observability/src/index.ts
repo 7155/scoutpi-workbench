@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { appendFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import type { ContextPack } from "../../runtime-context/src/index.ts";
 
 export interface AgentModelUsage {
   inputTokens: number;
@@ -136,6 +137,12 @@ export class AgentRunStore {
     });
     await writeFile(join(this.directory(runId), "model_usage.json"), `${JSON.stringify(summary.modelUsage, null, 2)}\n`);
     return summary;
+  }
+
+  async attachContextPack(runId: string, pack: ContextPack): Promise<void> {
+    if (pack.schemaVersion !== "scoutpi.context-pack.v1" || !/^[a-f0-9]{64}$/.test(pack.queryHash)) throw Object.assign(new Error("CONTEXT_PACK_INVALID"), { code: "CONTEXT_PACK_INVALID" });
+    await this.get(runId);
+    await writeFile(join(this.directory(runId), "context_pack.json"), `${JSON.stringify(pack, null, 2)}\n`);
   }
 
   async increment(runId: string, field: "turns" | "toolCalls" | "failedToolCalls" | "approvalCount", amount = 1): Promise<AgentRunSummary> {

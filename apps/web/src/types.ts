@@ -72,6 +72,15 @@ export interface AgentCheckpointSummary {
   runtime: { model?: string; contextTokens?: number; contextWindow?: number; contextPercent?: number };
   recovery: { recoverable: boolean; nextAction?: string; injectedAt?: string };
 }
+export interface ContextPackSummary {
+  packId: string; sessionId: string; queryHash: string; createdAt: string; sourceProviders: string[]; detectedMemoryTools: string[];
+  budget: { estimator: string; maxTokens: number; deliveredTokens: number; candidateCount: number; selectedCount: number; truncated: boolean };
+  items: Array<{ candidateId: string; kind: string; text: string; confidence: number; trust: string; provenance: { providerId: string; sourceId: string }; estimatedTokens: number; truncated: boolean }>;
+}
+export interface ContextWritebackSummary {
+  writebackId: string; sessionId: string; state: "pending" | "approved" | "rejected"; createdAt: string; decidedAt?: string; providerTargets: string[]; payloadSha256: string;
+  candidates: Array<{ candidateId: string; kind: string; text: string; confidence: number; tags: string[] }>;
+}
 export interface EarthWorkflowSummary {
   workflowId: string; name: string; description: string; stage: "candidate" | "ready"; revision: number; fingerprint: string; savedAt: string;
   replayCount: number; successCount: number; failureCount: number; executionKind: "run" | "local_export";

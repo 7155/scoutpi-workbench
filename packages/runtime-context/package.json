@@ -1,0 +1,10 @@
+{
+  "name": "@scoutpi/runtime-context",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@scoutpi/runtime-telemetry": "workspace:*"
+  }
+}

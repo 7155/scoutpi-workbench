@@ -3,12 +3,14 @@ import { dirname, join } from "node:path";
 import { URL } from "node:url";
 import { EarthWorkspace, type EarthStoryArtifact, type InvestigationSpec } from "../../earth-workspace/src/index.ts";
 import { AgentCheckpointStore } from "../../runtime-checkpoint/src/index.ts";
+import { ContextPackStore } from "../../runtime-context/src/index.ts";
 
 export interface EarthWorkspaceServerOptions {
   host?: string;
   port?: number;
   workspace?: EarthWorkspace;
   checkpointStore?: AgentCheckpointStore;
+  contextStore?: ContextPackStore;
 }
 
 function sendJson(response: ServerResponse, status: number, value: unknown): void {
@@ -42,8 +44,10 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
   const port = options.port ?? Number(process.env.SCOUTPI_EARTH_PORT ?? 17420);
   const workspace = options.workspace ?? new EarthWorkspace();
   const checkpointStore = options.checkpointStore ?? new AgentCheckpointStore(process.env.SCOUTPI_CHECKPOINT_ROOT ?? join(dirname(workspace.root), "checkpoints"));
+  const contextStore = options.contextStore ?? new ContextPackStore(process.env.SCOUTPI_CONTEXT_ROOT ?? join(dirname(workspace.root), "context"));
   await workspace.init();
   await checkpointStore.init();
+  await contextStore.init();
   await workspace.recoverInterruptedJobs();
 
   const server = http.createServer(async (request, response) => {
@@ -83,6 +87,19 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
       }
       if (request.method === "GET" && url.pathname === "/api/checkpoints") {
         sendJson(response, 200, { checkpoints: await checkpointStore.list(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/context/packs") {
+        sendJson(response, 200, { packs: await contextStore.listPacks(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/context/writebacks") {
+        sendJson(response, 200, { writebacks: await contextStore.listWritebacks(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
+        return;
+      }
+      const contextPackId = routeId(url.pathname, "/api/context/packs/");
+      if (request.method === "GET" && contextPackId) {
+        sendJson(response, 200, await contextStore.getPack(contextPackId));
         return;
       }
       const checkpointSessionId = routeId(url.pathname, "/api/checkpoints/");
@@ -303,6 +320,7 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
     port,
     workspace,
     checkpointStore,
+    contextStore,
     server,
     listen: () => new Promise<void>((resolve) => server.listen(port, host, resolve)),
     close: () => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())),

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "scoutpi.context.candidates.v1",
+  "providerId": "example-memory-provider",
+  "generatedAt": "2026-07-11T00:00:00.000Z",
+  "items": [
+    {
+      "candidateId": "dry-run-boundary",
+      "kind": "decision",
+      "text": "A dry run proves that a plan is valid; it does not prove that an Earth result was computed.",
+      "confidence": 0.99,
+      "trust": "project_artifact",
+      "tags": ["dry-run", "evidence"],
+      "provenance": {
+        "providerId": "example-memory-provider",
+        "sourceId": "decision-001"
+      }
+    },
+    {
+      "candidateId": "adapter-probe-first",
+      "kind": "procedure",
+      "text": "Probe an adapter against current dataset metadata before using its fingerprint in a live run.",
+      "confidence": 0.96,
+      "trust": "user_confirmed",
+      "tags": ["adapter", "probe", "live-run"],
+      "provenance": {
+        "providerId": "example-memory-provider",
+        "sourceId": "procedure-001"
+      }
+    }
+  ]
+}

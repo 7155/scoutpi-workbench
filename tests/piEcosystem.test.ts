@@ -25,6 +25,7 @@ test("Pi ecosystem profile keeps ScoutPi boundaries explicit when peers are abse
 test("the public Pi package loads the domain runtime plus zero-tool lifecycle extensions", async () => {
   const packageJson = JSON.parse(await readFile(resolve("package.json"), "utf8"));
   assert.deepEqual(packageJson.pi.extensions, [
+    "./.pi/extensions/scoutpi-context/index.ts",
     "./.pi/extensions/scoutpi-governance/index.ts",
     "./.pi/extensions/scoutpi-observability/index.ts",
     "./.pi/extensions/scoutpi-checkpoint/index.ts",

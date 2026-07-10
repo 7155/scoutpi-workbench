@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Added content-minimal durable Agent checkpoints with atomic writes, integrity verification, compaction preservation, interrupted-call recovery, API access, and Workbench visibility.
+- Added a zero-tool Context Bridge with provider-neutral candidate input, provenance, mixed-text token budgeting, exact run-trace attachment, and user-reviewed writeback outbox.
+- Added a dedicated Workbench Context view for packs, durable checkpoints, and writeback review state.
 - Isolated every paid Pi RPC harness case in a fresh temporary workspace and made full-suite execution explicit.
 - Fixed an asynchronous local-export test cleanup race observed on GitHub Actions.
 

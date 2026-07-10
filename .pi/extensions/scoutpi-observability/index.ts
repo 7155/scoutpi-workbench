@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { contextQueryHash, ContextPackStore } from "../../../packages/runtime-context/src/index.ts";
 import { AgentRunStore } from "../../../packages/runtime-observability/src/index.ts";
 
 function modelName(model: unknown): string | undefined {
@@ -21,6 +22,7 @@ function operationOf(value: unknown): { operation?: string; targetId?: string; a
 
 export default async function setup(pi: ExtensionAPI): Promise<void> {
   const store = new AgentRunStore();
+  const contextStore = new ContextPackStore();
   await store.init();
   let runId: string | undefined;
   const startedTools = new Map<string, number>();
@@ -34,6 +36,8 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
     if (runId) await store.complete(runId, { interrupted: true }).catch(() => undefined);
     const run = await store.start({ sessionId: ctx.sessionManager.getSessionId(), prompt: event.prompt, model: modelName(ctx.model) });
     runId = run.runId;
+    const pack = await contextStore.latestForSession(ctx.sessionManager.getSessionId()).catch(() => undefined);
+    if (pack?.queryHash === contextQueryHash(event.prompt)) await store.attachContextPack(runId, pack).catch(() => undefined);
     await record({ kind: "agent", name: "before_agent_start", inputBytes: store.measure({ promptChars: event.prompt.length, imageCount: event.images?.length || 0 }) });
     ctx.ui.setStatus("scoutpi-observability", `Trace | ${runId}`);
   });

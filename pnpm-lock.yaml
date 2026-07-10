@@ -92,14 +92,27 @@ importers:
       '@scoutpi/runtime-checkpoint':
         specifier: workspace:*
         version: link:../runtime-checkpoint
+      '@scoutpi/runtime-context':
+        specifier: workspace:*
+        version: link:../runtime-context
 
   packages/pi-ecosystem: {}
 
   packages/runtime-checkpoint: {}
 
+  packages/runtime-context:
+    dependencies:
+      '@scoutpi/runtime-telemetry':
+        specifier: workspace:*
+        version: link:../runtime-telemetry
+
   packages/runtime-governance: {}
 
-  packages/runtime-observability: {}
+  packages/runtime-observability:
+    dependencies:
+      '@scoutpi/runtime-context':
+        specifier: workspace:*
+        version: link:../runtime-context
 
   packages/runtime-telemetry: {}
 

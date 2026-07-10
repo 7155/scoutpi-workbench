@@ -33,3 +33,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Verified successful jobs become guarded workflow candidates; explicit promotion and replay enforce adapter fingerprints and cost assertions.
 - The real Pi RPC runtime, 32 tests, full project check, and desktop/mobile Workbench QA pass. Live `gpt-5.6` evaluation remains externally blocked because the configured provider does not advertise that model.
 - Next: durable Agent checkpoints, a narrow MCP compatibility server, and event-triggered runs while keeping the three-tool model surface unchanged.
+
+### 2026-07-11 - Context Bridge and runtime continuity
+
+- Provider-neutral memories now become provenance-bound, task-ranked Context Packs under an explicit mixed-text token budget; recalled content is lower-trust context, never policy.
+- Runtime learning is staged as a structured writeback outbox and requires direct user approval before another memory provider can consume it.
+- Observability binds the exact Context Pack used by a Pi run, while the Workbench Context view shows packs, durable checkpoints, and writeback review state.
+- The real Pi RPC process initializes `gpt-5.6`, `xhigh`, and all five public extensions without extension errors; the configured endpoint still does not list that model for paid evaluation.
+- Next: mature the Runtime Center UI, then add Browser Evidence Contract, evidence graph, and investigation trace without expanding the three-tool model surface.
