@@ -61,3 +61,12 @@
 - Visual QA covered populated Context Pack/writeback states at desktop and 390x844 mobile widths with zero browser console errors.
 - Git snapshot before commit: `main...origin/main`; 17 tracked files changed plus the new Context package, extension, tests, docs, and example envelope.
 - Verification: `pnpm typecheck`, 42 tests, `pnpm web:build`, `git diff --check`, and `pnpm harness:pi-rpc` pass.
+
+## 2026-07-11 06:32 - Operational Runtime Center UI
+
+- Replaced the registry-first modal with a Runtime Center that leads with runtime posture, bounded tool surface, Context Pack budget, backend availability, operator attention, continuity, and the latest Agent run.
+- Kept adapters, generated skills, backend probes, Context Packs, writeback review, checkpoints, approvals, Agent runs, operation tokens, and provider cost as focused operator views rather than decorative dashboard cards.
+- Added a top-level runtime health control and a complete mobile overflow menu so refresh, recipe, and export actions remain reachable on narrow screens.
+- Fixed a real 390 px overflow regression: the mobile page had a 407 px min-content width from the top action row; after the menu refactor, `scrollWidth === clientWidth` at 375 px CSS width.
+- Visual QA: 1440x1000 overview/context, 390x844 overview/context, mobile action menu, Escape close, and zero console errors. No generated image was added because the live MapLibre/GEE layer is the product's meaningful visual asset.
+- Verification: `pnpm check` passes 42 tests, Python compile, Earth harness, and production web build; `git diff --check` passes.

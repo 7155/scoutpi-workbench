@@ -41,3 +41,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Observability binds the exact Context Pack used by a Pi run, while the Workbench Context view shows packs, durable checkpoints, and writeback review state.
 - The real Pi RPC process initializes `gpt-5.6`, `xhigh`, and all five public extensions without extension errors; the configured endpoint still does not list that model for paid evaluation.
 - Next: mature the Runtime Center UI, then add Browser Evidence Contract, evidence graph, and investigation trace without expanding the three-tool model surface.
+
+### 2026-07-11 - Runtime Center product pass
+
+- Workbench now opens with a compact runtime health signal and exposes an operator-first Runtime Center rather than a registry utility.
+- Overview separates runtime posture from human attention; detailed views retain adapters, skills, backends, context, continuity, governance, Agent traces, and cost telemetry.
+- Mobile keeps all workspace commands through an overflow menu, has no horizontal layout drift at 390 px, and preserves the same Runtime Center information hierarchy.
+- The UI deliberately uses the live Earth map instead of decorative generated imagery; visual emphasis stays on inspectable state and evidence.
+- Next: Browser Evidence Contract, trace import, and an investigation evidence graph integrated into this same operator surface.

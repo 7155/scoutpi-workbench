@@ -11,13 +11,19 @@
         <strong>{{ selectedPlan.spec.period.startYear }}-{{ selectedPlan.spec.period.endYear }}</strong>
       </div>
       <div class="top-actions">
-        <span :class="['environment-pill', environment.authenticated ? 'ready' : 'offline']"><span></span>{{ environment.authenticated ? 'GEE ready' : 'Dry-run mode' }}</span>
-        <button class="icon-button mobile-only" title="Investigations" @click="showSidebar = !showSidebar"><PanelLeft :size="18" /></button>
-        <button class="icon-button" title="Refresh workspace" :disabled="loading" @click="refresh"><RefreshCw :class="{ spin: loading }" :size="17" /></button>
-        <button class="icon-button" title="Recipes and compiled workflows" @click="recipeDialog = true"><BookOpen :size="17" /></button>
-        <button class="icon-button" :title="geedimReady ? 'Export selected layer' : 'Install the pipeline extra to export GeoTIFF'" :disabled="!selectedPlan || !environment.authenticated || !geedimReady" @click="exportDialog = true"><Download :size="17" /></button>
+        <button :class="['runtime-launch', { attention: runtimeAttention > 0, ready: runtimeAttention === 0 && environment.authenticated }]" title="Open Runtime Center" @click="mobileActionMenu = false; registryDialog = true"><span class="runtime-dot"></span><span>Runtime</span><strong>{{ runtimeAttention ? `${runtimeAttention} review` : environment.authenticated ? 'Ready' : 'Dry run' }}</strong><Waypoints :size="15" /></button>
+        <button class="icon-button mobile-only" title="Investigations" @click="mobileActionMenu = false; showSidebar = !showSidebar"><PanelLeft :size="18" /></button>
+        <button class="icon-button compact-on-mobile" title="Refresh workspace" :disabled="loading" @click="refresh"><RefreshCw :class="{ spin: loading }" :size="17" /></button>
+        <button class="icon-button compact-on-mobile" title="Recipes and compiled workflows" @click="recipeDialog = true"><BookOpen :size="17" /></button>
+        <button class="icon-button compact-on-mobile" :title="geedimReady ? 'Export selected layer' : 'Install the pipeline extra to export GeoTIFF'" :disabled="!selectedPlan || !environment.authenticated || !geedimReady" @click="exportDialog = true"><Download :size="17" /></button>
+        <button class="icon-button mobile-actions-only" title="More workspace actions" @click="mobileActionMenu = !mobileActionMenu"><MoreHorizontal :size="18" /></button>
         <button class="secondary" :disabled="!selectedPlan || running" @click="runPlan('dry_run')"><FlaskConical :size="16" />Dry run</button>
         <button class="primary" :disabled="!selectedPlan || running || !environment.authenticated" @click="runPlan('live')"><Play :size="16" />Run live</button>
+        <div v-if="mobileActionMenu" class="mobile-action-menu">
+          <button :disabled="loading" @click="mobileActionMenu = false; refresh()"><RefreshCw :class="{ spin: loading }" :size="16" /><span>Refresh workspace</span></button>
+          <button @click="mobileActionMenu = false; recipeDialog = true"><BookOpen :size="16" /><span>Recipes and workflows</span></button>
+          <button :disabled="!selectedPlan || !environment.authenticated || !geedimReady" @click="mobileActionMenu = false; exportDialog = true"><Download :size="16" /><span>Export selected layer</span></button>
+        </div>
       </div>
     </header>
 
@@ -39,7 +45,7 @@
         <div><Server :size="15" /><span>Earth runtime</span><strong>{{ environment.installed ? environment.earthengineVersion || 'installed' : 'missing' }}</strong></div>
         <div><KeyRound :size="15" /><span>Authentication</span><strong>{{ environment.authenticated ? 'connected' : 'required for live' }}</strong></div>
         <div><Database :size="15" /><span>Plans / runs</span><strong>{{ plans.length }} / {{ jobs.length }}</strong></div>
-        <button title="Runtime registry" @click="registryDialog = true"><Blocks :size="15" /><span>Tool registry</span><strong>{{ adapters.length }} / {{ skills.length }}</strong></button>
+        <button title="Open Runtime Center" @click="registryDialog = true"><Waypoints :size="15" /><span>Runtime center</span><strong>{{ runtimeAttention ? `${runtimeAttention} review` : `${adapters.length} adapters` }}</strong></button>
       </div>
     </aside>
 
@@ -133,7 +139,7 @@
     <NewInvestigationDialog :open="newDialog" :saving="saving" @close="newDialog = false" @create="createPlan" />
     <RecipeDialog :open="recipeDialog" :saving="savingRecipe" :recipes="recipes" :workflows="workflows" :workflow-runs="workflowRuns" :current-spec="selectedPlan?.spec" :current-plan="selectedPlan" :current-job="workflowSourceJob" @close="recipeDialog = false" @save="saveRecipe" @instantiate="instantiateRecipe" @compile="compileSelectedWorkflow" @replay="replayCompiledWorkflow" />
     <LocalExportDialog :open="exportDialog" :saving="exportingLocal" :plan="selectedPlan" :selected-role="selectedRole" :selected-year="selectedYear" @close="exportDialog = false" @export="queueLocalExport" />
-    <RuntimeRegistryDialog :open="registryDialog" :saving="savingRegistry" :adapters="adapters" :skills="skills" :backend-manifests="backendManifests" :backend-probes="backendProbes" :telemetry="telemetry" :agent-runs="agentRuns" :checkpoints="checkpoints" :context-packs="contextPacks" :context-writebacks="contextWritebacks" :approvals="approvals" @close="registryDialog = false" @import="importRegistry" @probe="probeRegistryAdapter" @probe-backend="probeRuntimeBackend" @state="setRegistryAdapterState" @save-skill="saveGeneratedSkill" @publish="publishGeneratedSkill" @invalid="error = $event" />
+    <RuntimeRegistryDialog :open="registryDialog" :saving="savingRegistry || loading" :adapters="adapters" :skills="skills" :backend-manifests="backendManifests" :backend-probes="backendProbes" :telemetry="telemetry" :agent-runs="agentRuns" :checkpoints="checkpoints" :context-packs="contextPacks" :context-writebacks="contextWritebacks" :approvals="approvals" @close="registryDialog = false" @refresh="refresh" @import="importRegistry" @probe="probeRegistryAdapter" @probe-backend="probeRuntimeBackend" @state="setRegistryAdapterState" @save-skill="saveGeneratedSkill" @publish="publishGeneratedSkill" @invalid="error = $event" />
     <div v-if="error" class="toast"><AlertCircle :size="17" /><span>{{ error }}</span><button title="Dismiss" @click="error = ''"><X :size="15" /></button></div>
     <div v-if="running" class="run-progress"><LoaderCircle class="spin" :size="16" /><span>Submitting Earth workspace job</span></div>
   </div>
@@ -141,7 +147,7 @@
 
 <script setup lang="ts">
 import { computed, markRaw, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { AlertCircle, AlertTriangle, Ban, BarChart3, Blocks, BookOpen, ChevronLeft, ChevronRight, Database, Download, ExternalLink, FileText, FlaskConical, FolderSearch, GitBranch, Info, KeyRound, Layers3, ListChecks, LoaderCircle, MoreHorizontal, Orbit, PanelLeft, Play, Plus, RefreshCw, RotateCcw, RotateCw, ScanSearch, Search, Server, X } from "lucide-vue-next";
+import { AlertCircle, AlertTriangle, Ban, BarChart3, BookOpen, ChevronLeft, ChevronRight, Database, Download, ExternalLink, FileText, FlaskConical, FolderSearch, GitBranch, Info, KeyRound, Layers3, ListChecks, LoaderCircle, MoreHorizontal, Orbit, PanelLeft, Play, Plus, RefreshCw, RotateCcw, RotateCw, ScanSearch, Search, Server, Waypoints, X } from "lucide-vue-next";
 import { api } from "./api";
 import InvestigationMap from "./components/InvestigationMap.vue";
 import LocalExportDialog from "./components/LocalExportDialog.vue";
@@ -194,6 +200,7 @@ const savingRecipe = ref(false);
 const registryDialog = ref(false);
 const savingRegistry = ref(false);
 const showSidebar = ref(false);
+const mobileActionMenu = ref(false);
 const error = ref("");
 const tabs = [
   { id: "evidence", label: "Evidence", icon: markRaw(ListChecks) },
@@ -205,6 +212,7 @@ const tabs = [
 const selectedPlan = computed(() => plans.value.find((plan) => plan.planId === selectedPlanId.value));
 const selectedStory = computed(() => stories.value.find((story) => story.investigationId === selectedPlan.value?.spec.investigationId));
 const geedimReady = computed(() => environment.value.backends?.some((backend) => backend.id === "geedim" && backend.installed) === true);
+const runtimeAttention = computed(() => contextWritebacks.value.filter((item) => item.state === "pending").length + checkpoints.value.filter((item) => item.recovery.recoverable).length + approvals.value.filter((item) => item.state === "pending").length + agentRuns.value.filter((item) => item.state === "interrupted").length);
 const planJobs = computed(() => jobs.value.filter((job) => job.planId === selectedPlanId.value).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
 const workflowSourceJob = computed(() => planJobs.value.find((job) => job.state === "completed"));
 const years = computed(() => selectedPlan.value ? Array.from({ length: selectedPlan.value.spec.period.endYear - selectedPlan.value.spec.period.startYear + 1 }, (_, index) => selectedPlan.value!.spec.period.startYear + index) : []);

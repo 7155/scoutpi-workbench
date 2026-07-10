@@ -52,7 +52,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Safe CSV/JSON/GeoJSON statistics without arbitrary code execution
 - Generated `scoutpi.earth.skill.v1` drafts with confirmed publishing and overwrite protection
 - Automatic workflow candidates from verified successful jobs, explicit promotion, deterministic replay, cost assertions, and adapter-drift rejection
-- Vue Workbench for maps, adapters, backends, skills, plans, jobs, artifacts, recipes, workflows, Agent traces, approvals, token/cost telemetry, and evidence
+- Vue Workbench for maps, plans, jobs, artifacts, recipes, workflows, and a responsive Runtime Center that consolidates capabilities, Context Packs, continuity, approvals, Agent traces, and token/cost telemetry
 - Pi ecosystem detection so generic research, MCP, memory, browser, context, and subagent capabilities are reused rather than copied
 
 The core does not silently ship an active domain catalog. `examples/adapter-packs/earth-engine-starter.json` is an explicit demo pack and remains separate from runtime code.
