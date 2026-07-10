@@ -56,6 +56,63 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
         sendJson(response, 200, workspace.contract());
         return;
       }
+      if (request.method === "GET" && url.pathname === "/api/backends") {
+        sendJson(response, 200, { backends: workspace.listBackendManifests() });
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/telemetry") {
+        sendJson(response, 200, await workspace.telemetrySummary(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined));
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/telemetry/events") {
+        sendJson(response, 200, { events: await workspace.recentTelemetry(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/approvals") {
+        sendJson(response, 200, { approvals: await workspace.listApprovals(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/agent-runs") {
+        sendJson(response, 200, { runs: await workspace.listAgentRuns(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
+        return;
+      }
+      const agentRunId = routeId(url.pathname, "/api/agent-runs/");
+      if (request.method === "GET" && agentRunId) {
+        sendJson(response, 200, await workspace.getAgentRun(agentRunId));
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/workflows") {
+        sendJson(response, 200, { workflows: await workspace.listWorkflows() });
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/workflows/compile") {
+        sendJson(response, 201, await workspace.compileWorkflow(await readBody(request)));
+        return;
+      }
+      const replayWorkflowId = routeId(url.pathname, "/api/workflows/", "/replay");
+      if (request.method === "POST" && replayWorkflowId) {
+        sendJson(response, 202, await workspace.replayWorkflow(replayWorkflowId, await readBody(request)));
+        return;
+      }
+      const workflowId = routeId(url.pathname, "/api/workflows/");
+      if (request.method === "GET" && workflowId) {
+        sendJson(response, 200, await workspace.getWorkflow(workflowId));
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/workflow-runs") {
+        sendJson(response, 200, { runs: await workspace.listWorkflowRuns() });
+        return;
+      }
+      const workflowRunId = routeId(url.pathname, "/api/workflow-runs/");
+      if (request.method === "GET" && workflowRunId) {
+        sendJson(response, 200, await workspace.refreshWorkflowReplay(workflowRunId));
+        return;
+      }
+      const probeBackendId = routeId(url.pathname, "/api/backends/", "/probe");
+      if (request.method === "POST" && probeBackendId) {
+        sendJson(response, 200, await workspace.probeBackend(probeBackendId));
+        return;
+      }
       const contractId = routeId(url.pathname, "/api/contracts/");
       if (request.method === "GET" && contractId) {
         sendJson(response, 200, workspace.contract(contractId));

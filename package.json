@@ -1,6 +1,6 @@
 {
   "name": "scoutpi-workbench",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Pi-native Earth observation investigation runtime and evidence workbench.",
@@ -26,6 +26,8 @@
   },
   "pi": {
     "extensions": [
+      "./.pi/extensions/scoutpi-governance/index.ts",
+      "./.pi/extensions/scoutpi-observability/index.ts",
       "./.pi/extensions/scoutpi-earth/index.ts"
     ],
     "skills": [
@@ -36,6 +38,9 @@
     "earth:server": "node --experimental-strip-types packages/earth-workspace-server/src/index.ts",
     "examples:seed": "node --experimental-strip-types scripts/seedExampleAdapters.ts",
     "harness:earth": "node --experimental-strip-types harness/earth/runEarthWorkspaceDemo.ts",
+    "harness:pi": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts",
+    "harness:pi-rpc": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts --rpc-smoke",
+    "harness:pi-live": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts --live",
     "web:dev": "pnpm --filter @scoutpi/earth-workbench dev",
     "web:build": "pnpm --filter @scoutpi/earth-workbench build",
     "workbench:dev": "node scripts/runEarthWorkbench.mjs",
@@ -44,7 +49,11 @@
     "python:check": "uv run python -m py_compile packages/earth-workspace/python/worker.py",
     "check": "pnpm typecheck && pnpm test && pnpm python:check && pnpm harness:earth && pnpm web:build"
   },
+  "dependencies": {
+    "typebox": "1.1.38"
+  },
   "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.80.2",
     "@types/node": "^26.1.1",
     "playwright": "^1.61.1",
     "typescript": "^5.9.3"

@@ -1,0 +1,9 @@
+{
+  "name": "@scoutpi/earth-workflow-compiler",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@scoutpi/earth-investigation-core": "workspace:*"
+  }
+}

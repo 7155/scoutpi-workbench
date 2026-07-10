@@ -288,24 +288,34 @@ test("Pi extension exposes exactly three compact Earth gateway tools", async () 
   process.env.SCOUTPI_EARTH_ROOT = root;
   try {
     const tools: any[] = [];
+    const handlers = new Map<string, Function>();
     let active: string[] = ["memory_search", "browser_session"];
     await seedWorkspace(new EarthWorkspace(root, process.env.PYTHON ?? ".venv/bin/python"));
     await setupEarthPi({
       registerTool(tool: any) { tools.push(tool); },
       getActiveTools() { return active; },
       setActiveTools(names: string[]) { active = names; },
-    });
+      getAllTools() { return tools; },
+      on(name: string, handler: Function) { handlers.set(name, handler); },
+      registerCommand() {},
+    } as any);
     assert.deepEqual(tools.map((tool) => tool.name), ["earth_workspace", "python_analysis", "earth_story"]);
+    await handlers.get("session_start")?.({}, { ui: { setStatus() {} } });
     assert.equal(active.includes("earth_workspace"), true);
-    const environment = await tools[0].execute({ op: "environment" });
+    let call = 0;
+    const executeEarth = async (input: Record<string, unknown>) => {
+      const params = tools[0].prepareArguments ? tools[0].prepareArguments(input) : input;
+      return await tools[0].execute(`test-call-${++call}`, params, undefined, undefined, {});
+    };
+    const environment = await executeEarth({ op: "environment" });
     assert.match(environment.content[0].text, /installed=true/);
-    const contract = await tools[0].execute({ op: "contract", id: "adapter" });
+    const contract = await executeEarth({ op: "contract", id: "adapter" });
     assert.match(contract.content[0].text, /scoutpi\.earth\.adapter\.v1/);
     assert.equal(contract.content[0].text.length < 1800, true);
-    const catalog = await tools[0].execute({ op: "catalog_search", query: "night activity", role: "human_activity" });
+    const catalog = await executeEarth({ op: "catalog_search", query: "night activity", role: "human_activity" });
     assert.match(catalog.content[0].text, /viirs-nightlights/);
     assert.equal(catalog.content[0].text.length < 1800, true);
-    const planned = await tools[0].execute({ op: "plan", spec: spec({ investigationId: "pi-tool-plan" }) });
+    const planned = await executeEarth({ op: "plan", spec: spec({ investigationId: "pi-tool-plan" }) });
     assert.match(planned.content[0].text, /plan ok/);
     assert.equal(typeof planned.details.artifactPath, "string");
   } finally {

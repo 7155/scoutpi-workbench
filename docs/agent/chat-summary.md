@@ -16,3 +16,12 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Workbench can stream GEE tiles without downloading and can queue durable geedim GeoTIFF artifacts when local delivery is required.
 - Local export state survives as a persisted request; cancellation, retry, and startup recovery prevent detached processes from staying permanently `running`.
 - Foundational projects such as geemap, geedim, geetools, leafmap, Xee/wxee, segment-geospatial, and HYDRAFloods are documented as optional providers or references, not as the source of ScoutPi's product direction.
+
+### 2026-07-10 - Reliable Agent Runtime P0
+
+- Backend execution now uses a reviewed provider contract; telemetry separates estimated runtime work from provider-reported model billing.
+- High-risk Pi calls require a real, single-use user approval receipt bound to the exact call and parameters.
+- Pi lifecycle events create privacy-preserving run traces without adding model-visible tools.
+- Verified successful jobs become guarded workflow candidates; explicit promotion and replay enforce adapter fingerprints and cost assertions.
+- The real Pi RPC runtime, 32 tests, full project check, and desktop/mobile Workbench QA pass. Live `gpt-5.6` evaluation remains externally blocked because the configured provider does not advertise that model.
+- Next: durable Agent checkpoints, a narrow MCP compatibility server, and event-triggered runs while keeping the three-tool model surface unchanged.

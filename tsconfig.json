@@ -10,12 +10,18 @@
     "types": ["node"]
   },
   "include": [
-    ".pi/extensions/scoutpi-earth/**/*.ts",
+    ".pi/extensions/**/*.ts",
+    "packages/earth-backend-sdk/**/*.ts",
     "packages/earth-investigation-core/**/*.ts",
     "packages/earth-workspace/**/*.ts",
     "packages/earth-workspace-server/**/*.ts",
+    "packages/earth-workflow-compiler/**/*.ts",
     "packages/pi-ecosystem/**/*.ts",
+    "packages/runtime-governance/**/*.ts",
+    "packages/runtime-observability/**/*.ts",
+    "packages/runtime-telemetry/**/*.ts",
     "harness/earth/**/*.ts",
+    "harness/pi/**/*.ts",
     "tests/*.test.ts"
   ]
 }

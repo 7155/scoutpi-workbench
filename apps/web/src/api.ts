@@ -1,4 +1,4 @@
-import type { EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EnvironmentStatus, InvestigationPlan, InvestigationSpec, JobArtifact, RecipeSummary, RegisteredAdapter } from "./types";
+import type { AgentRunSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, InvestigationPlan, InvestigationSpec, JobArtifact, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...init, headers: { "content-type": "application/json", ...(init?.headers || {}) } });
@@ -9,6 +9,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   environment: () => request<EnvironmentStatus>("/api/environment"),
+  backends: async () => (await request<{ backends: EarthBackendManifest[] }>("/api/backends")).backends,
+  probeBackend: (backendId: string) => request<EarthBackendProbe>(`/api/backends/${encodeURIComponent(backendId)}/probe`, { method: "POST", body: "{}" }),
+  telemetry: () => request<RuntimeTelemetrySummary>("/api/telemetry"),
+  approvals: async () => (await request<{ approvals: RuntimeApproval[] }>("/api/approvals?limit=100")).approvals,
+  agentRuns: async () => (await request<{ runs: AgentRunSummary[] }>("/api/agent-runs?limit=100")).runs,
   contract: (name: string) => request<{ name: string; template: Record<string, unknown> }>(`/api/contracts/${encodeURIComponent(name)}`),
   adapters: async () => (await request<{ adapters: RegisteredAdapter[] }>("/api/adapters")).adapters,
   importRegistry: (payload: Record<string, unknown>) => payload.schemaVersion === "scoutpi.earth.adapter-pack.v1"
@@ -34,5 +39,10 @@ export const api = {
   recipes: async () => (await request<{ recipes: RecipeSummary[] }>("/api/recipes")).recipes,
   saveRecipe: (recipe: { recipeId: string; name: string; spec: InvestigationSpec }) => request<Record<string, unknown>>("/api/recipes", { method: "POST", body: JSON.stringify(recipe) }),
   instantiateRecipe: (recipeId: string, patch: Partial<InvestigationSpec>) => request<{ plan: InvestigationPlan; path: string }>(`/api/recipes/${encodeURIComponent(recipeId)}/instantiate`, { method: "POST", body: JSON.stringify({ patch }) }),
+  workflows: async () => (await request<{ workflows: EarthWorkflowSummary[] }>("/api/workflows")).workflows,
+  compileWorkflow: (input: { workflowId: string; name: string; description?: string; planId: string; jobId?: string; confirmedBlockingChecks?: boolean; stage?: "candidate" | "ready" }) => request<{ stored: { workflow: { workflowId: string }; revision: number; fingerprint: string; stage: "candidate" | "ready" }; path: string }>("/api/workflows/compile", { method: "POST", body: JSON.stringify(input) }),
+  replayWorkflow: (workflowId: string, input: { patch?: Partial<InvestigationSpec>; confirmed?: boolean; confirmedCostIncrease?: boolean }) => request<{ replay: EarthWorkflowReplay; plan?: InvestigationPlan; job?: EarthJob }>(`/api/workflows/${encodeURIComponent(workflowId)}/replay`, { method: "POST", body: JSON.stringify(input) }),
+  workflowRuns: async () => (await request<{ runs: EarthWorkflowReplay[] }>("/api/workflow-runs")).runs,
+  workflowRun: (replayId: string) => request<EarthWorkflowReplay>(`/api/workflow-runs/${encodeURIComponent(replayId)}`),
   stories: async () => (await request<{ stories: EarthStory[] }>("/api/stories")).stories,
 };

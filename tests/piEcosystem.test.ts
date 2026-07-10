@@ -22,9 +22,13 @@ test("Pi ecosystem profile keeps ScoutPi boundaries explicit when peers are abse
   assert.match(profile.capabilities.find((item) => item.id === "browser")?.scoutPiBoundary ?? "", /existing Edge session/);
 });
 
-test("the public Pi package loads only ScoutPi's domain runtime by default", async () => {
+test("the public Pi package loads the domain runtime plus zero-tool governance and observability", async () => {
   const packageJson = JSON.parse(await readFile(resolve("package.json"), "utf8"));
-  assert.deepEqual(packageJson.pi.extensions, ["./.pi/extensions/scoutpi-earth/index.ts"]);
+  assert.deepEqual(packageJson.pi.extensions, [
+    "./.pi/extensions/scoutpi-governance/index.ts",
+    "./.pi/extensions/scoutpi-observability/index.ts",
+    "./.pi/extensions/scoutpi-earth/index.ts",
+  ]);
   assert.deepEqual(packageJson.pi.skills, ["./.pi/skills/scoutpi-earth-investigation"]);
 
   await assert.rejects(() => readFile(resolve(".pi/extensions/scoutpi-memory/index.ts"), "utf8"), (error: NodeJS.ErrnoException) => error.code === "ENOENT");

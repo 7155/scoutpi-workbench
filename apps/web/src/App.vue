@@ -14,7 +14,7 @@
         <span :class="['environment-pill', environment.authenticated ? 'ready' : 'offline']"><span></span>{{ environment.authenticated ? 'GEE ready' : 'Dry-run mode' }}</span>
         <button class="icon-button mobile-only" title="Investigations" @click="showSidebar = !showSidebar"><PanelLeft :size="18" /></button>
         <button class="icon-button" title="Refresh workspace" :disabled="loading" @click="refresh"><RefreshCw :class="{ spin: loading }" :size="17" /></button>
-        <button class="icon-button" title="Investigation recipes" @click="recipeDialog = true"><BookOpen :size="17" /></button>
+        <button class="icon-button" title="Recipes and compiled workflows" @click="recipeDialog = true"><BookOpen :size="17" /></button>
         <button class="icon-button" :title="geedimReady ? 'Export selected layer' : 'Install the pipeline extra to export GeoTIFF'" :disabled="!selectedPlan || !environment.authenticated || !geedimReady" @click="exportDialog = true"><Download :size="17" /></button>
         <button class="secondary" :disabled="!selectedPlan || running" @click="runPlan('dry_run')"><FlaskConical :size="16" />Dry run</button>
         <button class="primary" :disabled="!selectedPlan || running || !environment.authenticated" @click="runPlan('live')"><Play :size="16" />Run live</button>
@@ -131,9 +131,9 @@
     </aside>
 
     <NewInvestigationDialog :open="newDialog" :saving="saving" @close="newDialog = false" @create="createPlan" />
-    <RecipeDialog :open="recipeDialog" :saving="savingRecipe" :recipes="recipes" :current-spec="selectedPlan?.spec" @close="recipeDialog = false" @save="saveRecipe" @instantiate="instantiateRecipe" />
+    <RecipeDialog :open="recipeDialog" :saving="savingRecipe" :recipes="recipes" :workflows="workflows" :workflow-runs="workflowRuns" :current-spec="selectedPlan?.spec" :current-plan="selectedPlan" :current-job="workflowSourceJob" @close="recipeDialog = false" @save="saveRecipe" @instantiate="instantiateRecipe" @compile="compileSelectedWorkflow" @replay="replayCompiledWorkflow" />
     <LocalExportDialog :open="exportDialog" :saving="exportingLocal" :plan="selectedPlan" :selected-role="selectedRole" :selected-year="selectedYear" @close="exportDialog = false" @export="queueLocalExport" />
-    <RuntimeRegistryDialog :open="registryDialog" :saving="savingRegistry" :adapters="adapters" :skills="skills" :backends="environment.backends || []" @close="registryDialog = false" @import="importRegistry" @probe="probeRegistryAdapter" @state="setRegistryAdapterState" @save-skill="saveGeneratedSkill" @publish="publishGeneratedSkill" @invalid="error = $event" />
+    <RuntimeRegistryDialog :open="registryDialog" :saving="savingRegistry" :adapters="adapters" :skills="skills" :backend-manifests="backendManifests" :backend-probes="backendProbes" :telemetry="telemetry" :agent-runs="agentRuns" :approvals="approvals" @close="registryDialog = false" @import="importRegistry" @probe="probeRegistryAdapter" @probe-backend="probeRuntimeBackend" @state="setRegistryAdapterState" @save-skill="saveGeneratedSkill" @publish="publishGeneratedSkill" @invalid="error = $event" />
     <div v-if="error" class="toast"><AlertCircle :size="17" /><span>{{ error }}</span><button title="Dismiss" @click="error = ''"><X :size="15" /></button></div>
     <div v-if="running" class="run-progress"><LoaderCircle class="spin" :size="16" /><span>Submitting Earth workspace job</span></div>
   </div>
@@ -151,7 +151,7 @@ import PlanGraph from "./components/PlanGraph.vue";
 import RecipeDialog from "./components/RecipeDialog.vue";
 import RuntimeRegistryDialog from "./components/RuntimeRegistryDialog.vue";
 import RunLedger from "./components/RunLedger.vue";
-import type { EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EnvironmentStatus, InvestigationPlan, InvestigationSpec, JobArtifact, RecipeSummary, RegisteredAdapter } from "./types";
+import type { AgentRunSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, InvestigationPlan, InvestigationSpec, JobArtifact, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary } from "./types";
 
 const plans = ref<InvestigationPlan[]>([]);
 const jobs = ref<EarthJob[]>([]);
@@ -159,6 +159,13 @@ const stories = ref<EarthStory[]>([]);
 const recipes = ref<RecipeSummary[]>([]);
 const adapters = ref<RegisteredAdapter[]>([]);
 const skills = ref<EarthSkillSummary[]>([]);
+const backendManifests = ref<EarthBackendManifest[]>([]);
+const backendProbes = ref<Record<string, EarthBackendProbe>>({});
+const telemetry = ref<RuntimeTelemetrySummary>();
+const agentRuns = ref<AgentRunSummary[]>([]);
+const approvals = ref<RuntimeApproval[]>([]);
+const workflows = ref<EarthWorkflowSummary[]>([]);
+const workflowRuns = ref<EarthWorkflowReplay[]>([]);
 const environment = ref<EnvironmentStatus>({});
 const selectedPlanId = ref("");
 const selectedJob = ref<EarthJob>();
@@ -196,6 +203,7 @@ const selectedPlan = computed(() => plans.value.find((plan) => plan.planId === s
 const selectedStory = computed(() => stories.value.find((story) => story.investigationId === selectedPlan.value?.spec.investigationId));
 const geedimReady = computed(() => environment.value.backends?.some((backend) => backend.id === "geedim" && backend.installed) === true);
 const planJobs = computed(() => jobs.value.filter((job) => job.planId === selectedPlanId.value).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+const workflowSourceJob = computed(() => planJobs.value.find((job) => job.state === "completed"));
 const years = computed(() => selectedPlan.value ? Array.from({ length: selectedPlan.value.spec.period.endYear - selectedPlan.value.spec.period.startYear + 1 }, (_, index) => selectedPlan.value!.spec.period.startYear + index) : []);
 const filteredPlans = computed(() => {
   const query = search.value.trim().toLowerCase();
@@ -228,8 +236,8 @@ function stepYear(delta: number) {
 async function refresh() {
   loading.value = true; error.value = "";
   try {
-    const [nextEnvironment, nextPlans, nextJobs, nextStories, nextRecipes, nextAdapters, nextSkills] = await Promise.all([api.environment(), api.plans(), api.jobs(), api.stories(), api.recipes(), api.adapters(), api.skills()]);
-    environment.value = nextEnvironment; plans.value = nextPlans; jobs.value = nextJobs; stories.value = nextStories; recipes.value = nextRecipes; adapters.value = nextAdapters; skills.value = nextSkills;
+    const [nextEnvironment, nextPlans, nextJobs, nextStories, nextRecipes, nextAdapters, nextSkills, nextBackends, nextTelemetry, nextAgentRuns, nextApprovals, nextWorkflows, nextWorkflowRuns] = await Promise.all([api.environment(), api.plans(), api.jobs(), api.stories(), api.recipes(), api.adapters(), api.skills(), api.backends(), api.telemetry(), api.agentRuns(), api.approvals(), api.workflows(), api.workflowRuns()]);
+    environment.value = nextEnvironment; plans.value = nextPlans; jobs.value = nextJobs; stories.value = nextStories; recipes.value = nextRecipes; adapters.value = nextAdapters; skills.value = nextSkills; backendManifests.value = nextBackends; telemetry.value = nextTelemetry; agentRuns.value = nextAgentRuns; approvals.value = nextApprovals; workflows.value = nextWorkflows; workflowRuns.value = nextWorkflowRuns;
     if (selectedJob.value) await selectJob(nextJobs.find((job) => job.jobId === selectedJob.value?.jobId));
     if (!selectedPlanId.value && nextPlans[0]) selectPlan(nextPlans[0].planId);
   } catch (value) { error.value = value instanceof Error ? value.message : String(value); }
@@ -287,6 +295,33 @@ async function instantiateRecipe(recipeId: string) {
   } catch (value) { error.value = value instanceof Error ? value.message : String(value); }
   finally { savingRecipe.value = false; }
 }
+async function compileSelectedWorkflow(input: { workflowId: string; name: string; planId: string; jobId: string; stage: "ready" }) {
+  const sourcePlan = plans.value.find((item) => item.planId === input.planId);
+  const confirmedBlockingChecks = sourcePlan?.criticChecks.some((check) => check.severity === "blocking") === true;
+  if (confirmedBlockingChecks && !window.confirm("This source run has blocking critic checks. Compile only after explicit review?")) return;
+  savingRecipe.value = true; error.value = "";
+  try { await api.compileWorkflow({ ...input, confirmedBlockingChecks }); workflows.value = await api.workflows(); }
+  catch (value) { error.value = value instanceof Error ? value.message : String(value); }
+  finally { savingRecipe.value = false; }
+}
+async function replayCompiledWorkflow(workflowId: string) {
+  const workflow = workflows.value.find((item) => item.workflowId === workflowId);
+  if (!workflow) return;
+  const warning = workflow.stage === "candidate" ? "This candidate was compiled automatically from one verified run. Review and replay it?" : `Replay ${workflow.workflowId} with its frozen adapter fingerprints and cost bounds?`;
+  if (!window.confirm(warning)) return;
+  savingRecipe.value = true; error.value = "";
+  try {
+    const suffix = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 12);
+    const result = await api.replayWorkflow(workflow.workflowId, { patch: { investigationId: `${workflow.workflowId}-${suffix}`.slice(0, 79) }, confirmed: true });
+    if (result.plan && !plans.value.some((plan) => plan.planId === result.plan!.planId)) plans.value.unshift(result.plan);
+    if (result.job) replaceJob(result.job);
+    workflowRuns.value = await api.workflowRuns(); workflows.value = await api.workflows(); telemetry.value = await api.telemetry();
+    if (result.plan) selectPlan(result.plan.planId);
+    if (result.job) await selectJob(result.job);
+    recipeDialog.value = false; activeTab.value = "runs";
+  } catch (value) { error.value = value instanceof Error ? value.message : String(value); }
+  finally { savingRecipe.value = false; }
+}
 async function importRegistry(payload: Record<string, unknown>) {
   savingRegistry.value = true; error.value = "";
   try { await api.importRegistry(payload); adapters.value = await api.adapters(); }
@@ -299,6 +334,12 @@ async function probeRegistryAdapter(datasetId: string) {
     await api.probeAdapter(datasetId);
     adapters.value = await api.adapters();
   } catch (value) { error.value = value instanceof Error ? value.message : String(value); }
+  finally { savingRegistry.value = false; }
+}
+async function probeRuntimeBackend(backendId: string) {
+  savingRegistry.value = true; error.value = "";
+  try { backendProbes.value = { ...backendProbes.value, [backendId]: await api.probeBackend(backendId) }; }
+  catch (value) { error.value = value instanceof Error ? value.message : String(value); }
   finally { savingRegistry.value = false; }
 }
 async function setRegistryAdapterState(datasetId: string, enabled: boolean) {
@@ -368,10 +409,16 @@ let polling = false;
 async function pollJobs() {
   if (polling) return;
   const active = jobs.value.filter((job) => job.state === "running" || job.state === "queued");
-  if (!active.length) return;
+  const activeReplays = workflowRuns.value.filter((run) => run.state === "running");
+  if (!active.length && !activeReplays.length) return;
   polling = true;
   try {
     for (const job of active) replaceJob(await api.job(job.jobId, true));
+    for (const replay of activeReplays) {
+      const next = await api.workflowRun(replay.replayId);
+      const index = workflowRuns.value.findIndex((item) => item.replayId === next.replayId);
+      if (index >= 0) workflowRuns.value.splice(index, 1, next);
+    }
     if (selectedJob.value) await selectJob(jobs.value.find((job) => job.jobId === selectedJob.value?.jobId));
   } catch (value) { error.value = value instanceof Error ? value.message : String(value); }
   finally { polling = false; }

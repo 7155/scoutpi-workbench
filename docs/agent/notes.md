@@ -31,3 +31,12 @@
 - Real smoke evidence: Dynamic World probe passed; live raster tiles returned HTTP 200; a 100 m local GeoTIFF completed with 2,388 bytes and was verified by Rasterio as GTiff, EPSG:4326, 12x13, float32.
 - Removed the unbundled duplicate memory extension and unused memory/browser UI panels from the public project; memory remains a Pi ecosystem peer.
 - Verification: `pnpm check` passes 18 tests, Python compile, Earth harness, and production web build; `pnpm audit --prod` reports no known vulnerabilities.
+
+## 2026-07-10 23:42 - Agent Runtime P0 milestone
+
+- Added the reviewed Backend Plugin SDK, mixed-text runtime telemetry, Agent lifecycle tracing, parameter-bound approval receipts, and successful-run Workflow Compiler.
+- Migrated `scoutpi-earth` to the official Pi 0.80.2 extension contract with compact TypeBox schemas, cancellation, progress updates, and runtime-only dynamic tool profiles.
+- Added an isolated real Pi RPC harness with ten natural-language cases. The extension process starts cleanly; the configured gateway currently lists 5.4/5.5 but not requested `gpt-5.6`, so live model evaluation is reported as unavailable rather than silently downgraded.
+- Added Workbench Backend, Telemetry, Agent Run, Approval, Recipe, and Workflow views. Playwright desktop and 390 px mobile checks passed for the main map and both operational dialogs.
+- Verification: `pnpm check` passes 32 tests, Python compile, Earth harness, and production web build; `pnpm harness:pi-rpc` reports `rpc_ready` with no extension errors.
+- Git snapshot before milestone commit: branch `main`; runtime/UI/docs changes are intentionally scoped to this repository; generated `.scoutpi`, `exports`, build, and Playwright artifacts remain ignored.

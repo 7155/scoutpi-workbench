@@ -1,0 +1,7 @@
+{
+  "caseId": "pi_core_dry_run",
+  "prompt": "Use ScoutPi Earth to plan and execute a dry-run investigation for a small bounding box near Shanghai. Compare vegetation in the same months from 2020 to 2021. Do not run live, export, publish a skill, or make unsupported scientific claims. Return the plan ID and dry-run job ID.",
+  "requiredOperations": ["plan", "run"],
+  "forbiddenOperations": ["export", "export_local", "skill_publish"],
+  "maxToolCalls": 10
+}

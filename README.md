@@ -17,6 +17,7 @@ Forest, flood, agriculture, urban change, water, climate, and disaster tasks are
 
 ```text
 question + claims + region + time
+  -> Pi lifecycle trace + dynamic Earth tool profile
   -> observable roles
   -> registered adapter search
   -> Agent drafts a missing adapter when needed
@@ -25,14 +26,19 @@ question + claims + region + time
   -> supervised Earth Engine job or direct map tiles
   -> bounded local export and numerical checks
   -> evidence critic + EarthStory
-  -> optional reusable Pi skill
+  -> successful trace compiled into a guarded workflow
+  -> token/cost telemetry + replay evidence
 ```
 
 The model does not execute generated Python, JavaScript, shell, or arbitrary Earth Engine expressions. Pi creates declarative contracts; reviewed runtime code executes them.
 
 ## Implemented
 
-- Three Pi gateway tools: `earth_workspace`, `python_analysis`, and `earth_story`
+- Three registered Pi gateway tools, dynamically activated as core, analysis, and report profiles
+- Official Pi 0.80 execution contract with TypeBox schemas, `AbortSignal`, streaming progress, lifecycle events, and structured failures
+- Event-only governance extension with parameter-bound, single-use user approval receipts
+- Event-only observability extension with privacy-preserving Agent run traces and provider-reported token/cost usage
+- Reviewed Backend Plugin SDK with manifests, validation hooks, bounded progress, cancellation, timeouts, and result limits
 - Progressive-disclosure Earth investigation skill
 - Dynamic `scoutpi.earth.adapter.v1` registry with revisions, SHA-256 fingerprints, enable/disable state, and audit events
 - Live adapter probes that check collection availability, sample time, required bands, and quality-mask bands
@@ -42,7 +48,8 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Bounded geedim GeoTIFF export with scale/pixel review, manifest, byte count, and SHA-256
 - Safe CSV/JSON/GeoJSON statistics without arbitrary code execution
 - Generated `scoutpi.earth.skill.v1` drafts with confirmed publishing and overwrite protection
-- Vue Workbench for maps, adapters, backends, skills, plans, jobs, artifacts, recipes, and evidence
+- Automatic workflow candidates from verified successful jobs, explicit promotion, deterministic replay, cost assertions, and adapter-drift rejection
+- Vue Workbench for maps, adapters, backends, skills, plans, jobs, artifacts, recipes, workflows, Agent traces, approvals, token/cost telemetry, and evidence
 - Pi ecosystem detection so generic research, MCP, memory, browser, context, and subagent capabilities are reused rather than copied
 
 The core does not silently ship an active domain catalog. `examples/adapter-packs/earth-engine-starter.json` is an explicit demo pack and remains separate from runtime code.
@@ -99,11 +106,11 @@ Or install the current checkout:
 pi install /absolute/path/to/scoutpi-workbench
 ```
 
-The package exposes one extension, one skill, and exactly three default tools:
+The package exposes three extensions and one skill. Governance and observability are event-only; the model still sees at most these three Earth tools:
 
 | Tool | Responsibility |
 | --- | --- |
-| `earth_workspace` | Adapter/skill registry, catalog routing, planning, probes, tiles, execution, export, status, artifacts, and recipes |
+| `earth_workspace` | Adapter/backend registry, catalog routing, planning, probes, execution, export, artifacts, telemetry, recipes, and workflows |
 | `python_analysis` | Bounded statistics over approved local artifact roots |
 | `earth_story` | Evidence-bound story creation and persisted review artifacts |
 
@@ -117,7 +124,11 @@ run / status / cancel / retry
 export / export_local / artifacts
 skill_save / skill_list / skill_publish
 save_recipe / load_recipe / list_recipes
+backend_list / backend_probe / telemetry
+workflow_compile / workflow_list / workflow_replay / workflow_status
 ```
+
+Pi starts with only `earth_workspace` active, then activates `python_analysis` and `earth_story` when the task reaches analysis or reporting. High-risk operations are intercepted by `scoutpi-governance` and require a real `ctx.ui.confirm()` receipt; model-authored `confirmed: true` is not trusted.
 
 Use `/earth-ecosystem` in Pi to inspect reusable peer capabilities. Cross-session memory comes from an installed Pi provider; this package does not register a second memory tool surface.
 
@@ -134,12 +145,18 @@ Complete plans and results are written below `.scoutpi/earth_workspace`; Pi rece
 ```text
 .scoutpi/earth_workspace/
 ├── adapters/             # versioned runtime adapters
+├── approvals/            # short-lived, single-use user approval receipts
 ├── skills/               # validated skill drafts
 ├── plans/                # immutable typed plans
 ├── jobs/                 # job state, requests, manifests, GeoTIFF/JSON artifacts
 ├── recipes/              # reusable InvestigationSpec inputs
+├── workflows/            # compiled deterministic workflow contracts
+├── workflow_runs/        # replay assertions and terminal state
+├── telemetry/            # content-minimal operation metrics
 ├── stories/              # EarthStory JSON and Markdown
 └── registry_events.jsonl # adapter audit trail
+
+.scoutpi/runs/            # privacy-preserving Pi Agent traces and exact model usage
 ```
 
 Temporary Earth Engine tile URLs are for visualization. Download/export is used only when a durable local artifact, offline computation, evidence package, or downstream delivery is required.
@@ -149,6 +166,11 @@ Temporary Earth Engine tile URLs are for visualization. Download/export is used 
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /api/environment` | Earth Engine auth and optional backend capabilities |
+| `GET /api/backends` | Reviewed backend manifests and operation contracts |
+| `POST /api/backends/:id/probe` | Probe one reviewed backend |
+| `GET /api/telemetry` | Aggregate operation token, latency, cache and compute proxies |
+| `GET /api/agent-runs` | Pi lifecycle run summaries and provider-reported model usage |
+| `GET /api/approvals` | Human approval audit receipts |
 | `GET /api/contracts/:id` | Fetch an adapter, skill, investigation, or export template on demand |
 | `GET/POST /api/adapters` | List or register declarative adapters |
 | `POST /api/adapters/:id/probe` | Verify collection and required bands against Earth Engine |
@@ -164,6 +186,9 @@ Temporary Earth Engine tile URLs are for visualization. Download/export is used 
 | `GET /api/jobs/:id/artifacts/:name` | Read one bounded job artifact |
 | `GET/POST /api/skills` | List or save generated skill definitions |
 | `POST /api/skills/:id/publish` | Confirm and publish a generated Pi skill |
+| `GET /api/workflows`, `POST /api/workflows/compile` | List workflows or compile one from a successful job |
+| `POST /api/workflows/:id/replay` | Deterministically replay with drift and cost assertions |
+| `GET /api/workflow-runs/:id` | Refresh a replay record |
 
 ## Verification
 
@@ -175,12 +200,26 @@ pnpm harness:earth
 pnpm web:build
 ```
 
+The real Pi RPC harness is opt-in because it can call a paid model:
+
+```bash
+SCOUTPI_HARNESS_KEY_FILE=/path/outside/the/repo/key.md \
+SCOUTPI_PI_MODEL=gpt-5.6 \
+pnpm harness:pi
+```
+
+`harness:pi` performs a model-list preflight only. Start the real extension process without a model turn using `pnpm harness:pi-rpc`; run paid end-to-end cases explicitly with `pnpm harness:pi-live`.
+
 The current live smoke path also verifies a real Dynamic World tile and a small geedim GeoTIFF with Rasterio metadata inspection. Live checks depend on the operator's Earth Engine account and are not part of CI.
 
 ## Documentation
 
 - [Runtime architecture](docs/scoutpi/SCOUTPI_PI_EARTH_INVESTIGATION_RUNTIME.md)
 - [Agent-built adapters and skills](docs/scoutpi/AGENT_TOOL_SKILL_BUILDER.md)
+- [Backend Plugin SDK](docs/scoutpi/BACKEND_PLUGIN_SDK.md)
+- [Runtime governance and observability](docs/scoutpi/RUNTIME_GOVERNANCE_AND_OBSERVABILITY.md)
+- [Workflow Compiler](docs/scoutpi/WORKFLOW_COMPILER.md)
+- [Pi RPC Harness](docs/scoutpi/PI_RPC_HARNESS.md)
 - [Pi ecosystem reuse audit](docs/scoutpi/PI_OPEN_SOURCE_ECOSYSTEM_REUSE_AUDIT.md)
 - [Project notes](docs/agent/notes.md)
 
@@ -194,7 +233,7 @@ The product direction and the `Pi -> typed investigation -> supervised compute -
 
 | Project | What was studied | ScoutPi boundary |
 | --- | --- | --- |
-| [badlogic/pi-mono](https://github.com/badlogic/pi-mono) | Pi packages, extensions, commands, skills, and active-tool APIs | Pi remains the host Agent loop; ScoutPi contributes only the Earth runtime. |
+| [earendil-works/pi](https://github.com/earendil-works/pi) and upstream [badlogic/pi-mono](https://github.com/badlogic/pi-mono) | Typed extension lifecycle, RPC mode, commands, skills, user UI and active-tool APIs | Pi remains the host Agent loop; ScoutPi contributes domain tools plus event-only governance and tracing. |
 | [google/earthengine-api](https://github.com/google/earthengine-api) | Initialization, map IDs, batch exports, task status, and cancellation | The worker exposes typed operations and never evaluates generated Earth Engine code. |
 | [gee-community/geemap](https://github.com/gee-community/geemap) | Analyst-facing Earth Engine maps, charts, and export conventions | Optional review backend; BrowserBridge does not click through geemap widgets. |
 | [leftfield-geospatial/geedim](https://github.com/leftfield-geospatial/geedim) | Tiled local GeoTIFF, NumPy, and Xarray delivery | Used behind a bounded, supervised `export_local` contract. |

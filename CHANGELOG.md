@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0 - 2026-07-10
+
+- Added a reviewed Backend Plugin SDK with typed manifests, validation, cancellation, progress, timeouts, and bounded results.
+- Added content-minimal runtime telemetry for Pi tools, backends, cache behavior, workflows, token estimates, latency, artifacts, and Earth compute proxies.
+- Migrated the Earth extension to Pi 0.80.2's official TypeBox and tool lifecycle APIs with dynamic low-token tool profiles.
+- Added real user approval receipts through Pi lifecycle interception; model-authored confirmation booleans no longer authorize high-risk Pi calls.
+- Added privacy-preserving Agent run traces with exact provider-reported token usage and model cost.
+- Added automatic workflow candidates, explicit promotion, deterministic replay, adapter drift checks, cost assertions, replay records, and Workbench controls.
+- Added a real Pi RPC harness with isolated configuration, approval handling, scoring, and external key-file support.
+- Added Backend, Telemetry, Agent run, Approval, Recipe, and Workflow operational views to the Workbench.
+
 ## 0.1.0 - 2026-07-10
 
 - Added the Pi-native three-tool Earth investigation runtime.
