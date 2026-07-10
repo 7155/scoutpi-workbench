@@ -391,7 +391,7 @@ test("Earth Workbench API exposes adapter probes, skill drafts and supervised lo
     const exportResponse = await fetch(`${base}/api/plans/${created.plan.planId}/export-local`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ role: "vegetation", kind: "year", year: 2021, scaleMeters: 1000 }) });
     assert.equal(exportResponse.status, 202);
     const queued: any = await exportResponse.json();
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await workspace.waitForLocalExport(queued.jobId);
     const completed: any = await (await fetch(`${base}/api/jobs/${queued.jobId}`)).json();
     assert.equal(completed.state, "completed");
     assert.equal(completed.result.backend, "geedim");
