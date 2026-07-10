@@ -1,0 +1,52 @@
+{
+  "name": "scoutpi-workbench",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pi-native Earth observation investigation runtime and evidence workbench.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/7155/scoutpi-workbench#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/7155/scoutpi-workbench.git"
+  },
+  "bugs": {
+    "url": "https://github.com/7155/scoutpi-workbench/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "earth-observation",
+    "google-earth-engine",
+    "geospatial"
+  ],
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "pi": {
+    "extensions": [
+      "./.pi/extensions/scoutpi-earth/index.ts"
+    ],
+    "skills": [
+      "./.pi/skills/scoutpi-earth-investigation"
+    ]
+  },
+  "scripts": {
+    "earth:server": "node --experimental-strip-types packages/earth-workspace-server/src/index.ts",
+    "examples:seed": "node --experimental-strip-types scripts/seedExampleAdapters.ts",
+    "harness:earth": "node --experimental-strip-types harness/earth/runEarthWorkspaceDemo.ts",
+    "web:dev": "pnpm --filter @scoutpi/earth-workbench dev",
+    "web:build": "pnpm --filter @scoutpi/earth-workbench build",
+    "workbench:dev": "node scripts/runEarthWorkbench.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "python:check": "uv run python -m py_compile packages/earth-workspace/python/worker.py",
+    "check": "pnpm typecheck && pnpm test && pnpm python:check && pnpm harness:earth && pnpm web:build"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "playwright": "^1.61.1",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "schemaVersion": "scoutpi.earth.adapter-pack.v1",
+  "packId": "earth-engine-starter",
+  "title": "Earth Engine starter adapter examples",
+  "description": "Example declarative adapters for development and tests. They are not loaded by the runtime unless explicitly imported.",
+  "adapters": [
+    {
+      "schemaVersion": "scoutpi.earth.adapter.v1",
+      "datasetId": "sentinel2-sr",
+      "title": "Sentinel-2 Surface Reflectance Harmonized",
+      "provider": "Copernicus/ESA",
+      "collectionId": "COPERNICUS/S2_SR_HARMONIZED",
+      "documentationUrl": "https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR_HARMONIZED",
+      "roles": ["vegetation", "water", "water_extent", "built_surface", "fire_recovery", "land_change"],
+      "startYear": 2017,
+      "scaleMeters": 10,
+      "cadence": "5 days",
+      "limitations": ["Optical observations require cloud and shadow control.", "Cross-year comparisons should use the same season."],
+      "analysis": {
+        "metric": "normalized_difference_mean",
+        "bands": ["B8", "B4"],
+        "outputName": "ndvi",
+        "qualityMask": { "mode": "all", "rules": [
+          { "band": "SCL", "op": "neq", "value": 3 },
+          { "band": "SCL", "op": "neq", "value": 8 },
+          { "band": "SCL", "op": "neq", "value": 9 },
+          { "band": "SCL", "op": "neq", "value": 10 },
+          { "band": "SCL", "op": "neq", "value": 11 }
+        ] },
+        "visualization": { "min": -0.2, "max": 0.8, "palette": ["8c510a", "f6e8c3", "80cdc1", "01665e"] }
+      },
+      "analysisByRole": {
+        "vegetation": { "metric": "normalized_difference_mean", "bands": ["B8", "B4"], "outputName": "ndvi", "qualityMask": { "mode": "all", "rules": [{ "band": "SCL", "op": "neq", "value": 3 }, { "band": "SCL", "op": "neq", "value": 8 }, { "band": "SCL", "op": "neq", "value": 9 }, { "band": "SCL", "op": "neq", "value": 10 }, { "band": "SCL", "op": "neq", "value": 11 }] }, "visualization": { "min": -0.2, "max": 0.8, "palette": ["8c510a", "f6e8c3", "80cdc1", "01665e"] } },
+        "fire_recovery": { "metric": "normalized_difference_mean", "bands": ["B8", "B12"], "outputName": "nbr", "qualityMask": { "mode": "all", "rules": [{ "band": "SCL", "op": "neq", "value": 3 }, { "band": "SCL", "op": "neq", "value": 8 }, { "band": "SCL", "op": "neq", "value": 9 }, { "band": "SCL", "op": "neq", "value": 10 }, { "band": "SCL", "op": "neq", "value": 11 }] }, "visualization": { "min": -0.5, "max": 0.8, "palette": ["a50026", "fdae61", "ffffbf", "66bd63", "006837"] } },
+        "water": { "metric": "normalized_difference_mean", "bands": ["B3", "B8"], "outputName": "ndwi", "qualityMask": { "mode": "all", "rules": [{ "band": "SCL", "op": "neq", "value": 3 }, { "band": "SCL", "op": "neq", "value": 8 }, { "band": "SCL", "op": "neq", "value": 9 }, { "band": "SCL", "op": "neq", "value": 10 }, { "band": "SCL", "op": "neq", "value": 11 }] }, "visualization": { "min": -0.5, "max": 0.5, "palette": ["8c510a", "f6e8c3", "67a9cf", "2166ac"] } },
+        "water_extent": { "metric": "normalized_difference_mean", "bands": ["B3", "B8"], "outputName": "ndwi", "qualityMask": { "mode": "all", "rules": [{ "band": "SCL", "op": "neq", "value": 3 }, { "band": "SCL", "op": "neq", "value": 8 }, { "band": "SCL", "op": "neq", "value": 9 }, { "band": "SCL", "op": "neq", "value": 10 }, { "band": "SCL", "op": "neq", "value": 11 }] }, "visualization": { "min": -0.5, "max": 0.5, "palette": ["8c510a", "f6e8c3", "67a9cf", "2166ac"] } },
+        "built_surface": { "metric": "normalized_difference_mean", "bands": ["B11", "B8"], "outputName": "ndbi", "qualityMask": { "mode": "all", "rules": [{ "band": "SCL", "op": "neq", "value": 3 }, { "band": "SCL", "op": "neq", "value": 8 }, { "band": "SCL", "op": "neq", "value": 9 }, { "band": "SCL", "op": "neq", "value": 10 }, { "band": "SCL", "op": "neq", "value": 11 }] }, "visualization": { "min": -0.5, "max": 0.5, "palette": ["1a9850", "fee08b", "d73027"] } }
+      }
+    },
+    {
+      "schemaVersion": "scoutpi.earth.adapter.v1",
+      "datasetId": "landsat-c2-l2-temperature",
+      "title": "Landsat 8 Collection 2 Level 2 Temperature",
+      "provider": "USGS/NASA",
+      "collectionId": "LANDSAT/LC08/C02/T1_L2",
+      "documentationUrl": "https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC08_C02_T1_L2",
+      "roles": ["surface_temperature"],
+      "startYear": 2013,
+      "scaleMeters": 30,
+      "cadence": "16 days",
+      "limitations": ["Thermal observations are weather-sensitive.", "Landsat 8 alone does not cover years before 2013."],
+      "analysis": { "metric": "band_mean", "bands": ["ST_B10"], "outputName": "surface_temperature_c", "qualityMask": { "mode": "all", "rules": [{ "band": "QA_PIXEL", "op": "bit_clear", "bit": 3 }, { "band": "QA_PIXEL", "op": "bit_clear", "bit": 4 }] }, "scaleFactor": 0.00341802, "offset": -124.15, "visualization": { "min": 10, "max": 45, "palette": ["313695", "74add1", "ffffbf", "f46d43", "a50026"] } },
+      "guardrails": [{ "id": "attribution", "severity": "warning", "message": "Surface temperature alone does not establish a causal driver.", "resolution": "Use climate background or a control region before causal language." }]
+    },
+    {
+      "schemaVersion": "scoutpi.earth.adapter.v1",
+      "datasetId": "dynamic-world-built",
+      "title": "Dynamic World Built Probability",
+      "provider": "Google/WRI",
+      "collectionId": "GOOGLE/DYNAMICWORLD/V1",
+      "documentationUrl": "https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_DYNAMICWORLD_V1",
+      "roles": ["built_surface", "land_cover", "cropland", "flood_impact"],
+      "startYear": 2015,
+      "scaleMeters": 10,
+      "cadence": "near real time",
+      "limitations": ["Class probabilities are model outputs, not field truth.", "Area estimates need uncertainty checks."],
+      "analysis": { "metric": "threshold_fraction", "bands": ["built"], "outputName": "built_fraction", "threshold": 0.5, "comparison": "gte", "visualization": { "min": 0, "max": 1, "palette": ["d9d9d9", "d73027"] } }
+    },
+    {
+      "schemaVersion": "scoutpi.earth.adapter.v1",
+      "datasetId": "viirs-nightlights",
+      "title": "VIIRS Monthly Nighttime Lights",
+      "provider": "NOAA",
+      "collectionId": "NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG",
+      "documentationUrl": "https://developers.google.com/earth-engine/datasets/catalog/NOAA_VIIRS_DNB_MONTHLY_V1_VCMSLCFG",
+      "roles": ["human_activity", "night_activity", "urbanization"],
+      "startYear": 2012,
+      "scaleMeters": 500,
+      "cadence": "monthly",
+      "limitations": ["Night lights are not GDP.", "Outliers, background and temporary events require control."],
+      "analysis": { "metric": "band_mean", "bands": ["avg_rad"], "outputName": "night_light_mean", "visualization": { "min": 0, "max": 50, "palette": ["081d58", "225ea8", "41b6c4", "c7e9b4", "ffffd9"] } },
+      "guardrails": [{ "id": "proxy-boundary", "severity": "blocking", "message": "Nighttime lights cannot be reported as GDP or economic output.", "resolution": "Describe it as an activity proxy and add independent evidence." }]
+    },
+    {
+      "schemaVersion": "scoutpi.earth.adapter.v1",
+      "datasetId": "era5-land-precipitation",
+      "title": "ERA5-Land Monthly Precipitation",
+      "provider": "ECMWF",
+      "collectionId": "ECMWF/ERA5_LAND/MONTHLY_AGGR",
+      "documentationUrl": "https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_MONTHLY_AGGR",
+      "roles": ["precipitation", "climate_background", "flood_driver", "drought_driver"],
+      "startYear": 1950,
+      "scaleMeters": 11132,
+      "cadence": "monthly",
+      "limitations": ["Reanalysis resolution is coarse for local conclusions."],
+      "analysis": { "metric": "band_sum", "bands": ["total_precipitation_sum"], "outputName": "precipitation_m", "visualization": { "min": 0, "max": 2, "palette": ["ffffcc", "a1dab4", "41b6c4", "225ea8", "253494"] } },
+      "guardrails": [{ "id": "coarse-scale", "severity": "warning", "message": "Reanalysis pixels are too coarse for neighborhood-scale attribution." }]
+    },
+    {
+      "schemaVersion": "scoutpi.earth.adapter.v1",
+      "datasetId": "jrc-surface-water",
+      "title": "JRC Global Surface Water Monthly History",
+      "provider": "EC JRC/Google",
+      "collectionId": "JRC/GSW1_4/MonthlyHistory",
+      "documentationUrl": "https://developers.google.com/earth-engine/datasets/catalog/JRC_GSW1_4_MonthlyHistory",
+      "roles": ["water_extent", "water_change", "flood_extent"],
+      "startYear": 1984,
+      "endYear": 2021,
+      "scaleMeters": 30,
+      "cadence": "monthly",
+      "limitations": ["Archive end year constrains recent-change analysis.", "Cloud and sensor history affect observations."],
+      "analysis": { "metric": "threshold_fraction", "bands": ["water"], "outputName": "water_fraction", "threshold": 2, "comparison": "eq", "visualization": { "min": 0, "max": 1, "palette": ["f7fbff", "2171b5"] } }
+    },
+    {
+      "schemaVersion": "scoutpi.earth.adapter.v1",
+      "datasetId": "sentinel1-vv",
+      "title": "Sentinel-1 GRD VV Backscatter",
+      "provider": "Copernicus/ESA",
+      "collectionId": "COPERNICUS/S1_GRD",
+      "documentationUrl": "https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S1_GRD",
+      "roles": ["flood_extent", "surface_change", "disaster_response"],
+      "startYear": 2014,
+      "scaleMeters": 10,
+      "cadence": "6-12 days",
+      "limitations": ["Backscatter depends on geometry, orbit and surface roughness.", "Thresholds require local validation."],
+      "analysis": { "metric": "band_mean", "bands": ["VV"], "outputName": "vv_backscatter", "visualization": { "min": -25, "max": 5, "palette": ["000004", "3b0f70", "8c2981", "de4968", "fe9f6d", "fcfdbf"] } }
+    },
+    {
+      "schemaVersion": "scoutpi.earth.adapter.v1",
+      "datasetId": "modis-ndvi",
+      "title": "MODIS Vegetation Indices 16-Day",
+      "provider": "NASA",
+      "collectionId": "MODIS/061/MOD13Q1",
+      "documentationUrl": "https://developers.google.com/earth-engine/datasets/catalog/MODIS_061_MOD13Q1",
+      "roles": ["vegetation", "fire_recovery", "drought_impact"],
+      "startYear": 2000,
+      "scaleMeters": 250,
+      "cadence": "16 days",
+      "limitations": ["Resolution is too coarse for small sites."],
+      "analysis": { "metric": "band_mean", "bands": ["NDVI"], "outputName": "ndvi", "scaleFactor": 0.0001, "visualization": { "min": 0, "max": 1, "palette": ["a6611a", "dfc27d", "f5f5f5", "80cdc1", "018571"] } }
+    }
+  ]
+}
