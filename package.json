@@ -44,6 +44,7 @@
     "examples:seed": "node --experimental-strip-types scripts/seedExampleAdapters.ts",
     "harness:earth": "node --experimental-strip-types harness/earth/runEarthWorkspaceDemo.ts",
     "harness:mcp": "node --experimental-strip-types harness/mcp/runMcpSmoke.ts",
+    "harness:context-provider": "node --experimental-strip-types harness/context/runImeProviderBenchmark.ts",
     "harness:pi": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts",
     "harness:pi-rpc": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts --rpc-smoke",
     "harness:pi-live": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts --live",

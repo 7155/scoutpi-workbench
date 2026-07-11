@@ -90,3 +90,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - The provider imports through the Core's privacy-aware `InputMethodAdapter`; ScoutPi does not issue SQL. Deterministic Core event tags make process retries deduplicate already committed items.
 - Runtime Center distinguishes pending review, approved outbox, failed/staged delivery, and delivered memory. Desktop/mobile QA and all 60 tests pass.
 - Next: measure Context Provider cold-start cost across repeated turns and add a bounded persistent worker only if it materially reduces latency without expanding the privacy boundary.
+
+### 2026-07-11 - Warm Context Provider runtime
+
+- A single bounded Python worker now serves serialized query/writeback requests during the Pi session and closes on idle or session shutdown; one-shot mode remains available.
+- Timeout and cancellation kill the worker, and the next request starts cleanly. The worker opens no network listener and preserves the existing size, secret, provenance, and approval checks.
+- Context telemetry distinguishes total latency, Core latency, process mode, and warm reuse. Runtime Center displays warm/cold state without adding model-visible tools.
+- The real content-free benchmark measured 144.5 ms one-shot median and 37 ms persistent warm median, a 74.4% local reduction. All 61 tests and full runtime checks pass.
+- Next: use the Capability Broker to expose operator-controlled installation/readiness guidance for compatible market extensions, without implementing another package manager or auto-install path.

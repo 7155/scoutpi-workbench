@@ -31,9 +31,11 @@ async function fixtureCore(root: string): Promise<{ coreRoot: string; dbPath: st
   ].join("\n"));
   await writeFile(join(packageRoot, "local_sqlite_core.py"), [
     "import json",
+    "import time",
     "class LocalSqliteCoreClient:",
     "    def __init__(self, db_path): self.db_path = db_path",
     "    def retrieve_candidates_v2(self, *, context):",
+    "        if context.current_input == 'slow': time.sleep(0.3)",
     "        return {'ok': True, 'candidates': [",
     "            {'text': 'Use the same seasonal window for every comparison.', 'sourceType': 'memory', 'memoryKind': 'procedure', 'score': 0.94, 'memoryIds': ['stable:same-season'], 'evidencePreview': 'confirmed project memory'},",
     "            {'text': 'token=sk-this-must-be-filtered', 'sourceType': 'memory', 'memoryKind': 'fact', 'score': 1.0, 'memoryIds': ['bad:secret']},",
@@ -80,6 +82,40 @@ test("Wisdom Weasel provider queries the existing Core through a bounded typed p
     assert.equal(validated.items[0].kind, "procedure");
     assert.equal(validated.items[0].provenance.sourceId, "stable:same-season");
     assert.equal(validated.items.some((item) => item.text.includes("sk-this")), false);
+    const warm = await provider.query({ sessionId: "session-ime", query: "How should seasonal comparisons be constrained?", project: "scoutpi-workbench", maxItems: 8, timeoutMs: 2_000 });
+    assert.equal(result.status.processMode, "persistent");
+    assert.equal(result.status.workerReused, false);
+    assert.equal(warm.status.workerReused, true);
+    assert.equal(typeof warm.status.sourceLatencyMs, "number");
+    await provider.close();
+    const oneShot = new ImeCoreContextProvider({ ...fixture, useUv: false, pythonCommand: process.env.PYTHON || "python3", persistent: false });
+    const oneShotResult = await oneShot.query({ sessionId: "session-one-shot", query: "memory", project: "fixture", maxItems: 4, timeoutMs: 2_000 });
+    assert.equal(oneShotResult.status.state, "ready");
+    assert.equal(oneShotResult.status.processMode, "one_shot");
+    assert.equal(oneShotResult.status.workerReused, false);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("persistent provider timeout and cancellation kill the worker and the next query starts cleanly", async () => {
+  const root = await mkdtemp(join(tmpdir(), "scoutpi-ime-worker-recovery-"));
+  try {
+    const fixture = await fixtureCore(root);
+    const provider = new ImeCoreContextProvider({ ...fixture, useUv: false, pythonCommand: process.env.PYTHON || "python3" });
+    const timedOut = await provider.query({ sessionId: "session-timeout", query: "slow", project: "fixture", maxItems: 4, timeoutMs: 50 });
+    assert.equal(timedOut.status.state, "failed");
+    assert.equal(timedOut.status.errorCode, "CONTEXT_PROVIDER_TIMEOUT");
+    const recovered = await provider.query({ sessionId: "session-timeout", query: "memory", project: "fixture", maxItems: 4, timeoutMs: 2_000 });
+    assert.equal(recovered.status.state, "ready");
+    assert.equal(recovered.status.workerReused, false);
+    const controller = new AbortController();
+    const cancellation = provider.query({ sessionId: "session-timeout", query: "slow", project: "fixture", maxItems: 4, timeoutMs: 2_000 }, controller.signal);
+    setTimeout(() => controller.abort(), 30);
+    const cancelled = await cancellation;
+    assert.equal(cancelled.status.errorCode, "CONTEXT_PROVIDER_CANCELLED");
+    const restarted = await provider.query({ sessionId: "session-timeout", query: "memory", project: "fixture", maxItems: 4, timeoutMs: 2_000 });
+    assert.equal(restarted.status.state, "ready");
+    assert.equal(restarted.status.workerReused, false);
+    await provider.close();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
@@ -123,6 +159,7 @@ test("approved writebacks are staged and idempotently imported through the Core 
     assert.equal(rows.length, 1);
     const listed = await store.listWritebacks();
     assert.equal(listed[0].deliveries?.[0].state, "delivered");
+    await provider.close();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
@@ -158,6 +195,7 @@ test("Pi Context Bridge merges Wisdom Weasel candidates into the exact token-bou
     assert.equal(pack?.providers[0].providerId, "wisdom-weasel-rag-ime");
     assert.equal(pack?.providers[0].state, "ready");
     assert.equal(pack?.sourceProviders.includes("wisdom-weasel-rag-ime"), true);
+    await handlers.get("session_shutdown")?.({}, context);
   } finally {
     const restore = (name: string, value: string | undefined) => { if (value === undefined) delete process.env[name]; else process.env[name] = value; };
     restore("SCOUTPI_CONTEXT_ROOT", previous.contextRoot);
@@ -201,6 +239,7 @@ test("Pi Context Bridge delivers only a directly approved writeback to the opt-i
     assert.equal(writebacks[0].deliveries?.[0].state, "delivered");
     assert.equal(entries.some((entry) => entry.type === "scoutpi:context-writeback" && String(entry.data.deliveryState).includes("delivered")), true);
     assert.equal((await readFile(fixture.dbPath, "utf8")).includes("workflow-approved"), true);
+    await handlers.get("session_shutdown")?.({}, context);
   } finally {
     for (const name of names) { const value = previous[name]; if (value === undefined) delete process.env[name]; else process.env[name] = value; }
     await rm(root, { recursive: true, force: true });

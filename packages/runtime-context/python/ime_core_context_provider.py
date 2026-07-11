@@ -13,6 +13,7 @@ from typing import Any
 MAX_REQUEST_BYTES = 256 * 1024
 MAX_TEXT_CHARS = 2_000
 MAX_WRITEBACK_ITEMS = 24
+_CORE_CLIENTS: dict[tuple[str, str], Any] = {}
 SECRET_PATTERN = re.compile(
     r"(?:\bsk-[A-Za-z0-9_-]{10,}|\bAKIA[0-9A-Z]{16}\b|\bBearer\s+[A-Za-z0-9._~-]{12,}|(?:password|secret|token)\s*[:=]\s*\S{6,})",
     re.IGNORECASE,
@@ -38,6 +39,20 @@ def _safe_path(value: object, *, directory: bool) -> Path:
     if not directory and not path.is_file():
         raise ValueError("file is required")
     return path
+
+
+def _core_client(core_root: Path, db_path: Path) -> Any:
+    root = str(core_root)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    key = (root, str(db_path))
+    core = _CORE_CLIENTS.get(key)
+    if core is None:
+        from rag_ime.local_sqlite_core import LocalSqliteCoreClient
+
+        core = LocalSqliteCoreClient(db_path)
+        _CORE_CLIENTS[key] = core
+    return core
 
 
 def _kind(value: object) -> str:
@@ -137,12 +152,12 @@ def _writeback(request: dict[str, Any]) -> dict[str, object]:
     candidates = [_writeback_candidate(item) for item in raw_candidates]
     if not (core_root / "rag_ime" / "adapter.py").is_file():
         return _fail("IME_CORE_WRITEBACK_API_MISSING", "RAG Core adapter is missing")
-    sys.path.insert(0, str(core_root))
+    if str(core_root) not in sys.path:
+        sys.path.insert(0, str(core_root))
     from rag_ime.adapter import InputMethodAdapter
-    from rag_ime.local_sqlite_core import LocalSqliteCoreClient
 
     started = time.perf_counter()
-    core = LocalSqliteCoreClient(db_path)
+    core = _core_client(core_root, db_path)
     adapter = InputMethodAdapter(core, project=_text(request.get("project"), 200) or "scoutpi-workbench")
     receipts = []
     duplicate_count = 0
@@ -187,8 +202,8 @@ def _query(request: dict[str, Any]) -> dict[str, object]:
     db_path = _safe_path(request.get("dbPath"), directory=False)
     if not (core_root / "rag_ime" / "local_sqlite_core.py").is_file():
         return _fail("IME_CORE_MODULE_MISSING", "RAG Core module is missing")
-    sys.path.insert(0, str(core_root))
-    from rag_ime.local_sqlite_core import LocalSqliteCoreClient
+    if str(core_root) not in sys.path:
+        sys.path.insert(0, str(core_root))
     from rag_ime.memory_models import ImeQueryContext
 
     query = _text(request.get("query"), 4_000)
@@ -196,7 +211,7 @@ def _query(request: dict[str, Any]) -> dict[str, object]:
         return _fail("IME_CORE_QUERY_REJECTED", "query is empty or sensitive")
     top_k = max(1, min(16, int(request.get("topK") or 8)))
     started = time.perf_counter()
-    core = LocalSqliteCoreClient(db_path)
+    core = _core_client(core_root, db_path)
     result = core.retrieve_candidates_v2(
         context=ImeQueryContext(
             current_input=query,
@@ -235,25 +250,35 @@ def _query(request: dict[str, Any]) -> dict[str, object]:
     }
 
 
-def main() -> int:
-    raw = sys.stdin.buffer.read(MAX_REQUEST_BYTES + 1)
+def _handle(raw: bytes) -> dict[str, object]:
     if len(raw) > MAX_REQUEST_BYTES:
-        response = _fail("IME_CORE_REQUEST_TOO_LARGE", "request exceeds 256 KB")
-    else:
-        try:
-            request = json.loads(raw.decode("utf-8") or "{}")
-            if not isinstance(request, dict) or request.get("schemaVersion") != "scoutpi.context-provider.request.v1":
-                response = _fail("IME_CORE_REQUEST_INVALID", "request contract is invalid")
-            elif request.get("op") == "query":
-                response = _query(request)
-            elif request.get("op") == "writeback":
-                response = _writeback(request)
-            else:
-                response = _fail("IME_CORE_OPERATION_BLOCKED", "operation is not supported")
-        except Exception:
-            response = _fail("IME_CORE_PROVIDER_FAILED", "provider query failed")
+        return _fail("IME_CORE_REQUEST_TOO_LARGE", "request exceeds 256 KB")
+    try:
+        request = json.loads(raw.decode("utf-8") or "{}")
+        if not isinstance(request, dict) or request.get("schemaVersion") != "scoutpi.context-provider.request.v1":
+            return _fail("IME_CORE_REQUEST_INVALID", "request contract is invalid")
+        if request.get("op") == "query":
+            return _query(request)
+        if request.get("op") == "writeback":
+            return _writeback(request)
+        return _fail("IME_CORE_OPERATION_BLOCKED", "operation is not supported")
+    except Exception:
+        return _fail("IME_CORE_PROVIDER_FAILED", "provider request failed")
+
+
+def _write_response(response: dict[str, object]) -> None:
     sys.stdout.write(json.dumps(response, ensure_ascii=False, separators=(",", ":")))
     sys.stdout.write("\n")
+    sys.stdout.flush()
+
+
+def main() -> int:
+    if "--serve" in sys.argv[1:]:
+        for raw in sys.stdin.buffer:
+            _write_response(_handle(raw.rstrip(b"\r\n")))
+        return 0
+    response = _handle(sys.stdin.buffer.read(MAX_REQUEST_BYTES + 1))
+    _write_response(response)
     return 0 if response.get("ok") else 2
 
 

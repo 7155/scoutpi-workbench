@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { access, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -16,6 +16,9 @@ export interface ContextProviderStatus {
   capabilities: ContextProviderCapability[];
   checkedAt: string;
   latencyMs: number;
+  sourceLatencyMs?: number;
+  processMode?: "persistent" | "one_shot";
+  workerReused?: boolean;
   itemCount: number;
   errorCode?: string;
 }
@@ -51,6 +54,7 @@ export interface ContextProvider {
   readonly capabilities: ContextProviderCapability[];
   query(input: ContextProviderQuery, signal?: AbortSignal): Promise<ContextProviderResult>;
   deliverWriteback?(input: ContextProviderWritebackRequest, signal?: AbortSignal): Promise<ContextProviderWritebackResult>;
+  close?(): Promise<void>;
 }
 
 export interface ImeCoreContextProviderConfig {
@@ -61,6 +65,7 @@ export interface ImeCoreContextProviderConfig {
   useUv?: boolean;
   scriptPath?: string;
   writebackEnabled?: boolean;
+  persistent?: boolean;
 }
 
 type ProcessResponse = {
@@ -70,6 +75,8 @@ type ProcessResponse = {
   receipt?: ContextWritebackProviderReceipt;
   diagnostics?: { latencyMs?: number; candidateCount?: number };
 };
+
+type ProcessInvocation = { response: ProcessResponse; workerReused: boolean };
 
 const defaultScript = fileURLToPath(new URL("../python/ime_core_context_provider.py", import.meta.url));
 
@@ -126,6 +133,128 @@ async function runJsonProcess(command: string, args: string[], cwd: string, inpu
   });
 }
 
+class PersistentJsonProcess {
+  private readonly command: string;
+  private readonly args: string[];
+  private readonly cwd: string;
+  private readonly idleMs: number;
+  private child?: ChildProcessWithoutNullStreams;
+  private stdout = "";
+  private stderr = "";
+  private pending?: { resolve: (value: ProcessInvocation) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout>; abort?: () => void; signal?: AbortSignal; reused: boolean };
+  private queue: Promise<void> = Promise.resolve();
+  private idleTimer?: ReturnType<typeof setTimeout>;
+
+  constructor(command: string, args: string[], cwd: string, idleMs = 5 * 60_000) {
+    this.command = command;
+    this.args = args;
+    this.cwd = cwd;
+    this.idleMs = idleMs;
+  }
+
+  request(input: unknown, timeoutMs: number, signal?: AbortSignal): Promise<ProcessInvocation> {
+    const operation = this.queue.then(() => this.requestNow(input, timeoutMs, signal));
+    this.queue = operation.then(() => undefined, () => undefined);
+    return operation;
+  }
+
+  async close(): Promise<void> {
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.idleTimer = undefined;
+    const child = this.child;
+    if (!child) return;
+    this.child = undefined;
+    this.rejectPending(Object.assign(new Error("context provider worker closed"), { code: "CONTEXT_PROVIDER_WORKER_CLOSED" }));
+    child.kill("SIGTERM");
+    await new Promise<void>((resolveClose) => {
+      if (child.exitCode !== null) return resolveClose();
+      const timer = setTimeout(resolveClose, 500);
+      timer.unref();
+      child.once("close", () => { clearTimeout(timer); resolveClose(); });
+    });
+  }
+
+  private requestNow(input: unknown, timeoutMs: number, signal?: AbortSignal): Promise<ProcessInvocation> {
+    if (signal?.aborted) return Promise.reject(Object.assign(new Error("context provider cancelled"), { code: "CONTEXT_PROVIDER_CANCELLED" }));
+    const payload = `${JSON.stringify(input)}\n`;
+    if (Buffer.byteLength(payload) > 256 * 1024) return Promise.reject(Object.assign(new Error("context provider request exceeded 256 KB"), { code: "CONTEXT_PROVIDER_REQUEST_TOO_LARGE" }));
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.idleTimer = undefined;
+    const reused = Boolean(this.child && this.child.exitCode === null && !this.child.killed);
+    const child = reused ? this.child! : this.start();
+    return new Promise<ProcessInvocation>((resolvePromise, rejectPromise) => {
+      const timer = setTimeout(() => this.terminate(Object.assign(new Error("context provider timed out"), { code: "CONTEXT_PROVIDER_TIMEOUT" })), timeoutMs);
+      timer.unref();
+      const abort = signal ? () => this.terminate(Object.assign(new Error("context provider cancelled"), { code: "CONTEXT_PROVIDER_CANCELLED" })) : undefined;
+      if (abort) signal!.addEventListener("abort", abort, { once: true });
+      this.pending = { resolve: resolvePromise, reject: rejectPromise, timer, abort, signal, reused };
+      child.stdin.write(payload, (error) => { if (error) this.terminate(Object.assign(error, { code: "CONTEXT_PROVIDER_PROCESS_FAILED" })); });
+    });
+  }
+
+  private start(): ChildProcessWithoutNullStreams {
+    this.stdout = "";
+    this.stderr = "";
+    const child = spawn(this.command, [...this.args, "--serve"], { cwd: this.cwd, env: process.env, stdio: ["pipe", "pipe", "pipe"] });
+    this.child = child;
+    child.stdout.on("data", (chunk) => this.handleStdout(String(chunk)));
+    child.stderr.on("data", (chunk) => { if (Buffer.byteLength(this.stderr) < 16_384) this.stderr = `${this.stderr}${String(chunk)}`.slice(0, 16_384); });
+    child.stdin.on("error", () => undefined);
+    child.on("error", (error) => this.terminate(Object.assign(error, { code: "CONTEXT_PROVIDER_SPAWN_FAILED" })));
+    child.on("close", () => {
+      if (this.child !== child) return;
+      this.child = undefined;
+      this.rejectPending(Object.assign(new Error("context provider worker exited"), { code: "CONTEXT_PROVIDER_PROCESS_FAILED" }));
+    });
+    return child;
+  }
+
+  private handleStdout(chunk: string): void {
+    this.stdout += chunk;
+    if (Buffer.byteLength(this.stdout) > 2 * 1024 * 1024) return this.terminate(Object.assign(new Error("context provider output exceeded 2 MB"), { code: "CONTEXT_PROVIDER_OUTPUT_TOO_LARGE" }));
+    const newline = this.stdout.indexOf("\n");
+    if (newline < 0) return;
+    const line = this.stdout.slice(0, newline).trim();
+    this.stdout = this.stdout.slice(newline + 1);
+    if (!this.pending || !line) return this.terminate(Object.assign(new Error("context provider protocol desynchronized"), { code: "CONTEXT_PROVIDER_RESPONSE_INVALID" }));
+    try {
+      const response = JSON.parse(line) as ProcessResponse;
+      const pending = this.takePending();
+      pending?.resolve({ response, workerReused: pending.reused });
+      this.scheduleIdle();
+    } catch {
+      this.terminate(Object.assign(new Error("context provider returned invalid JSON"), { code: "CONTEXT_PROVIDER_RESPONSE_INVALID" }));
+    }
+  }
+
+  private takePending() {
+    const pending = this.pending;
+    if (!pending) return undefined;
+    this.pending = undefined;
+    clearTimeout(pending.timer);
+    if (pending.abort) pending.signal?.removeEventListener("abort", pending.abort);
+    return pending;
+  }
+
+  private rejectPending(error: Error): void {
+    this.takePending()?.reject(error);
+  }
+
+  private terminate(error: Error): void {
+    const child = this.child;
+    this.child = undefined;
+    this.stdout = "";
+    this.rejectPending(error);
+    child?.kill("SIGTERM");
+  }
+
+  private scheduleIdle(): void {
+    if (!this.child || this.pending) return;
+    this.idleTimer = setTimeout(() => { if (!this.pending) void this.close(); }, this.idleMs);
+    this.idleTimer.unref();
+  }
+}
+
 export class ImeCoreContextProvider implements ContextProvider {
   readonly providerId = "wisdom-weasel-rag-ime";
   readonly displayName = "Wisdom Weasel RAG Core";
@@ -137,6 +266,9 @@ export class ImeCoreContextProvider implements ContextProvider {
   readonly useUv: boolean;
   readonly scriptPath: string;
   readonly writebackEnabled: boolean;
+  readonly persistent: boolean;
+  private worker?: PersistentJsonProcess;
+  private launcherPromise?: Promise<{ command: string; args: string[] }>;
 
   constructor(config: ImeCoreContextProviderConfig) {
     this.coreRoot = resolve(config.coreRoot);
@@ -146,16 +278,16 @@ export class ImeCoreContextProvider implements ContextProvider {
     this.useUv = config.useUv ?? true;
     this.scriptPath = resolve(config.scriptPath || defaultScript);
     this.writebackEnabled = config.writebackEnabled === true;
+    this.persistent = config.persistent !== false;
     this.capabilities = this.writebackEnabled ? ["query", "writeback"] : ["query"];
   }
 
   async query(input: ContextProviderQuery, signal?: AbortSignal): Promise<ContextProviderResult> {
     const started = Date.now();
-    const base = { providerId: this.providerId, displayName: this.displayName, transport: "process" as const, capabilities: this.capabilities, checkedAt: new Date().toISOString() };
+    const base = { providerId: this.providerId, displayName: this.displayName, transport: "process" as const, capabilities: this.capabilities, checkedAt: new Date().toISOString(), processMode: this.persistent ? "persistent" as const : "one_shot" as const };
     try {
       await this.assertConfigured();
-      const { command, args } = await this.launcher();
-      const response = await runJsonProcess(command, args, this.coreRoot, {
+      const invocation = await this.invoke({
         schemaVersion: "scoutpi.context-provider.request.v1",
         op: "query",
         coreRoot: this.coreRoot,
@@ -166,15 +298,16 @@ export class ImeCoreContextProvider implements ContextProvider {
         topK: Math.max(1, Math.min(16, Math.floor(input.maxItems))),
         sourceBudgetMs: Math.max(20, Math.min(2_000, Math.floor(input.timeoutMs * 0.7))),
       }, input.timeoutMs, signal);
+      const response = invocation.response;
       if (!response.ok || !response.envelope) throw Object.assign(new Error("context provider rejected the query"), { code: response.error?.code || "CONTEXT_PROVIDER_REJECTED" });
       return {
         envelope: response.envelope,
-        status: { ...base, state: "ready", latencyMs: Number(response.diagnostics?.latencyMs) || Date.now() - started, itemCount: response.envelope.items.length },
+        status: { ...base, state: "ready", latencyMs: Date.now() - started, sourceLatencyMs: Number(response.diagnostics?.latencyMs) || undefined, workerReused: invocation.workerReused, itemCount: response.envelope.items.length },
       };
     } catch (error) {
       const code = safeErrorCode(error);
       const unavailable = code === "ENOENT" || code === "CONTEXT_PROVIDER_NOT_CONFIGURED" || code === "CONTEXT_PROVIDER_SPAWN_FAILED";
-      return { status: { ...base, state: unavailable ? "unavailable" : "failed", latencyMs: Date.now() - started, itemCount: 0, errorCode: code } };
+      return { status: { ...base, state: unavailable ? "unavailable" : "failed", latencyMs: Date.now() - started, workerReused: false, itemCount: 0, errorCode: code } };
     }
   }
 
@@ -182,8 +315,7 @@ export class ImeCoreContextProvider implements ContextProvider {
     if (!this.writebackEnabled) return { errorCode: "CONTEXT_PROVIDER_WRITEBACK_DISABLED" };
     try {
       await this.assertConfigured(true);
-      const { command, args } = await this.launcher();
-      const response = await runJsonProcess(command, args, this.coreRoot, {
+      const invocation = await this.invoke({
         schemaVersion: "scoutpi.context-provider.request.v1",
         op: "writeback",
         coreRoot: this.coreRoot,
@@ -192,12 +324,18 @@ export class ImeCoreContextProvider implements ContextProvider {
         delivery: input.delivery,
         writeback: input.writeback,
       }, Math.max(300, Math.min(10_000, input.timeoutMs)), signal);
+      const response = invocation.response;
       if (!response.ok || !response.receipt) return { errorCode: safeErrorCode(response.error || { code: "CONTEXT_PROVIDER_WRITEBACK_REJECTED" }) };
       if (response.receipt.providerId !== this.providerId || response.receipt.deliveryId !== input.delivery.deliveryId) return { errorCode: "CONTEXT_PROVIDER_RECEIPT_MISMATCH" };
       return { receipt: response.receipt };
     } catch (error) {
       return { errorCode: safeErrorCode(error) };
     }
+  }
+
+  async close(): Promise<void> {
+    await this.worker?.close();
+    this.worker = undefined;
   }
 
   private async assertConfigured(requireWriteback = false): Promise<void> {
@@ -226,6 +364,14 @@ export class ImeCoreContextProvider implements ContextProvider {
     }
     return { command: "uv", args: ["run", "--project", this.coreRoot, "python", this.scriptPath] };
   }
+
+  private async invoke(input: unknown, timeoutMs: number, signal?: AbortSignal): Promise<ProcessInvocation> {
+    this.launcherPromise ||= this.launcher();
+    const { command, args } = await this.launcherPromise;
+    if (!this.persistent) return { response: await runJsonProcess(command, args, this.coreRoot, input, timeoutMs, signal), workerReused: false };
+    this.worker ||= new PersistentJsonProcess(command, args, this.coreRoot);
+    return await this.worker.request(input, timeoutMs, signal);
+  }
 }
 
 export function configuredContextProviders(): ContextProvider[] {
@@ -239,5 +385,6 @@ export function configuredContextProviders(): ContextProvider[] {
     pythonCommand: process.env.SCOUTPI_IME_CONTEXT_PYTHON?.trim(),
     useUv: process.env.SCOUTPI_IME_CONTEXT_USE_UV !== "0",
     writebackEnabled: process.env.SCOUTPI_IME_CONTEXT_WRITEBACK === "1",
+    persistent: process.env.SCOUTPI_IME_CONTEXT_PERSISTENT !== "0",
   })];
 }

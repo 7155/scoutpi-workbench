@@ -74,7 +74,7 @@ export interface AgentCheckpointSummary {
 }
 export interface ContextPackSummary {
   packId: string; sessionId: string; queryHash: string; createdAt: string; sourceProviders: string[]; detectedMemoryTools: string[];
-  providers: Array<{ providerId: string; displayName: string; transport: "process" | "http" | "file"; state: "ready" | "unavailable" | "failed"; capabilities: Array<"query" | "writeback">; checkedAt: string; latencyMs: number; itemCount: number; errorCode?: string }>;
+  providers: Array<{ providerId: string; displayName: string; transport: "process" | "http" | "file"; state: "ready" | "unavailable" | "failed"; capabilities: Array<"query" | "writeback">; checkedAt: string; latencyMs: number; sourceLatencyMs?: number; processMode?: "persistent" | "one_shot"; workerReused?: boolean; itemCount: number; errorCode?: string }>;
   budget: { estimator: string; maxTokens: number; deliveredTokens: number; candidateCount: number; selectedCount: number; truncated: boolean };
   items: Array<{ candidateId: string; kind: string; text: string; confidence: number; trust: string; provenance: { providerId: string; sourceId: string }; estimatedTokens: number; truncated: boolean }>;
 }

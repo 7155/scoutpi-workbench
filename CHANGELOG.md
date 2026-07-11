@@ -12,6 +12,7 @@
 - Added Browser Evidence Bridge event dispatch so canonical evidence imports can activate an explicitly authorized workflow without persisting raw event payloads.
 - Added a default query-only Wisdom Weasel RAG Core Context Provider with a bounded JSON subprocess contract, stable provenance, secret rejection, timeout/output limits, and live provider status.
 - Added optional approved Core writeback with canonical payload integrity, durable delivery staging, privacy-aware Core API use, deterministic retry deduplication, content-minimal receipts, and Runtime Center delivery state.
+- Added a bounded persistent Context Provider worker with serialized JSONL requests, timeout/cancellation restart, idle/session cleanup, warm/cold telemetry, and a content-free benchmark harness.
 - Upgraded Pi ecosystem reuse into a Capability Broker that detects both tools and command-only market extensions across research, MCP, browser, memory, context, subagents, goals, interop, security, package management, and evaluation.
 - Isolated every paid Pi RPC harness case in a fresh temporary workspace and made full-suite execution explicit.
 - Fixed an asynchronous local-export test cleanup race observed on GitHub Actions.

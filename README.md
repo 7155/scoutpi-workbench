@@ -148,7 +148,7 @@ export SCOUTPI_IME_CORE_ROOT=/absolute/path/to/wisdom-weasel-rag-ime
 export SCOUTPI_IME_CORE_DB="$HOME/Library/Application Support/RagIme/rag-ime.sqlite"
 ```
 
-The adapter queries the existing Core through a fixed, versioned subprocess contract. It does not enable raw debug output. Writeback remains disabled unless the operator also sets:
+The adapter queries the existing Core through a fixed, versioned subprocess contract and reuses one bounded worker during the Pi session. Timeout/cancellation kills the worker, idle/session shutdown closes it, and `SCOUTPI_IME_CONTEXT_PERSISTENT=0` restores one-shot execution. It does not enable raw debug output. Writeback remains disabled unless the operator also sets:
 
 ```bash
 export SCOUTPI_IME_CONTEXT_WRITEBACK=1
@@ -244,6 +244,14 @@ pnpm python:check
 pnpm harness:earth
 pnpm harness:mcp
 pnpm web:build
+```
+
+The local Context Provider benchmark never invokes a model or writes candidate text into its report:
+
+```bash
+SCOUTPI_IME_CORE_ROOT=/absolute/path/to/wisdom-weasel-rag-ime \
+SCOUTPI_IME_CORE_DB=/absolute/path/to/rag-ime.sqlite \
+pnpm harness:context-provider
 ```
 
 The real Pi RPC harness is opt-in because it can call a paid model:

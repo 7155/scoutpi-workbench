@@ -45,6 +45,8 @@ export SCOUTPI_IME_CORE_DB="$HOME/Library/Application Support/RagIme/rag-ime.sql
 
 When the Core has `.venv/bin/python`, the provider uses it directly. Otherwise it falls back to `uv run --project <core-root> python`. `SCOUTPI_IME_CONTEXT_USE_UV=0` and `SCOUTPI_IME_CONTEXT_PYTHON=/path/to/python` provide an explicit launcher override.
 
+By default one bounded Python worker is reused inside the Pi extension session. Requests remain serialized, every line keeps the same 256 KB input and 2 MB output limits, timeout or cancellation terminates the worker, five minutes of inactivity closes it, and `session_shutdown` waits for closure. The next query restarts cleanly. Set `SCOUTPI_IME_CONTEXT_PERSISTENT=0` to retain the one-process-per-query fallback.
+
 The adapter is query-only by default. It rejects secret-looking queries and candidates, caps request/output size, limits results to 16, enforces a timeout, disables raw-event candidates, and returns stable memory IDs as provenance. Provider health, latency, candidate count, transport, and error code are stored in the Context Pack without storing the full user prompt.
 
 An unavailable provider fails closed and does not block Pi. Approved ScoutPi writebacks remain in the durable provider outbox unless the operator explicitly enables the reviewed Core writeback adapter.
@@ -73,7 +75,22 @@ structured runtime fact
 
 If the flag is absent, the approval creates an outbox record only. If delivery fails, the approved record and failed delivery remain visible for operator recovery; ScoutPi does not silently retry through a different memory surface.
 
-Local integration evidence on 2026-07-11: the real Core returned five bounded candidates through the versioned provider contract. Direct Core retrieval was about 67 ms; the cold Python process path was about 0.5 s. These are local measurements, not product guarantees.
+Local integration evidence on 2026-07-11: the real Core returned five bounded candidates through the versioned provider contract. The reproducible benchmark stores only path/query hashes, counts, and timings:
+
+```bash
+SCOUTPI_IME_CORE_ROOT=/absolute/path/to/wisdom-weasel-rag-ime \
+SCOUTPI_IME_CORE_DB=/absolute/path/to/rag-ime.sqlite \
+pnpm harness:context-provider
+```
+
+| Mode | Local result |
+| --- | ---: |
+| one-shot median | 144.5 ms |
+| persistent worker first request after shared warmup | 137 ms |
+| persistent worker warm median | 37 ms |
+| warm reduction versus one-shot median | 74.4% |
+
+These are local measurements from four runs per mode, not product guarantees. Context Pack telemetry now separates end-to-end `latencyMs` from Core `sourceLatencyMs` and records whether the worker was reused.
 
 ## Candidate Contract
 

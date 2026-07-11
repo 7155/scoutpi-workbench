@@ -125,3 +125,14 @@
 - Visual QA: 1440x1000 and 390x844 Context views show provider health and a delivered writeback with no horizontal overflow, console errors, or warnings.
 - Git snapshot before commit: `main...origin/main`; 14 scoped paths, 553 insertions and 37 deletions. Generated Context state, Pi reports, builds, and Playwright screenshots remain ignored.
 - Verification: `pnpm check` passes 60 tests, Python compile, Earth/MCP harnesses, and production build; targeted Context tests cover direct approval, integrity, receipt validation, cross-process serialization, and idempotent retry.
+
+## 2026-07-11 09:25 - Bounded persistent Context worker
+
+- Replaced one-Python-process-per-turn with a session-scoped, serialized JSONL worker while retaining one-shot fallback through `SCOUTPI_IME_CONTEXT_PERSISTENT=0`.
+- Kept the privacy boundary unchanged: private stdin/stdout only, no network listener, 256 KB request and 2 MB response caps, five-minute idle shutdown, explicit Pi session cleanup, and worker restart after timeout or cancellation.
+- Split end-to-end provider latency from Core source latency and surfaced warm/cold state in Context Pack telemetry and Runtime Center.
+- Added a content-free benchmark harness that stores only path/query hashes, counts, and timings. Real local result: one-shot median 144.5 ms versus persistent warm median 37 ms, a 74.4% reduction across four runs per mode.
+- Visual QA compares a 3 ms warm UI sample with the earlier 515 ms cold sample; 1440x1000 and 390x844 layouts remain readable, with no horizontal overflow, console errors, or warnings.
+- Real Pi RPC smoke starts `gpt-5.6`, `xhigh`, all seven extensions, and no extension errors with the real Core configured. No paid model turn or private candidate content was emitted.
+- Git snapshot before commit: 13 scoped tracked paths plus the new Context benchmark harness; generated benchmark reports and screenshots remain ignored.
+- Verification: `pnpm check` passes 61 tests, Python compile, Earth/MCP harnesses, and production build; `pnpm harness:context-provider` passes; `pnpm audit --prod` reports no known vulnerabilities.

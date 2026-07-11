@@ -161,6 +161,7 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
+    await Promise.all(providers.map((provider) => provider.close?.()));
     sessionId = undefined;
     currentPackId = undefined;
     pending.clear();
