@@ -173,6 +173,7 @@ test("Pi spatial view state is validated, revisioned and durable", async () => {
     assert.equal(first.mode, "3d");
     assert.equal(first.target?.role, "vegetation");
     assert.equal(first.target?.year, 2021);
+    assert.equal(first.control.toolCallId, "tool-call-1");
 
     const [second, third] = await Promise.all([
       workspace.setSpatialView({ source: "pi", planId: plan.planId, year: 2020, operation: "view_set" }),
@@ -180,6 +181,9 @@ test("Pi spatial view state is validated, revisioned and durable", async () => {
     ]);
     assert.deepEqual([second.revision, third.revision], [2, 3]);
     assert.equal((await new EarthWorkspace(root, process.execPath).getSpatialView()).target?.year, 2019);
+    const normalized = await workspace.setSpatialView({ source: "pi", planId: plan.planId, operation: "view_set", toolCallId: "call-provider|function-item" });
+    assert.match(normalized.control.toolCallId || "", /^call_[a-f0-9]{40}$/);
+    assert.notEqual(normalized.control.toolCallId, "call-provider|function-item");
     await assert.rejects(() => workspace.setSpatialView({ source: "pi", planId: plan.planId, role: "missing" }), /role missing/);
     await assert.rejects(() => workspace.setSpatialView({ source: "pi", planId: plan.planId, mode: "terrain" as any }), /mode must be 2d or 3d/);
   } finally {

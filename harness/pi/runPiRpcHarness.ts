@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
@@ -7,7 +7,19 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { EarthWorkspace, type EarthAdapterPack, type InvestigationSpec } from "../../packages/earth-workspace/src/index.ts";
-import { scorePiHarnessCase, summarizePiHarnessEvents, type PiHarnessApproval, type PiHarnessBudget, type PiHarnessCase } from "./scorers.ts";
+import {
+  emptyPiHarnessWorkspaceOutcome,
+  compactPiHarnessError,
+  sanitizePiHarnessEvents,
+  scorePiHarnessCase,
+  sumPiHarnessUsage,
+  summarizePiHarnessEvents,
+  summarizePiHarnessScores,
+  type PiHarnessApproval,
+  type PiHarnessBudget,
+  type PiHarnessCase,
+  type PiHarnessWorkspaceOutcome,
+} from "./scorers.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const args = new Set(process.argv.slice(2));
@@ -15,8 +27,34 @@ const live = args.has("--live") || process.env.SCOUTPI_PI_LIVE === "1";
 const rpcSmoke = args.has("--rpc-smoke");
 const runAllCases = args.has("--all") || process.env.SCOUTPI_PI_ALL_CASES === "1";
 const selectedCase = process.argv.find((value) => value.startsWith("--case="))?.slice("--case=".length) || process.env.SCOUTPI_PI_CASE;
-const model = process.env.SCOUTPI_PI_MODEL || "gpt-5.6";
+const model = process.env.SCOUTPI_PI_MODEL || "gpt-5.6-sol";
 const baseUrl = (process.env.SCOUTPI_PI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
+const allowUnlistedModel = process.env.SCOUTPI_PI_ALLOW_UNLISTED_MODEL === "1";
+
+function digest(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function providerOriginHash(): string {
+  try { return digest(new URL(baseUrl).origin); }
+  catch { return digest("invalid-provider-origin"); }
+}
+
+function privacyFailure(error: unknown): { code: string; chars: number; sha256: string } {
+  return compactPiHarnessError(error instanceof Error ? error.message : String(error));
+}
+
+function preflightReport(input: Awaited<ReturnType<typeof modelPreflight>>) {
+  const acceptedByExplicitOverride = allowUnlistedModel && input.status !== undefined && input.status >= 200 && input.status < 300 && !input.listedModels.includes(model);
+  return {
+    available: input.available || acceptedByExplicitOverride,
+    status: input.status,
+    requestedModelListed: input.listedModels.includes(model),
+    acceptedByExplicitOverride,
+    listedModelCount: input.listedModels.length,
+    ...(input.error ? { error: privacyFailure(input.error) } : {}),
+  };
+}
 
 function boundedNumber(name: string, fallback: number, minimum: number, maximum: number): number {
   const raw = process.env[name];
@@ -89,12 +127,12 @@ class JsonlRpcClient {
     const lines = createInterface({ input: this.process.stdout! });
     lines.on("line", (line) => { void this.handleLine(line); });
     this.process.once("exit", (code, signal) => {
-      const error = new Error(`Pi RPC exited code=${code} signal=${signal}: ${this.stderr.slice(-2_000)}`);
+      const error = new Error(`PI_RPC_EXITED code=${code} signal=${signal} stderr_sha256=${digest(this.stderr)}`);
       for (const pending of this.pending.values()) pending.reject(error);
       this.pending.clear();
     });
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 250));
-    if (this.process.exitCode !== null) throw new Error(`Pi RPC failed to start: ${this.stderr}`);
+    if (this.process.exitCode !== null) throw new Error(`PI_RPC_START_FAILED stderr_sha256=${digest(this.stderr)}`);
   }
 
   async request(command: Record<string, unknown>): Promise<any> {
@@ -111,7 +149,7 @@ class JsonlRpcClient {
     const start = this.events.length;
     await this.request({ type: "prompt", message: prompt });
     await new Promise<void>((resolvePromise, reject) => {
-      const timer = setTimeout(() => reject(new Error(`Agent timeout: ${this.stderr.slice(-2_000)}`)), timeoutMs);
+      const timer = setTimeout(() => reject(new Error(`AGENT_TIMEOUT stderr_sha256=${digest(this.stderr)}`)), timeoutMs);
       const poll = setInterval(() => {
         if (this.events.slice(start).some((event) => event.type === "agent_end")) { clearInterval(poll); clearTimeout(timer); resolvePromise(); }
       }, 50);
@@ -185,9 +223,52 @@ function approvalOperation(message: string): string | undefined {
   return labels[label] || label.replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 }
 
-async function createIsolatedRuntime(): Promise<{ agentDir: string; childEnv: NodeJS.ProcessEnv; fixturePlanId: string }> {
+async function captureWorkspaceOutcome(earthRoot: string): Promise<PiHarnessWorkspaceOutcome> {
+  const workspace = new EarthWorkspace(earthRoot);
+  const [plans, jobs, stories, adapters] = await Promise.all([
+    workspace.listPlans(),
+    workspace.listJobs(),
+    workspace.listStories(),
+    workspace.listAdapters(),
+  ]);
+  let artifacts = 0;
+  for (const job of jobs) {
+    artifacts += (await workspace.listJobArtifacts(job.jobId)).filter((artifact) => artifact.name !== "job.json").length;
+  }
+  return {
+    plans: plans.length,
+    jobs: jobs.length,
+    completedDryRuns: jobs.filter((job) => job.mode === "dry_run" && job.state === "completed").length,
+    liveJobs: jobs.filter((job) => job.mode === "live").length,
+    stories: stories.length,
+    artifacts,
+    adapterProbesPassed: adapters.filter((adapter) => adapter.verification.status === "passed").length,
+    adapterProbesFailed: adapters.filter((adapter) => adapter.verification.status === "failed").length,
+  };
+}
+
+function subtractWorkspaceOutcome(current: PiHarnessWorkspaceOutcome, baseline: PiHarnessWorkspaceOutcome): PiHarnessWorkspaceOutcome {
+  const result = emptyPiHarnessWorkspaceOutcome();
+  for (const key of Object.keys(result) as Array<keyof PiHarnessWorkspaceOutcome>) result[key] = Math.max(0, current[key] - baseline[key]);
+  return result;
+}
+
+interface IsolatedRuntime {
+  agentDir: string;
+  earthRoot: string;
+  skillPath: string;
+  childEnv: NodeJS.ProcessEnv;
+  fixturePlanId: string;
+  invalidAdapterId: string;
+  baseline: PiHarnessWorkspaceOutcome;
+}
+
+async function createIsolatedRuntime(): Promise<IsolatedRuntime> {
   const agentDir = await mkdtemp(join(tmpdir(), "scoutpi-pi-agent-"));
   const earthRoot = join(agentDir, "earth_workspace");
+  const skillPath = join(agentDir, "skills", "scoutpi-earth-investigation");
+  await mkdir(skillPath, { recursive: true });
+  await writeFile(join(skillPath, "SKILL.md"), await readFile(join(root, ".pi/skills/scoutpi-earth-investigation/SKILL.md")));
   const adapterPack = JSON.parse(await readFile(join(root, "examples/adapter-packs/earth-engine-starter.json"), "utf8")) as EarthAdapterPack;
   const workspace = new EarthWorkspace(earthRoot);
   await workspace.importAdapterPack(adapterPack, "example");
@@ -203,13 +284,34 @@ async function createIsolatedRuntime(): Promise<{ agentDir: string; childEnv: No
     preferredOutputs: ["yearly_csv", "metrics_json"],
   };
   const fixturePlanId = (await workspace.plan(fixture)).plan.planId;
+  const invalidAdapterId = "harness-invalid-band";
+  await workspace.registerAdapter({
+    schemaVersion: "scoutpi.earth.adapter.v1",
+    datasetId: invalidAdapterId,
+    title: "Harness invalid-band probe fixture",
+    provider: "ScoutPi harness",
+    collectionId: "GOOGLE/DYNAMICWORLD/V1",
+    documentationUrl: "https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_DYNAMICWORLD_V1",
+    roles: ["land_cover"],
+    startYear: 2015,
+    scaleMeters: 10,
+    cadence: "per Sentinel-2 scene",
+    limitations: ["This adapter intentionally requests a missing band and is only valid inside the isolated harness."],
+    analysis: { metric: "band_mean", bands: ["HARNESS_MISSING_BAND"], outputName: "invalid_probe_fixture" },
+  }, "example");
+  const baseline = await captureWorkspaceOutcome(earthRoot);
   return {
     agentDir,
+    earthRoot,
+    skillPath,
     fixturePlanId,
+    invalidAdapterId,
+    baseline,
     childEnv: {
       ...process.env,
       PI_CODING_AGENT_DIR: agentDir,
       SCOUTPI_EARTH_ROOT: earthRoot,
+      SCOUTPI_EARTH_PYTHON: process.env.SCOUTPI_EARTH_PYTHON || join(root, ".venv/bin/python"),
       SCOUTPI_RUNS_ROOT: join(agentDir, "runs"),
       SCOUTPI_CHECKPOINT_ROOT: join(agentDir, "checkpoints"),
       SCOUTPI_CONTEXT_ROOT: join(agentDir, "context"),
@@ -218,6 +320,30 @@ async function createIsolatedRuntime(): Promise<{ agentDir: string; childEnv: No
       SCOUTPI_SKILL_PUBLISH_ROOT: join(agentDir, "published_skills"),
     },
   };
+}
+
+const piHarnessTools = ["read", "earth_workspace", "python_analysis", "earth_story"] as const;
+const piExtensionNames = ["scoutpi-context", "scoutpi-evidence", "scoutpi-triggers", "scoutpi-governance", "scoutpi-observability", "scoutpi-checkpoint", "scoutpi-earth"] as const;
+
+function piRpcArguments(cli: string, runtime: IsolatedRuntime): string[] {
+  const extensions = piExtensionNames.flatMap((name) => ["--extension", join(root, `.pi/extensions/${name}/index.ts`)]);
+  return [
+    cli,
+    "--mode", "rpc",
+    "--provider", "scoutpi-harness",
+    "--model", model,
+    "--thinking", "xhigh",
+    "--approve",
+    "--no-session",
+    "--no-context-files",
+    "--no-prompt-templates",
+    "--no-themes",
+    "--no-builtin-tools",
+    "--tools", piHarnessTools.join(","),
+    "--no-extensions",
+    ...extensions,
+    "--skill", runtime.skillPath,
+  ];
 }
 
 async function writeHarnessModel(agentDir: string, inputCost = 0, outputCost = 0): Promise<void> {
@@ -229,32 +355,50 @@ async function main(): Promise<void> {
   if (cases.length < 10 || cases.some((item) => !item.caseId || !item.prompt || !item.expectedOperations.length)) throw new Error("Pi harness cases are incomplete");
   const key = loadKey();
   const preflight = await modelPreflight(key);
+  const modelReady = preflight.available || (allowUnlistedModel && preflight.status !== undefined && preflight.status >= 200 && preflight.status < 300);
   const runId = `pi_${new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 17)}_${randomUUID().slice(0, 8)}`;
   const outputDir = join(root, "exports/pi_harness", runId);
   await mkdir(outputDir, { recursive: true });
   const report: any = {
-    schemaVersion: "scoutpi.pi-harness-report.v1",
+    schemaVersion: "scoutpi.pi-harness-report.v2",
     runId,
     model,
-    baseUrl,
+    providerOriginSha256: providerOriginHash(),
     live,
-    preflight,
+    preflight: preflightReport(preflight),
     caseCount: cases.length,
     budget: {
       ...defaultBudget,
       runMaxTokens,
       modelMaxOutputTokens,
       reportedCostEnforced: Boolean(defaultBudget.maxReportedCostUsd && (Number(process.env.SCOUTPI_MODEL_INPUT_USD_PER_M) > 0 || Number(process.env.SCOUTPI_MODEL_OUTPUT_USD_PER_M) > 0)),
+      unlistedModelOverride: allowUnlistedModel,
     },
-    security: { apiKeyPersisted: false, rawPromptPersisted: false, isolatedWorkspace: true },
+    security: {
+      apiKeyPersisted: false,
+      providerUrlPersisted: false,
+      rawPromptPersisted: false,
+      rawEventsPersisted: false,
+      sanitizedTracePersisted: live,
+      isolatedWorkspace: true,
+      temporaryWorkspaceRemoved: true,
+    },
+    runtimeProfile: {
+      skill: "scoutpi-earth-investigation",
+      builtInTools: ["read"],
+      earthGatewayTools: ["earth_workspace", "python_analysis", "earth_story"],
+      shellToolEnabled: false,
+      fileMutationToolsEnabled: false,
+      projectContextFilesEnabled: false,
+    },
     results: [],
   };
 
   if (!live && !rpcSmoke) {
-    report.state = preflight.available ? "ready" : "blocked_model_unavailable";
+    report.state = preflight.available ? "ready" : modelReady ? "ready_unlisted_model_override" : "blocked_model_unavailable";
     await writeFile(join(outputDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
-    const ok = preflight.available;
-    console.log(JSON.stringify({ ok, mode: "preflight", state: report.state, model, listedModels: preflight.listedModels, cases: cases.length, report: join(outputDir, "report.json") }, null, 2));
+    const ok = modelReady;
+    console.log(JSON.stringify({ ok, mode: "preflight", state: report.state, model, requestedModelListed: preflight.listedModels.includes(model), acceptedByExplicitOverride: modelReady && !preflight.available, listedModelCount: preflight.listedModels.length, cases: cases.length, report: join(outputDir, "report.json") }, null, 2));
     if (!ok) process.exitCode = 2;
     return;
   }
@@ -263,14 +407,16 @@ async function main(): Promise<void> {
     const runtime = await createIsolatedRuntime();
     await writeHarnessModel(runtime.agentDir);
     const cli = process.env.SCOUTPI_PI_CLI || resolve(root, "node_modules/@earendil-works/pi-coding-agent/dist/cli.js");
-    const extensions = ["scoutpi-context", "scoutpi-evidence", "scoutpi-triggers", "scoutpi-governance", "scoutpi-observability", "scoutpi-checkpoint", "scoutpi-earth"].flatMap((name) => ["--extension", join(root, `.pi/extensions/${name}/index.ts`)]);
-    const client = new JsonlRpcClient(process.execPath, [cli, "--mode", "rpc", "--provider", "scoutpi-harness", "--model", model, "--thinking", "xhigh", "--approve", "--no-session", "--no-builtin-tools", "--no-extensions", ...extensions], root, { ...runtime.childEnv, SCOUTPI_HARNESS_API_KEY: key }, false, defaultBudget);
+    const client = new JsonlRpcClient(process.execPath, piRpcArguments(cli, runtime), runtime.agentDir, { ...runtime.childEnv, SCOUTPI_HARNESS_API_KEY: key }, false, defaultBudget);
     try {
       await client.start();
       const state = await client.request({ type: "get_state" });
       if (state.data?.thinkingLevel !== "xhigh") throw new Error(`Pi RPC reasoning mismatch: expected xhigh, got ${String(state.data?.thinkingLevel)}`);
+      const commands = await client.request({ type: "get_commands" });
+      const skillLoaded = Array.isArray(commands.data?.commands) && commands.data.commands.some((command: any) => command.source === "skill" && command.name === "skill:scoutpi-earth-investigation");
+      if (!skillLoaded) throw new Error("PI_SKILL_NOT_LOADED");
       report.state = "rpc_ready";
-      report.rpc = { model: state.data?.model?.id, thinkingLevel: state.data?.thinkingLevel, sessionId: state.data?.sessionId, extensionErrors: /extension.*error/i.test(client.stderr) };
+      report.rpc = { model: state.data?.model?.id, thinkingLevel: state.data?.thinkingLevel, sessionId: state.data?.sessionId, skillLoaded, extensionErrors: /extension.*error/i.test(client.stderr) };
       await writeFile(join(outputDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
       console.log(JSON.stringify({ ok: true, mode: "rpc-smoke", state: report.state, rpc: report.rpc, report: join(outputDir, "report.json") }, null, 2));
     } finally {
@@ -279,10 +425,10 @@ async function main(): Promise<void> {
     }
     return;
   }
-  if (!preflight.available || !key) {
+  if (!modelReady || !key) {
     report.state = "blocked_model_unavailable";
     await writeFile(join(outputDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
-    console.error(JSON.stringify({ ok: false, reason: report.state, model, listedModels: preflight.listedModels, error: preflight.error, report: join(outputDir, "report.json") }, null, 2));
+    console.error(JSON.stringify({ ok: false, reason: report.state, model, requestedModelListed: preflight.listedModels.includes(model), listedModelCount: preflight.listedModels.length, error: preflight.error ? privacyFailure(preflight.error) : undefined, report: join(outputDir, "report.json") }, null, 2));
     process.exitCode = 2;
     return;
   }
@@ -290,54 +436,76 @@ async function main(): Promise<void> {
   const inputCost = Number(process.env.SCOUTPI_MODEL_INPUT_USD_PER_M || 0);
   const outputCost = Number(process.env.SCOUTPI_MODEL_OUTPUT_USD_PER_M || 0);
   const cli = process.env.SCOUTPI_PI_CLI || resolve(root, "node_modules/@earendil-works/pi-coding-agent/dist/cli.js");
-  const extensions = ["scoutpi-context", "scoutpi-evidence", "scoutpi-triggers", "scoutpi-governance", "scoutpi-observability", "scoutpi-checkpoint", "scoutpi-earth"].flatMap((name) => ["--extension", join(root, `.pi/extensions/${name}/index.ts`)]);
   const requestedCase = selectedCase || cases[0]?.caseId;
   const selected = runAllCases ? cases : cases.filter((item) => item.caseId === requestedCase);
   if (!selected.length) throw new Error(`Unknown case ${selectedCase}`);
   let cumulativeTokens = 0;
   for (const item of selected) {
     if (cumulativeTokens >= runMaxTokens) {
-      report.results.push({ caseId: item.caseId, passed: false, skipped: true, error: `RUN_TOKEN_BUDGET_EXCEEDED: ${cumulativeTokens}>=${runMaxTokens}` });
+      report.results.push({ caseId: item.caseId, passed: false, skipped: true, failure: { code: "RUN_TOKEN_BUDGET_EXCEEDED", currentTokens: cumulativeTokens, maxTokens: runMaxTokens } });
       continue;
     }
     const runtime = await createIsolatedRuntime();
     await writeHarnessModel(runtime.agentDir, inputCost, outputCost);
+    const remainingRunTokens = runMaxTokens - cumulativeTokens;
     const caseBudget: PiHarnessBudget = {
       maxToolCalls: item.maxToolCalls ?? defaultBudget.maxToolCalls,
       maxTurns: item.maxTurns ?? defaultBudget.maxTurns,
-      maxTotalTokens: item.maxTotalTokens ?? defaultBudget.maxTotalTokens,
+      maxTotalTokens: Math.min(item.maxTotalTokens ?? defaultBudget.maxTotalTokens, remainingRunTokens),
       maxReportedCostUsd: item.maxReportedCostUsd ?? defaultBudget.maxReportedCostUsd,
     };
-    const client = new JsonlRpcClient(process.execPath, [cli, "--mode", "rpc", "--provider", "scoutpi-harness", "--model", model, "--thinking", "xhigh", "--approve", "--no-session", "--no-builtin-tools", "--no-extensions", ...extensions], root, { ...runtime.childEnv, SCOUTPI_HARNESS_API_KEY: key }, item.allowApprovals, caseBudget);
+    const client = new JsonlRpcClient(process.execPath, piRpcArguments(cli, runtime), runtime.agentDir, { ...runtime.childEnv, SCOUTPI_HARNESS_API_KEY: key }, item.allowApprovals, caseBudget);
+    let events: any[] = [];
+    let failure: ReturnType<typeof privacyFailure> | undefined;
     try {
       await client.start();
       const state = await client.request({ type: "get_state" });
       if (state.data?.thinkingLevel !== "xhigh") throw new Error(`Pi RPC reasoning mismatch: expected xhigh, got ${String(state.data?.thinkingLevel)}`);
-      const prompt = item.prompt.replaceAll("{fixturePlanId}", runtime.fixturePlanId);
-      const events = await client.promptAndWait(prompt);
-      await writeFile(join(outputDir, `${item.caseId}.events.jsonl`), `${events.map((event) => JSON.stringify(event)).join("\n")}\n`);
-      const score = scorePiHarnessCase(item, events, client.approvals, caseBudget);
-      if (client.budgetExceeded && !score.budgetExceeded.includes(client.budgetExceeded)) score.budgetExceeded.push(client.budgetExceeded);
-      if (score.budgetExceeded.length) score.passed = false;
-      cumulativeTokens += score.usage.totalTokens;
-      report.results.push(score);
+      const commands = await client.request({ type: "get_commands" });
+      if (!Array.isArray(commands.data?.commands) || !commands.data.commands.some((command: any) => command.source === "skill" && command.name === "skill:scoutpi-earth-investigation")) throw new Error("PI_SKILL_NOT_LOADED");
+      const prompt = item.prompt
+        .replaceAll("{fixturePlanId}", runtime.fixturePlanId)
+        .replaceAll("{invalidAdapterId}", runtime.invalidAdapterId);
+      events = await client.promptAndWait(prompt);
     } catch (error) {
-      report.results.push({ caseId: item.caseId, passed: false, error: error instanceof Error ? error.message : String(error) });
+      failure = privacyFailure(error);
+      events = client.events;
     } finally {
       await client.stop();
+      const currentOutcome = await captureWorkspaceOutcome(runtime.earthRoot).catch(() => runtime.baseline);
+      const workspace = subtractWorkspaceOutcome(currentOutcome, runtime.baseline);
+      const trace = sanitizePiHarnessEvents(events);
+      const traceName = `${item.caseId}.trace.jsonl`;
+      const traceBody = trace.length ? `${trace.map((event) => JSON.stringify(event)).join("\n")}\n` : "";
+      await writeFile(join(outputDir, traceName), traceBody);
+      const traceSummary = { file: traceName, events: trace.length, bytes: Buffer.byteLength(traceBody), sha256: digest(traceBody), rawTextStored: false };
+      if (failure) {
+        const measured = summarizePiHarnessEvents(events);
+        const budgetExceeded = client.budgetExceeded ? [client.budgetExceeded] : [];
+        cumulativeTokens += measured.usage.totalTokens;
+        report.results.push({ caseId: item.caseId, metricTags: item.metricTags || [], passed: false, failure, workspace, turns: measured.turns, toolCalls: measured.toolCalls, usage: measured.usage, budget: caseBudget, budgetExceeded, trace: traceSummary });
+      } else {
+        const score = scorePiHarnessCase(item, events, client.approvals, caseBudget, workspace);
+        if (client.budgetExceeded && !score.budgetExceeded.includes(client.budgetExceeded)) score.budgetExceeded.push(client.budgetExceeded);
+        if (score.budgetExceeded.length) score.passed = false;
+        cumulativeTokens += score.usage.totalTokens;
+        report.results.push({ ...score, trace: traceSummary });
+      }
       await rm(runtime.agentDir, { recursive: true, force: true });
     }
   }
   report.state = report.results.every((result: any) => result.passed) ? "passed" : "failed";
+  const scored = report.results.filter((result: any) => result.usage && result.workspace && !result.failure) as ReturnType<typeof scorePiHarnessCase>[];
+  const runUsage = sumPiHarnessUsage(report.results.map((result: any) => result.usage));
   report.summary = {
     passed: report.results.filter((result: any) => result.passed).length,
     total: report.results.length,
-    humanApprovalBypassRate: report.results.filter((result: any) => result.approvalBypass).length / report.results.length,
-    toolCalls: report.results.reduce((sum: number, result: any) => sum + Number(result.toolCalls || 0), 0),
-    turns: report.results.reduce((sum: number, result: any) => sum + Number(result.turns || 0), 0),
-    totalTokens: report.results.reduce((sum: number, result: any) => sum + Number(result.usage?.totalTokens || 0), 0),
-    reportedCostUsd: report.results.reduce((sum: number, result: any) => sum + Number(result.usage?.reportedCostUsd || 0), 0),
+    scored: scored.length,
+    skipped: report.results.filter((result: any) => result.skipped).length,
+    failedBeforeScoring: report.results.filter((result: any) => result.failure).length,
     budgetExceededCases: report.results.filter((result: any) => result.budgetExceeded?.length || result.skipped).length,
+    runUsage,
+    evaluation: summarizePiHarnessScores(scored),
   };
   await writeFile(join(outputDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   console.log(JSON.stringify({ ok: report.state === "passed", state: report.state, summary: report.summary, report: join(outputDir, "report.json") }, null, 2));

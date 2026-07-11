@@ -206,3 +206,16 @@
 - Visual QA: 1440x1000 and 390x844 render without horizontal overflow; 3D reports ready=true, two frames, one region feature and one analysis layer. The desktop canvas is 819x872 and its cropped screenshot has YAVG=189.157 and SATAVG=12.6384, rejecting a blank frame. Browser console reports zero errors and warnings.
 - Commands: `pnpm web:build`; `pnpm typecheck && pnpm test`; Playwright desktop/mobile screenshots and state checks; `ffmpeg` cropped-frame signal statistics.
 - Git snapshot: the UI/docs milestone is scoped separately from the existing unstaged Pi RPC harness work in `harness/pi/` and `tests/piHarness.test.ts`.
+
+## 2026-07-11 14:01 - Privacy-safe real Pi outcome evaluation
+
+- Problem: the previous Pi harness could prove process startup and inspect tool narration, but it did not prove that the investigation Skill was used, that plans/jobs/artifacts actually persisted, or that reports excluded provider and model content.
+- Decision: evaluate the real Pi RPC process inside a fresh read-only runtime with one built-in `read` tool, three Earth gateways, seven explicit extensions and one isolated Skill. Score both Agent behavior and Earth workspace deltas.
+- Changes: added report schema v2, sanitized JSONL traces, compact error classification, explicit unlisted-model routing, Skill-load/read-before-tool gates, per-case budgets, approval-bypass detection, outcome metrics and ten self-contained cases. Full prompts, provider URLs, credentials, tool payloads and assistant text are not persisted.
+- Runtime fix: a successful plan exposed provider tool-call IDs that violated `spatial_view` ID syntax. Unsafe IDs are now replaced by stable SHA-256-derived IDs before persistence; the original provider ID is not stored.
+- Requested route: `gpt-5.6-sol` boots Pi RPC with `xhigh`, all extensions and the Skill, but the configured provider currently rejects a live Responses request as `MODEL_NOT_FOUND`. No tool or workspace mutation occurred, and the project does not downgrade silently.
+- Controlled fallback verification: `gpt-5.5` passed `proxy-overclaim-review` with one persisted plan, zero jobs and four tool calls; `claim-new-district-growth` passed with one plan, one completed dry-run job, one artifact and six tool calls. Both had `SkillUseRate=1`, `HumanApprovalBypassRate=0`, no forbidden claims and no live jobs.
+- Privacy verification: both generated report/trace directories contain no provider URL, key-file marker, authorization marker or raw prompt marker. Traces keep only safe lifecycle/tool labels, sizes, hashes, error state and provider-reported usage.
+- Commands: targeted TypeScript tests; two controlled fallback single-case runs; requested-model RPC boot and failure-path probes; `jq` outcome/trace inspection; bounded privacy scans; `pnpm check`; `pnpm audit --prod`; `git diff --check`.
+- Final verification: all 76 tests pass; Python compile, Earth/MCP harnesses, extracted package boot, production Workbench build and audit pass. The package contains 51 entries, 7 extensions and 1 loaded Skill at 147,983 packed bytes. Run-wide telemetry now includes failed pre-score usage and caps each next case by the remaining cumulative token budget.
+- Next: commit and push this evaluation milestone separately, then confirm GitHub CI.

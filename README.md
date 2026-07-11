@@ -71,6 +71,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Pi-oriented Vue operator console with collapsible task/state rails, a synchronized 2D/3D spatial canvas, evidence, execution state, artifacts, workflows, and a responsive Runtime Center
 - Persistent English/Simplified Chinese Workbench localization for navigation, controls, dialogs, charts, runtime states, and observable roles while preserving user-authored evidence text verbatim
 - Pi Capability Broker over tools and commands, with a durable path-safe capability profile and operator-facing Extensions view, so market-provided research, MCP, memory, browser, context, goals, security, interoperability, evaluation, and subagent capabilities are reused rather than copied
+- Privacy-safe real Pi RPC evaluation with an isolated Skill/runtime surface, outcome-based workspace scoring, approval-bypass detection, model error classification, compact traces, and explicit token/turn/tool budgets
 
 The core does not silently ship an active domain catalog. `examples/adapter-packs/earth-engine-starter.json` is an explicit demo pack and remains separate from runtime code.
 
@@ -288,11 +289,11 @@ The real Pi RPC harness is opt-in because it can call a paid model:
 
 ```bash
 SCOUTPI_HARNESS_KEY_FILE=/path/outside/the/repo/key.md \
-SCOUTPI_PI_MODEL=gpt-5.6 \
+SCOUTPI_PI_MODEL=gpt-5.6-sol \
 pnpm harness:pi
 ```
 
-`harness:pi` performs a model-list preflight only. Start the real extension process without a model turn using `pnpm harness:pi-rpc`; run paid end-to-end cases explicitly with `pnpm harness:pi-live`.
+`harness:pi` performs a model-list preflight only. Start the real extension process without a model turn using `pnpm harness:pi-rpc`; run paid end-to-end cases explicitly with `pnpm harness:pi-live`. Each live case must load and read the isolated investigation Skill before calling an Earth gateway, and is scored against persisted plans, jobs, artifacts, approvals and policy boundaries rather than assistant wording alone. Reports contain hashes, counts, safe operation labels and provider-reported usage, never raw prompts, tool payloads, provider URLs or credentials.
 
 The current live smoke path also verifies a real Dynamic World tile and a small geedim GeoTIFF with Rasterio metadata inspection. Live checks depend on the operator's Earth Engine account and are not part of CI.
 

@@ -32,6 +32,19 @@ Start from a testable question, region, time window, hypotheses, observable role
 
 Never invent measurements when Google Earth Engine is unauthenticated. Use `dry_run`, report `blocked_auth`, or ask for the external authentication step. Direct map tiles do not require a GeoTIFF download; local exports are for durable evidence, offline analysis, or downstream delivery.
 
+## Gateway Call Shapes
+
+`earth_workspace` is a compact gateway. Keep routing fields at the top level; do not hide `id`, `query`, `role`, `year`, or `payload` inside `options`.
+
+```json
+{"op":"contract","id":"investigation"}
+{"op":"catalog_search","query":"night activity","role":"human_activity","options":{"year":2024,"limit":5}}
+{"op":"plan","payload":{"schemaVersion":"scoutpi.investigation.v1","investigationId":"safe-id","question":"A testable question","region":{"kind":"bbox","bbox":[120,30,121,31],"name":"Review area"},"period":{"startYear":2020,"endYear":2024,"startMonth":6,"endMonth":8},"hypotheses":[{"id":"h1","statement":"A falsifiable statement","observableRoles":["human_activity"],"falsification":"Evidence that would contradict it"}],"confounders":["A comparability risk"],"preferredOutputs":["yearly_csv","metrics_json"]}}
+{"op":"run","id":"plan-id-from-plan-result","options":{"mode":"dry_run","outputs":["table_csv","metrics_json"]}}
+```
+
+Valid contract IDs are `investigation`, `adapter`, `adapter_pack`, `skill`, `local_export`, `browser_evidence`, and `spatial_view`. If a call fails contract validation, request the relevant contract once, repair the arguments, and do not retry the same invalid shape.
+
 ## Non-Duplication Rules
 
 - Do not create another web search/fetch tool.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Rebuilt the real Pi RPC harness around an isolated, read-only tool profile and explicit investigation Skill; added report schema v2, sanitized traces, provider error classification, outcome-based workspace scoring, Skill-use scoring, approval-bypass checks, and cumulative tool/turn/token/cost budgets that include failed runs.
+- Normalized provider-specific tool-call IDs before persisting Pi spatial focus, preventing unsupported punctuation or oversized IDs from converting a successful domain operation into a failed tool result.
 - Clarified the Pi-first Workbench hierarchy: the left rail is read-only task history from Pi, the center is the Pi-controlled spatial focus, and the right rail is Pi's current structured spatial understanding; technical IDs now stay behind progressive disclosure.
 - Added a durable `scoutpi.spatial-view.v1` control contract with `view_get` / `view_set`, atomic revisions, Pi-driven task/layer/year/renderer focus, Workbench follow/local-inspection modes, and a Pi-context-first interface with direct manual controls hidden by default.
 - Reframed the Workbench as a Pi-operated spatial runtime console, added collapsible Pi-task and spatial-state rails, and added a persistent MapLibre 2D / CesiumJS 3D switch over the same generic region and Earth Engine tile contracts.

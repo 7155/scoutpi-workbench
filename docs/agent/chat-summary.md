@@ -154,3 +154,12 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Technical operation/revision/plan/geometry fields moved behind disclosure, while local map inspection still detaches without mutating Pi state.
 - Bilingual desktop/mobile QA, nonblank Cesium checks, 73 tests, TypeScript and the production frontend build pass.
 - Next: commit this UI milestone without staging the separate Pi RPC scorer work, then continue the privacy-safe real Agent evaluation layer.
+
+### 2026-07-11 - Real Pi RPC outcome evaluator
+
+- Rebuilt the paid Pi harness around a fresh read-only Pi runtime, an explicitly loaded investigation Skill and the existing three Earth gateway tools.
+- Scoring now requires Skill-first use, successful operations, policy compliance and real persisted workspace outcomes; reports use schema v2 and content-minimal traces with no raw prompts, provider URLs, credentials or tool payloads.
+- Fixed provider-specific tool-call IDs so spatial-focus persistence hashes unsupported IDs instead of failing an otherwise successful plan.
+- The requested `gpt-5.6-sol` route boots correctly but is currently rejected by the configured provider at the live Responses request. Controlled `gpt-5.5` plan-only and dry-run cases passed without changing the default or silently downgrading.
+- Full verification passes 76 tests, Python compile, Earth/MCP harnesses, extracted-package Pi boot, production build, audit and diff checks. Failed pre-score usage now counts toward the cumulative run budget.
+- Next: scoped commit/push and CI confirmation.

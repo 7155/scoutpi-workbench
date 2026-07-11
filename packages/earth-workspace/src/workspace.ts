@@ -30,6 +30,13 @@ function safeId(value: string, label: string): string {
   return value;
 }
 
+function normalizeSpatialToolCallId(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  const raw = String(value);
+  if (/^[a-zA-Z0-9._:-]{1,160}$/.test(raw)) return raw;
+  return `call_${createHash("sha256").update(raw).digest("hex").slice(0, 40)}`;
+}
+
 const spatialViewPhases = new Set<SpatialViewPhase>(["idle", "planning", "observing", "computing", "reviewing", "complete", "blocked", "failed"]);
 
 function emptySpatialView(): SpatialViewState {
@@ -230,8 +237,7 @@ export class EarthWorkspace {
       if (!["pi", "operator", "system"].includes(input.source)) throw Object.assign(new Error("spatial view source is invalid"), { code: "SPATIAL_VIEW_SOURCE_INVALID" });
       const operation = input.operation === undefined ? undefined : String(input.operation);
       if (operation !== undefined && !/^[a-z][a-z0-9_]{1,63}$/.test(operation)) throw Object.assign(new Error("spatial view operation is invalid"), { code: "SPATIAL_VIEW_OPERATION_INVALID" });
-      const toolCallId = input.toolCallId === undefined ? undefined : String(input.toolCallId);
-      if (toolCallId !== undefined && !/^[a-zA-Z0-9._:-]{1,160}$/.test(toolCallId)) throw Object.assign(new Error("spatial view toolCallId is invalid"), { code: "SPATIAL_VIEW_TOOL_CALL_INVALID" });
+      const toolCallId = normalizeSpatialToolCallId(input.toolCallId);
       const jobId = input.jobId === undefined ? (samePlan?.jobId) : safeId(String(input.jobId), "jobId");
       const state: SpatialViewState = validateSpatialViewState({
         schemaVersion: "scoutpi.spatial-view.v1",
