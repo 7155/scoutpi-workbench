@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      typebox:
-        specifier: 1.1.38
-        version: 1.1.38
     devDependencies:
       '@earendil-works/pi-coding-agent':
         specifier: 0.80.2
@@ -24,6 +20,9 @@ importers:
       playwright:
         specifier: ^1.61.1
         version: 1.61.1
+      typebox:
+        specifier: 1.1.38
+        version: 1.1.38
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

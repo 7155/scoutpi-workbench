@@ -1,7 +1,6 @@
 {
   "name": "scoutpi-workbench",
   "version": "0.2.0",
-  "private": true,
   "type": "module",
   "description": "Pi-native Earth observation investigation runtime and evidence workbench.",
   "license": "Apache-2.0",
@@ -20,6 +19,27 @@
     "google-earth-engine",
     "geospatial"
   ],
+  "files": [
+    ".pi/extensions",
+    ".pi/skills",
+    "packages/earth-backend-sdk",
+    "packages/earth-investigation-core",
+    "packages/earth-workflow-compiler",
+    "packages/earth-workspace",
+    "packages/pi-ecosystem",
+    "packages/runtime-checkpoint",
+    "packages/runtime-context",
+    "packages/runtime-evidence",
+    "packages/runtime-governance",
+    "packages/runtime-observability",
+    "packages/runtime-telemetry",
+    "packages/runtime-trigger",
+    "CHANGELOG.md",
+    "SECURITY.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "packageManager": "pnpm@11.9.0",
   "engines": {
     "node": ">=22.6"
@@ -36,7 +56,8 @@
     ],
     "skills": [
       "./.pi/skills/scoutpi-earth-investigation"
-    ]
+    ],
+    "image": "https://raw.githubusercontent.com/7155/scoutpi-workbench/main/docs/assets/workbench-live-gee.png"
   },
   "scripts": {
     "earth:server": "node --experimental-strip-types packages/earth-workspace-server/src/index.ts",
@@ -52,19 +73,23 @@
     "web:dev": "pnpm --filter @scoutpi/earth-workbench dev",
     "web:build": "pnpm --filter @scoutpi/earth-workbench build",
     "workbench:dev": "node scripts/runEarthWorkbench.mjs",
+    "package:verify": "node scripts/verifyPiPackage.mjs",
+    "prepublishOnly": "pnpm check",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "python:check": "uv run python -m py_compile packages/earth-workspace/python/worker.py packages/runtime-context/python/ime_core_context_provider.py",
-    "check": "pnpm typecheck && pnpm test && pnpm python:check && pnpm harness:earth && pnpm harness:mcp && pnpm web:build"
+    "check": "pnpm typecheck && pnpm test && pnpm python:check && pnpm harness:earth && pnpm harness:mcp && pnpm package:verify && pnpm web:build"
   },
-  "dependencies": {
-    "typebox": "1.1.38"
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "0.80.2",
     "@modelcontextprotocol/sdk": "1.29.0",
     "@types/node": "^26.1.1",
     "playwright": "^1.61.1",
+    "typebox": "1.1.38",
     "typescript": "^5.9.3"
   }
 }

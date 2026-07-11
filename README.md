@@ -115,6 +115,8 @@ Or install the current checkout:
 pi install /absolute/path/to/scoutpi-workbench
 ```
 
+The repository is also structured as a publishable `pi-package` for Pi's npm-backed gallery, but no npm publication is claimed by this README. `pnpm package:verify` builds a temporary tarball, rejects development/private files and local credentials, extracts it, and starts all seven extensions plus the investigation skill through a real offline Pi RPC process. The npm tarball is the Pi runtime distribution; clone the repository to develop or run the Vue Workbench.
+
 The package exposes seven extensions and one skill. Context, browser evidence, durable triggers, governance, observability, and checkpoints are event-only; the model still sees at most these three Earth tools:
 
 | Tool | Responsibility |
@@ -255,6 +257,7 @@ pnpm test
 pnpm python:check
 pnpm harness:earth
 pnpm harness:mcp
+pnpm package:verify
 pnpm web:build
 ```
 
@@ -292,6 +295,7 @@ The current live smoke path also verifies a real Dynamic World tile and a small 
 - [Workflow Compiler](docs/scoutpi/WORKFLOW_COMPILER.md)
 - [Pi RPC Harness](docs/scoutpi/PI_RPC_HARNESS.md)
 - [Pi ecosystem reuse audit](docs/scoutpi/PI_OPEN_SOURCE_ECOSYSTEM_REUSE_AUDIT.md)
+- [Pi package and gallery release](docs/scoutpi/PI_PACKAGE_RELEASE.md)
 - [Project notes](docs/agent/notes.md)
 
 ## Project Status

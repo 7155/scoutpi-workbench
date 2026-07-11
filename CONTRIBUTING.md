@@ -21,6 +21,8 @@ Start the local application with `pnpm workbench:dev`.
 - Do not add arbitrary Python, JavaScript, SQL, or Earth Engine evaluation tools.
 - Preserve job, task, artifact, and evidence provenance.
 - Keep BrowserBridge and generic Pi capabilities as optional peer packages.
+- Keep Pi host libraries in `peerDependencies`; do not bundle another Pi runtime into the npm tarball.
+- Keep package contents restricted to declared Pi resources and their deterministic runtime modules. Run `pnpm package:verify` after changing `package.json`, extension paths, skills, relative imports, or Python workers.
 - Never commit credentials, Earth Engine tokens, local `.scoutpi` state, exports, or downloaded datasets.
 
 ## Pull Requests

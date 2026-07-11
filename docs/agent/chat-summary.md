@@ -106,3 +106,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - ScoutPi remains read-only toward the package market: it neither fetches the catalog in the background nor installs, activates, updates, or removes packages.
 - Stored profile links, command hints, metadata shape, credentials, and local path exposure are validated before the Workbench can render them.
 - Desktop and 390x844 mobile QA, all 62 tests, Earth/MCP harnesses, production build, dependency audit, and a real content-free Pi RPC smoke pass. Next: commit, push, and watch CI.
+
+### 2026-07-11 - Pi gallery packaging gate
+
+- The public repository now has npm/Pi-gallery metadata, a fixed public preview image, explicit public publish configuration, and correct Pi host peer dependencies.
+- The tarball is restricted to seven extensions, one skill, deterministic runtime modules, bounded Python workers, and public policy/docs; frontend source, tests, harnesses, devlogs, state, exports, lockfiles, and credentials are excluded.
+- `pnpm package:verify` packs and extracts the real archive, checks metadata/content/size/privacy, and boots every extension plus the skill through offline Pi RPC without a model request.
+- The verified archive is 138,909 packed bytes, 501,989 unpacked bytes, and 50 entries. Publication remains an explicit operator release action rather than an automated side effect.
+- All 62 tests, Earth/MCP harnesses, Python compile, extracted-package RPC verification, production build, dependency audit, and diff checks pass. Next: commit, push, and confirm CI.

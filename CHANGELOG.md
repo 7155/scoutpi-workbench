@@ -16,6 +16,7 @@
 - Upgraded Pi ecosystem reuse into a Capability Broker that detects both tools and command-only market extensions across research, MCP, browser, memory, context, subagents, goals, interop, security, package management, and evaluation.
 - Added a durable sanitized Pi ecosystem profile, local API endpoint, official-catalog guidance, and responsive Runtime Center Extensions view without adding a package manager or model-facing tool.
 - Made `/earth-ecosystem` an explicit rescan operation so operator package changes can refresh the persisted Workbench profile without restarting the session.
+- Added npm/Pi-gallery metadata, a restricted runtime tarball, Pi host peer dependencies, prepublish gates, and an offline extracted-package RPC verifier.
 - Isolated every paid Pi RPC harness case in a fresh temporary workspace and made full-suite execution explicit.
 - Fixed an asynchronous local-export test cleanup race observed on GitHub Actions.
 

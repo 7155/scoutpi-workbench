@@ -147,3 +147,13 @@
 - Visual QA: 1440x1000 and 390x844 screenshots render the populated Extensions view; mobile reports `documentScroll=390`, `dialogScroll=dialogClient=368`, with zero console errors and warnings.
 - Commands: `git status -sb` showed 12 scoped tracked paths; `git diff --stat` showed 277 insertions and 32 deletions before this devlog entry.
 - Verification: `pnpm check` passes all 62 tests, Python compile, Earth/MCP harnesses, and the production build; `pnpm audit --prod` and `git diff --check` pass. A real content-free Pi RPC smoke initializes `gpt-5.6`, `xhigh`, all seven extensions, and no extension errors while recording the actual 10-tool/15-command capability scan.
+
+## 2026-07-11 10:06 - Publishable Pi package boundary
+
+- Problem: the GitHub package had the `pi-package` keyword but remained `private: true`, had no gallery image or file allowlist, treated TypeBox as a bundled dependency, and `npm pack` shipped 124 entries / 2.19 MB including tests, Workbench source, devlogs, lockfiles and local-development material.
+- Decision: npm distributes the compact Pi runtime; the GitHub checkout remains the source for the full Vue Workbench. Registry publication itself stays explicit and is not performed by tests or the application.
+- Changes: removed the private flag, added public publish/gallery metadata, moved Pi host libraries to peers, restricted package files, added `prepublishOnly`, and documented the release/security workflow.
+- Verifier: `scripts/verifyPiPackage.mjs` creates and extracts the actual tarball, checks required/forbidden files, metadata, path/credential patterns and size, then starts seven extensions plus the investigation skill in an isolated offline Pi RPC process.
+- Result: 50 entries, 138,909 packed bytes, 501,989 unpacked bytes, 9 registered commands, 7 loaded extensions, and the skill discovered; no model or network request occurs.
+- Commands: `npm view scoutpi-workbench` currently returns 404, proving this work prepares publication but does not falsely claim the package is already in the official catalog. `pnpm package:verify`, all 62 tests, Earth/MCP harnesses, Python compile, production build, `pnpm audit --prod`, and `git diff --check` pass.
+- Git snapshot: seven tracked files plus the new release guide and verifier are scoped to this milestone before final verification.
