@@ -136,3 +136,14 @@
 - Real Pi RPC smoke starts `gpt-5.6`, `xhigh`, all seven extensions, and no extension errors with the real Core configured. No paid model turn or private candidate content was emitted.
 - Git snapshot before commit: 13 scoped tracked paths plus the new Context benchmark harness; generated benchmark reports and screenshots remain ignored.
 - Verification: `pnpm check` passes 61 tests, Python compile, Earth/MCP harnesses, and production build; `pnpm harness:context-provider` passes; `pnpm audit --prod` reports no known vulnerabilities.
+
+## 2026-07-11 09:46 - Pi extension market capability profile
+
+- Problem: Pi has an official extension market, but ScoutPi only printed ephemeral capability detection inside Pi and gave Workbench operators no installed/missing readiness view.
+- Decision: keep Pi's package manager authoritative; persist a read-only capability scan and expose guidance, never implement auto-install or another market client.
+- Changes: added the atomic `PiEcosystemStore`, `GET /api/pi-ecosystem`, session-start persistence, fixed official catalog links/commands, strict stored-profile validation, and a responsive Runtime Center Extensions ledger.
+- Security: source metadata removes credentials, secret-like query material, control characters, and absolute path prefixes; tampered catalog links fail closed before UI rendering.
+- UI finding: adding the eighth Runtime Center tab initially left a seven-column desktop grid. Updated it to eight columns and verified the full tab bar.
+- Visual QA: 1440x1000 and 390x844 screenshots render the populated Extensions view; mobile reports `documentScroll=390`, `dialogScroll=dialogClient=368`, with zero console errors and warnings.
+- Commands: `git status -sb` showed 12 scoped tracked paths; `git diff --stat` showed 277 insertions and 32 deletions before this devlog entry.
+- Verification: `pnpm check` passes all 62 tests, Python compile, Earth/MCP harnesses, and the production build; `pnpm audit --prod` and `git diff --check` pass. A real content-free Pi RPC smoke initializes `gpt-5.6`, `xhigh`, all seven extensions, and no extension errors while recording the actual 10-tool/15-command capability scan.

@@ -57,7 +57,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Generated `scoutpi.earth.skill.v1` drafts with confirmed publishing and overwrite protection
 - Automatic workflow candidates from verified successful jobs, explicit promotion, deterministic replay, cost assertions, and adapter-drift rejection
 - Vue Workbench for maps, plans, jobs, artifacts, recipes, workflows, and a responsive Runtime Center that consolidates capabilities, Context Packs, continuity, approvals, Agent traces, and token/cost telemetry
-- Pi Capability Broker over tools and commands so market-provided research, MCP, memory, browser, context, goals, security, interoperability, evaluation, and subagent capabilities are reused rather than copied
+- Pi Capability Broker over tools and commands, with a durable path-safe capability profile and operator-facing Extensions view, so market-provided research, MCP, memory, browser, context, goals, security, interoperability, evaluation, and subagent capabilities are reused rather than copied
 
 The core does not silently ship an active domain catalog. `examples/adapter-packs/earth-engine-starter.json` is an explicit demo pack and remains separate from runtime code.
 
@@ -139,7 +139,17 @@ workflow_compile / workflow_list / workflow_replay / workflow_status
 
 Pi starts with only `earth_workspace` active, then activates `python_analysis` and `earth_story` when the task reaches analysis or reporting. High-risk operations are intercepted by `scoutpi-governance` and require a real `ctx.ui.confirm()` receipt; model-authored `confirmed: true` is not trusted.
 
-Use `/earth-ecosystem` in Pi to inspect reusable peer capabilities. Cross-session memory comes from an installed Pi provider; this package does not register a second memory tool surface.
+Use `/earth-ecosystem` in Pi to inspect reusable peer capabilities. The same sanitized scan is persisted for the Workbench Runtime Center. ScoutPi does not fetch, install, update, enable, or remove packages; those decisions remain in Pi's official package manager:
+
+```bash
+pi list
+pi config
+pi install npm:<reviewed-package>
+pi update --extensions
+pi remove npm:<package>
+```
+
+Review packages in the [official Pi extension catalog](https://pi.dev/packages?type=extension). Cross-session memory comes from an installed Pi provider; this package does not register a second memory tool surface.
 
 To use the existing Wisdom Weasel input-method Core as the Context provider:
 
@@ -187,6 +197,7 @@ Complete plans and results are written below `.scoutpi/earth_workspace`; Pi rece
 .scoutpi/context/         # budgeted Context Packs and reviewed provider writebacks
 .scoutpi/evidence/        # normalized browser evidence, copied artifacts and graphs
 .scoutpi/triggers/        # signed delegations, durable triggers, event receipts and replay ledger
+.scoutpi/pi-ecosystem/    # sanitized Pi tool/command capability profile for operators
 ```
 
 Temporary Earth Engine tile URLs are for visualization. Download/export is used only when a durable local artifact, offline computation, evidence package, or downstream delivery is required.
@@ -197,6 +208,7 @@ Temporary Earth Engine tile URLs are for visualization. Download/export is used 
 | --- | --- |
 | `GET /api/environment` | Earth Engine auth and optional backend capabilities |
 | `GET /api/mcp` | Local MCP compatibility profile, tools, resources, and blocked operations |
+| `GET /api/pi-ecosystem` | Last sanitized Pi tool/command capability scan and official package guidance |
 | `GET /api/backends` | Reviewed backend manifests and operation contracts |
 | `POST /api/backends/:id/probe` | Probe one reviewed backend |
 | `GET /api/telemetry` | Aggregate operation token, latency, cache and compute proxies |

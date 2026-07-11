@@ -6,6 +6,7 @@ import { AgentCheckpointStore } from "../../runtime-checkpoint/src/index.ts";
 import { ContextPackStore } from "../../runtime-context/src/index.ts";
 import { TriggerRuntime } from "../../runtime-trigger/src/index.ts";
 import { SCOUTPI_MCP_PROFILE } from "../../scoutpi-mcp-server/src/profile.ts";
+import { PiEcosystemStore } from "../../pi-ecosystem/src/index.ts";
 
 export interface EarthWorkspaceServerOptions {
   host?: string;
@@ -13,6 +14,7 @@ export interface EarthWorkspaceServerOptions {
   workspace?: EarthWorkspace;
   checkpointStore?: AgentCheckpointStore;
   contextStore?: ContextPackStore;
+  ecosystemStore?: PiEcosystemStore;
   triggerRuntime?: TriggerRuntime;
 }
 
@@ -48,10 +50,12 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
   const workspace = options.workspace ?? new EarthWorkspace();
   const checkpointStore = options.checkpointStore ?? new AgentCheckpointStore(process.env.SCOUTPI_CHECKPOINT_ROOT ?? join(dirname(workspace.root), "checkpoints"));
   const contextStore = options.contextStore ?? new ContextPackStore(process.env.SCOUTPI_CONTEXT_ROOT ?? join(dirname(workspace.root), "context"));
+  const ecosystemStore = options.ecosystemStore ?? new PiEcosystemStore(process.env.SCOUTPI_ECOSYSTEM_ROOT ?? join(dirname(workspace.root), "pi-ecosystem"));
   const triggerRuntime = options.triggerRuntime ?? new TriggerRuntime(workspace, process.env.SCOUTPI_TRIGGER_ROOT ?? join(dirname(workspace.root), "triggers"));
   await workspace.init();
   await checkpointStore.init();
   await contextStore.init();
+  await ecosystemStore.init();
   await triggerRuntime.init();
   await workspace.recoverInterruptedJobs();
 
@@ -68,6 +72,10 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
       }
       if (request.method === "GET" && url.pathname === "/api/mcp") {
         sendJson(response, 200, SCOUTPI_MCP_PROFILE);
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/pi-ecosystem") {
+        sendJson(response, 200, { profile: await ecosystemStore.get() });
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/triggers") {

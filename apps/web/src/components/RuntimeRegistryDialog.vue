@@ -105,6 +105,29 @@
         </div>
       </div>
 
+      <div v-else-if="active === 'ecosystem'" class="ecosystem-view">
+        <header class="ecosystem-heading">
+          <div><strong>Pi extension ecosystem</strong><span>Operator-selected capabilities from the official package catalog</span></div>
+          <a :href="piEcosystem?.officialCatalogUrl || 'https://pi.dev/packages?type=extension'" target="_blank" title="Open the official Pi extension catalog"><ArrowUpRight :size="15" /></a>
+        </header>
+        <section v-if="piEcosystem" class="ecosystem-summary">
+          <div><strong>{{ piEcosystem.detectedCount }}/{{ piEcosystem.capabilities.length }}</strong><span>capability groups ready</span></div>
+          <div><strong>{{ piEcosystem.toolCount }}</strong><span>installed tools inspected</span></div>
+          <div><strong>{{ piEcosystem.commandCount }}</strong><span>slash commands inspected</span></div>
+          <div><strong>{{ formatTime(piEcosystem.generatedAt) }}</strong><span>last Pi session scan</span></div>
+        </section>
+        <section v-if="piEcosystem" class="ecosystem-ledger">
+          <article v-for="capability in piEcosystem.capabilities" :key="capability.id">
+            <span :class="['ecosystem-state', { ready: capability.detected }]"></span>
+            <div class="ecosystem-copy"><strong>{{ capability.label }}</strong><span>{{ capability.detected ? capability.reuse : capability.operatorAction }}</span><small>{{ [...capability.tools, ...capability.commands.map((command) => `/${command}`)].join(' · ') || 'No installed surface detected' }}</small></div>
+            <div class="ecosystem-source"><code>{{ capability.sources.join(' · ') || 'official catalog' }}</code><small>{{ capability.scoutPiBoundary }}</small></div>
+            <a :href="capability.catalogUrl" target="_blank" :title="`Review ${capability.label} packages in the official catalog`"><ArrowUpRight :size="14" /></a>
+          </article>
+        </section>
+        <div v-else class="empty-state"><Boxes :size="27" /><strong>No Pi session scan</strong><span>Start Pi once to inspect installed tools, commands, and source metadata. ScoutPi never installs a package automatically.</span></div>
+        <footer class="ecosystem-commands"><code v-for="command in piEcosystem?.packageCommands || defaultPackageCommands" :key="command">{{ command }}</code></footer>
+      </div>
+
       <div v-else-if="active === 'context'" class="context-view">
         <section class="context-column">
           <div class="section-title"><div><strong>Context packs</strong><span>Task-ranked memory with source provenance</span></div><span>{{ contextPacks.length }}</span></div>
@@ -176,16 +199,17 @@ import { computed, markRaw, onBeforeUnmount, onMounted, ref } from "vue";
 import { Activity, ArrowUpRight, Blocks, BookOpen, Boxes, Braces, BrainCircuit, CircleCheck, CircleX, Clock3, Coins, Database, Gauge, HardDriveDownload, History, Hourglass, LoaderCircle, Network, Power, Radar, Radio, RefreshCw, Rocket, Save, ServerCog, ShieldCheck, TimerReset, Upload, Waypoints, X } from "lucide-vue-next";
 import { api } from "../api";
 import AutomationPanel from "./AutomationPanel.vue";
-import type { AgentCheckpointSummary, AgentRunSummary, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthSkillSummary, EarthWorkflowSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "../types";
+import type { AgentCheckpointSummary, AgentRunSummary, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthSkillSummary, EarthWorkflowSummary, PiEcosystemProfile, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "../types";
 
-type RuntimeTab = "overview" | "adapters" | "skills" | "backends" | "context" | "automation" | "telemetry";
+type RuntimeTab = "overview" | "adapters" | "skills" | "backends" | "ecosystem" | "context" | "automation" | "telemetry";
 type RuntimeTone = "ready" | "active" | "idle" | "attention" | "blocked";
 
-const props = defineProps<{ open: boolean; saving: boolean; adapters: RegisteredAdapter[]; skills: EarthSkillSummary[]; backendManifests: EarthBackendManifest[]; backendProbes: Record<string, EarthBackendProbe>; telemetry?: RuntimeTelemetrySummary; agentRuns: AgentRunSummary[]; checkpoints: AgentCheckpointSummary[]; contextPacks: ContextPackSummary[]; contextWritebacks: ContextWritebackSummary[]; evidenceCount: number; mcpProfile?: ScoutPiMcpProfile; triggers: WorkflowTrigger[]; triggerRuns: TriggerRun[]; delegations: DelegationGrantSummary[]; workflows: EarthWorkflowSummary[]; approvals: RuntimeApproval[] }>();
+const props = defineProps<{ open: boolean; saving: boolean; adapters: RegisteredAdapter[]; skills: EarthSkillSummary[]; backendManifests: EarthBackendManifest[]; backendProbes: Record<string, EarthBackendProbe>; telemetry?: RuntimeTelemetrySummary; agentRuns: AgentRunSummary[]; checkpoints: AgentCheckpointSummary[]; contextPacks: ContextPackSummary[]; contextWritebacks: ContextWritebackSummary[]; evidenceCount: number; mcpProfile?: ScoutPiMcpProfile; piEcosystem?: PiEcosystemProfile; triggers: WorkflowTrigger[]; triggerRuns: TriggerRun[]; delegations: DelegationGrantSummary[]; workflows: EarthWorkflowSummary[]; approvals: RuntimeApproval[] }>();
 const emit = defineEmits<{ close: []; refresh: []; import: [payload: Record<string, unknown>]; probe: [datasetId: string]; probeBackend: [backendId: string]; state: [datasetId: string, enabled: boolean]; saveSkill: [payload: Record<string, unknown>]; publish: [skillId: string]; createTrigger: [payload: Record<string, unknown>]; approveTrigger: [triggerId: string]; triggerState: [triggerId: string, state: "paused" | "active" | "revoked"]; invokeTrigger: [triggerId: string]; invalid: [message: string] }>();
 const active = ref<RuntimeTab>("overview");
 const registryJson = ref("");
 const skillJson = ref("");
+const defaultPackageCommands = ["pi list", "pi config", "pi install npm:<reviewed-package>"];
 
 const availableBackends = computed(() => Object.values(props.backendProbes).filter((probe) => probe.available).length);
 const pendingWritebacks = computed(() => props.contextWritebacks.filter((item) => item.state === "pending"));
@@ -206,6 +230,7 @@ const tabs = computed(() => [
   { id: "adapters" as const, label: "Adapters", icon: markRaw(Blocks), count: props.adapters.length },
   { id: "skills" as const, label: "Skills", icon: markRaw(BookOpen), count: props.skills.length },
   { id: "backends" as const, label: "Backends", icon: markRaw(ServerCog), count: props.backendManifests.length },
+  { id: "ecosystem" as const, label: "Extensions", icon: markRaw(Boxes), count: props.piEcosystem?.detectedCount },
   { id: "context" as const, label: "Context", icon: markRaw(BrainCircuit), count: props.contextPacks.length + props.contextWritebacks.length },
   { id: "automation" as const, label: "Automation", icon: markRaw(TimerReset), count: props.triggers.length },
   { id: "telemetry" as const, label: "Telemetry", icon: markRaw(Activity), count: props.agentRuns.length },
@@ -217,6 +242,7 @@ const runtimeLayers = computed(() => [
   { id: "continuity", title: "Durable continuity", detail: `${props.checkpoints.length} session checkpoints with integrity journals`, value: recoverableCheckpoints.value.length ? `${recoverableCheckpoints.value.length} recover` : "Settled", state: recoverableCheckpoints.value.length ? "attention" : "ready", tone: recoverableCheckpoints.value.length ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(History) },
   { id: "evidence", title: "Evidence bridge", detail: "Browser sources normalized into provenance-bound investigation records", value: `${props.evidenceCount} sources`, state: props.evidenceCount ? "connected" : "idle", tone: props.evidenceCount ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Radio) },
   { id: "mcp", title: "MCP compatibility", detail: props.mcpProfile ? `${props.mcpProfile.transport} · external clients · state-changing operations blocked` : "Compatibility profile unavailable", value: props.mcpProfile ? `${props.mcpProfile.tools.length} gateways` : "Offline", state: props.mcpProfile ? "available" : "idle", tone: props.mcpProfile ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Network) },
+  { id: "ecosystem", title: "Pi extension market", detail: props.piEcosystem ? `${props.piEcosystem.toolCount} tools · ${props.piEcosystem.commandCount} commands · operator-controlled packages` : "Waiting for a Pi session capability scan", value: props.piEcosystem ? `${props.piEcosystem.detectedCount}/${props.piEcosystem.capabilities.length}` : "Not scanned", state: props.piEcosystem ? "inspected" : "idle", tone: props.piEcosystem ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Boxes) },
   { id: "automation", title: "Event automation", detail: `${props.delegations.filter((item) => item.state === "active").length} signed delegations · ${props.triggerRuns.length} durable runs`, value: `${props.triggers.filter((item) => item.state === "active").length} active`, state: pendingTriggers.value.length ? `${pendingTriggers.value.length} review` : "bounded", tone: pendingTriggers.value.length ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(TimerReset) },
   { id: "backends", title: "Backend providers", detail: `${props.backendManifests.length} reviewed manifests, executable code kept outside the model`, value: `${availableBackends.value}/${props.backendManifests.length}`, state: Object.keys(props.backendProbes).length ? "probed" : "not probed", tone: availableBackends.value ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(ServerCog) },
 ]);
@@ -313,7 +339,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 .runtime-summary strong { overflow: hidden; color: #243129; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .runtime-summary small { grid-column: 2; overflow: hidden; color: #7b8780; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 
-.runtime-tabs { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid #dfe4e1; }
+.runtime-tabs { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); border-bottom: 1px solid #dfe4e1; }
 .runtime-tabs button { display: flex; min-width: 0; align-items: center; justify-content: center; gap: 6px; border: 0; border-right: 1px solid #e3e7e4; border-radius: 0; padding: 10px 8px; background: #fbfcfb; color: #69776f; font-size: 11px; }
 .runtime-tabs button:last-child { border-right: 0; }
 .runtime-tabs button:hover { background: #f5f8f6; color: #34423a; }
@@ -395,6 +421,29 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 .backend-actions small { max-width: 120px; overflow: hidden; color: #69776f; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .backend-actions button { display: grid; width: 31px; height: 31px; place-items: center; border: 1px solid #cad3cd; border-radius: 5px; padding: 0; background: #fff; color: #34423a; }
 
+.ecosystem-view { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; min-height: 0; overflow: hidden; }
+.ecosystem-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #e0e5e2; padding: 14px 19px; }
+.ecosystem-heading > div { display: grid; gap: 2px; }
+.ecosystem-heading strong { color: #28352e; font-size: 12px; text-transform: uppercase; }
+.ecosystem-heading span { color: #7a877f; font-size: 9px; }
+.ecosystem-heading a, .ecosystem-ledger article > a { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid #d1d9d4; border-radius: 5px; background: #fff; color: #526159; }
+.ecosystem-summary { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid #e0e5e2; background: #f7f9f8; }
+.ecosystem-summary > div { display: grid; gap: 2px; border-right: 1px solid #e0e5e2; padding: 10px 15px; }
+.ecosystem-summary > div:last-child { border-right: 0; }
+.ecosystem-summary strong { color: #27362e; font-size: 12px; }
+.ecosystem-summary span { color: #76837b; font-size: 8px; text-transform: uppercase; }
+.ecosystem-ledger { min-height: 0; overflow: auto; padding: 0 19px; }
+.ecosystem-ledger article { display: grid; grid-template-columns: 10px minmax(0, 1fr) minmax(200px, .8fr) 30px; gap: 10px; align-items: center; min-height: 73px; border-bottom: 1px solid #e4e8e5; }
+.ecosystem-state { width: 8px; height: 8px; border-radius: 50%; background: #a7b0ab; }
+.ecosystem-state.ready { background: #2f7d59; box-shadow: 0 0 0 3px rgba(47, 125, 89, .12); }
+.ecosystem-copy, .ecosystem-source { display: grid; min-width: 0; gap: 3px; }
+.ecosystem-copy strong { color: #2a3730; font-size: 11px; }
+.ecosystem-copy span, .ecosystem-source small { display: -webkit-box; overflow: hidden; color: #6f7c74; font-size: 9px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.ecosystem-copy small { overflow: hidden; color: #3d6c55; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.ecosystem-source code { overflow: hidden; color: #52675b; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.ecosystem-commands { display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid #dfe5e1; padding: 10px 19px; background: #f7f9f8; }
+.ecosystem-commands code { border: 1px solid #dce3df; border-radius: 3px; padding: 3px 6px; background: #fff; color: #52645a; font-size: 8px; }
+
 .context-view { display: grid; grid-template-columns: 1.08fr .92fr; min-height: 0; overflow: hidden; }
 .context-column { min-width: 0; overflow: auto; padding: 17px 19px 22px; }
 .context-runtime-column { border-left: 1px solid #e0e5e2; background: #fbfcfb; }
@@ -464,6 +513,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
   .overview-column, .context-column, .operation-ledger, .agent-ledger, .registry-list { overflow: visible; }
   .queue-column, .context-runtime-column, .agent-ledger, .json-editor { border-top: 1px solid #e0e5e2; border-left: 0; }
   .backend-grid { grid-template-columns: 1fr; }
+  .ecosystem-ledger article { grid-template-columns: 10px minmax(0, 1fr) minmax(160px, .7fr) 30px; }
   .telemetry-metrics { grid-template-columns: repeat(3, 1fr); }
   .telemetry-metrics > div:nth-child(3), .telemetry-metrics > div:nth-child(6) { border-right: 0; }
   .telemetry-metrics > div:nth-child(-n+3) { border-bottom: 1px solid #e1e6e2; }
@@ -490,6 +540,15 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
   .json-editor { min-height: 420px; }
   .backend-grid article { grid-template-columns: 10px minmax(0, 1fr); }
   .backend-actions { grid-column: 2; display: flex !important; align-items: center; justify-content: space-between; }
+  .ecosystem-summary { grid-template-columns: repeat(2, 1fr); }
+  .ecosystem-summary > div:nth-child(2) { border-right: 0; }
+  .ecosystem-summary > div:nth-child(-n+2) { border-bottom: 1px solid #e0e5e2; }
+  .ecosystem-ledger { overflow: visible; padding: 0 16px; }
+  .ecosystem-view { overflow: auto; }
+  .ecosystem-ledger article { grid-template-columns: 10px minmax(0, 1fr) 30px; align-items: start; padding: 10px 0; }
+  .ecosystem-source { grid-column: 2; }
+  .ecosystem-ledger article > a { grid-column: 3; grid-row: 1 / 3; }
+  .ecosystem-commands { padding: 10px 16px; }
   .telemetry-metrics { grid-template-columns: repeat(2, 1fr); }
   .telemetry-metrics > div:nth-child(odd) { border-right: 1px solid #e1e6e2; }
   .telemetry-metrics > div:nth-child(even) { border-right: 0; }

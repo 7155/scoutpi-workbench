@@ -111,6 +111,17 @@ export interface ScoutPiMcpProfile {
   blockedOperations: string[];
   modelSurface: "external_only";
 }
+export interface PiEcosystemProfile {
+  schemaVersion: "scoutpi.pi-ecosystem-profile.v1";
+  generatedAt: string;
+  officialCatalogUrl: "https://pi.dev/packages?type=extension";
+  packageCommands: string[];
+  toolCount: number;
+  commandCount: number;
+  detectedCount: number;
+  capabilities: Array<{ id: string; label: string; detected: boolean; tools: string[]; commands: string[]; sources: string[]; catalogQuery: string; catalogUrl: string; operatorAction: string; reuse: string; scoutPiBoundary: string }>;
+  routing: Array<{ task: string; preferred: string; fallback: string }>;
+}
 export interface WorkflowTrigger {
   schemaVersion: "scoutpi.runtime.trigger.v1";
   triggerId: string;

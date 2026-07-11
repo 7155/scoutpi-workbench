@@ -1,4 +1,4 @@
-import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph, InvestigationPlan, InvestigationSpec, JobArtifact, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "./types";
+import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph, InvestigationPlan, InvestigationSpec, JobArtifact, PiEcosystemProfile, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...init, headers: { "content-type": "application/json", ...(init?.headers || {}) } });
@@ -10,6 +10,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   environment: () => request<EnvironmentStatus>("/api/environment"),
   mcp: () => request<ScoutPiMcpProfile>("/api/mcp"),
+  piEcosystem: async () => (await request<{ profile?: PiEcosystemProfile }>("/api/pi-ecosystem")).profile,
   triggers: async () => (await request<{ triggers: WorkflowTrigger[] }>("/api/triggers")).triggers,
   triggerRuns: async () => (await request<{ runs: TriggerRun[] }>("/api/trigger-runs?limit=100")).runs,
   delegations: async () => (await request<{ grants: DelegationGrantSummary[] }>("/api/delegations?limit=100")).grants,

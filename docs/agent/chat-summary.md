@@ -98,3 +98,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Context telemetry distinguishes total latency, Core latency, process mode, and warm reuse. Runtime Center displays warm/cold state without adding model-visible tools.
 - The real content-free benchmark measured 144.5 ms one-shot median and 37 ms persistent warm median, a 74.4% local reduction. All 61 tests and full runtime checks pass.
 - Next: use the Capability Broker to expose operator-controlled installation/readiness guidance for compatible market extensions, without implementing another package manager or auto-install path.
+
+### 2026-07-11 - Operator-facing Pi extension ecosystem
+
+- The last Pi session now writes a sanitized capability profile for installed tools, slash commands, source provenance, routing boundaries, and 11 reusable capability groups.
+- Runtime Center adds an Extensions view with detected readiness, missing capabilities, official catalog links, and native `pi list/config/install/update/remove` guidance.
+- ScoutPi remains read-only toward the package market: it neither fetches the catalog in the background nor installs, activates, updates, or removes packages.
+- Stored profile links, command hints, metadata shape, credentials, and local path exposure are validated before the Workbench can render them.
+- Desktop and 390x844 mobile QA, all 62 tests, Earth/MCP harnesses, production build, dependency audit, and a real content-free Pi RPC smoke pass. Next: commit, push, and watch CI.

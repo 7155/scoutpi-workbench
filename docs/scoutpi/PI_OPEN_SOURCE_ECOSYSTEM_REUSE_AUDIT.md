@@ -42,6 +42,18 @@ The public package catalog and the targeted source audit showed mature generic s
 
 Pi's official extension gallery is [`pi.dev/packages`](https://pi.dev/packages?type=extension). The native package manager owns install, update, filtering, enable/disable, and removal. ScoutPi therefore treats the market as a capability supply layer, not as code to vendor or a catalog to duplicate in the Workbench.
 
+The current operator flow stays entirely inside official Pi commands:
+
+```text
+pi list
+pi config
+pi install npm:<reviewed-package>
+pi update --extensions
+pi remove npm:<package>
+```
+
+ScoutPi now persists the last Pi session scan under `.scoutpi/pi-ecosystem/profile.json`, exposes the sanitized profile at `GET /api/pi-ecosystem`, and renders it in Runtime Center -> Extensions. The view separates detected surfaces, source provenance, ScoutPi ownership boundaries, missing capability groups, and links to filtered official-catalog searches. It does not query the catalog in the background, execute package commands, auto-install a recommendation, or change Pi's active tools.
+
 ## 2026-07-11 Source Pass
 
 The audit used read-only shallow clones of the following repositories. Their commit snapshots are recorded so architecture claims remain reproducible without vendoring third-party source into this repository.
@@ -114,7 +126,8 @@ The repository enforces the decision in code and tests:
 - `package.json#pi` bundles only the Earth extension and skill.
 - No local memory extension is bundled in the public Pi manifest; memory remains a peer capability.
 - The separate BrowserBridge package defaults to `browser_session`, `browser_observe`, and `browser_act`; legacy granular tools require `SCOUTPI_BROWSER_LEGACY_TOOLS=1` in that repository.
-- `packages/pi-ecosystem` detects tool- and command-based peer capabilities, preserves source metadata, and reports routing, but never installs, loads, or copies them.
+- `packages/pi-ecosystem` detects tool- and command-based peer capabilities, strips credentials and absolute path prefixes from source metadata, persists an integrity-checked operator profile, and reports routing, but never installs, loads, activates, or copies packages.
+- The Workbench reads the saved profile through `GET /api/pi-ecosystem`; catalog links and package commands are fixed to official Pi values and tampered profile links are rejected before rendering.
 - tests verify the public Earth package surface, task boundaries, and peer-capability routing without importing BrowserBridge source.
 
 ## Primary References

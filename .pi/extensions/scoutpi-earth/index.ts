@@ -1,7 +1,7 @@
 import type { AgentToolResult, AgentToolUpdateCallback, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Type, type Static } from "typebox";
 import { EarthWorkspace, earthOperationRisk, type EarthStoryArtifact, type InvestigationSpec } from "../../../packages/earth-workspace/src/index.ts";
-import { formatPiEcosystemProfile, inspectPiEcosystem } from "../../../packages/pi-ecosystem/src/index.ts";
+import { formatPiEcosystemProfile, inspectPiEcosystem, PiEcosystemStore } from "../../../packages/pi-ecosystem/src/index.ts";
 
 interface EarthToolDetails {
   phase?: string;
@@ -75,7 +75,9 @@ function profileForPrompt(prompt: string): string[] {
 
 export default async function setup(pi: ExtensionAPI): Promise<void> {
   const workspace = new EarthWorkspace();
+  const ecosystemStore = new PiEcosystemStore();
   await workspace.init();
+  await ecosystemStore.init();
   await workspace.recoverInterruptedJobs();
 
   const setEarthProfile = (names: string[]): void => {
@@ -338,6 +340,7 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
   pi.on("session_start", async (_event, ctx) => {
     const commands = typeof pi.getCommands === "function" ? pi.getCommands() : [];
     ecosystem = inspectPiEcosystem(pi.getAllTools(), commands.map((command) => ({ name: command.name, description: command.description, sourceInfo: command.sourceInfo })));
+    await ecosystemStore.save(ecosystem);
     setEarthProfile(["earth_workspace"]);
     ctx.ui.setStatus("scoutpi-earth", `Earth | core profile | ${ecosystem.detectedCount} peers`);
   });

@@ -1,3 +1,7 @@
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { basename, join, resolve } from "node:path";
+
 export type ScoutPiCapabilityId = "research" | "mcp" | "browser" | "memory" | "context" | "subagents" | "goals" | "interop" | "security" | "package_market" | "evaluation";
 
 export interface PiSourceInfo {
@@ -26,11 +30,18 @@ export interface DetectedCapability {
   tools: string[];
   commands: string[];
   sources: string[];
+  catalogQuery: string;
+  catalogUrl: string;
+  operatorAction: string;
   reuse: string;
   scoutPiBoundary: string;
 }
 
 export interface PiEcosystemProfile {
+  schemaVersion: "scoutpi.pi-ecosystem-profile.v1";
+  generatedAt: string;
+  officialCatalogUrl: "https://pi.dev/packages?type=extension";
+  packageCommands: ["pi list", "pi config", "pi install npm:<reviewed-package>", "pi update --extensions", "pi remove npm:<package>"];
   toolCount: number;
   commandCount: number;
   detectedCount: number;
@@ -39,61 +50,64 @@ export interface PiEcosystemProfile {
 }
 
 type Match = string | RegExp;
-type Definition = Omit<DetectedCapability, "detected" | "tools" | "commands" | "sources"> & { toolMatches?: Match[]; commandMatches?: Match[] };
+type Definition = Omit<DetectedCapability, "detected" | "tools" | "commands" | "sources" | "catalogUrl" | "operatorAction"> & { toolMatches?: Match[]; commandMatches?: Match[] };
+
+const OFFICIAL_CATALOG_URL = "https://pi.dev/packages?type=extension" as const;
+const PACKAGE_COMMANDS = ["pi list", "pi config", "pi install npm:<reviewed-package>", "pi update --extensions", "pi remove npm:<package>"] as const;
 
 const DEFINITIONS: Definition[] = [
   {
-    id: "research", label: "Web research", toolMatches: ["web_explore", "web_search", "web_fetch", "web_fetch_md"], commandMatches: [/^web(?:-search|-access)?$/],
+    id: "research", label: "Web research", catalogQuery: "web search", toolMatches: ["web_explore", "web_search", "web_fetch", "web_fetch_md"], commandMatches: [/^web(?:-search|-access)?$/],
     reuse: "Use an installed research package for source discovery, ranking and HTTP/headless escalation.",
     scoutPiBoundary: "BrowserBridge is reserved for interactive, signed-in or download workflows in the user's browser.",
   },
   {
-    id: "mcp", label: "MCP gateway", toolMatches: ["mcp"], commandMatches: ["mcp"],
+    id: "mcp", label: "MCP gateway", catalogQuery: "mcp", toolMatches: ["mcp"], commandMatches: ["mcp"],
     reuse: "Use a lazy MCP proxy for third-party servers instead of registering every remote schema in Pi.",
     scoutPiBoundary: "ScoutPi exposes only its typed compatibility server and does not implement another generic MCP client.",
   },
   {
-    id: "browser", label: "Browser control", toolMatches: ["browser", "browser_session", "browser_observe", "browser_act", /^chrome_/], commandMatches: [/^browser/],
+    id: "browser", label: "Browser control", catalogQuery: "browser", toolMatches: ["browser", "browser_session", "browser_observe", "browser_act", /^chrome_/], commandMatches: [/^browser/],
     reuse: "Use isolated agent-browser tools for generic headless tests when available.",
     scoutPiBoundary: "ScoutPi keeps the existing Edge session, extension permissions, downloads, evidence and geo semantics.",
   },
   {
-    id: "memory", label: "Memory", toolMatches: [/^memory_/, "session_search", "scoutpi_knowledge", /^hivemind_/], commandMatches: [/^memory$/, /^memories$/, /^knowledge$/],
+    id: "memory", label: "Memory", catalogQuery: "memory", toolMatches: [/^memory_/, "session_search", "scoutpi_knowledge", /^hivemind_/], commandMatches: [/^memory$/, /^memories$/, /^knowledge$/],
     reuse: "Use the installed memory provider for durable cross-session recall and governed writes.",
     scoutPiBoundary: "Context Bridge ranks provider results; Earth recipes and run artifacts remain deterministic workspace state.",
   },
   {
-    id: "context", label: "Context compression", toolMatches: [/^ctx_/, /^hypa_/, /^lean_ctx/, /^rtk_/], commandMatches: [/^context(?:-usage|-burden)?$/],
+    id: "context", label: "Context compression", catalogQuery: "context compression", toolMatches: [/^ctx_/, /^hypa_/, /^lean_ctx/, /^rtk_/], commandMatches: [/^context(?:-usage|-burden)?$/],
     reuse: "Let context runtimes compress shell and file output while retaining recoverable full artifacts.",
     scoutPiBoundary: "ScoutPi meters browser and Earth observations at the domain boundary rather than replacing shell tools.",
   },
   {
-    id: "subagents", label: "Subagents", toolMatches: [/^subagent/, /^hyperpi_subagent/, /^delegate_/], commandMatches: [/^subagents?$/, /^agents$/],
+    id: "subagents", label: "Subagents", catalogQuery: "subagent", toolMatches: [/^subagent/, /^hyperpi_subagent/, /^delegate_/], commandMatches: [/^subagents?$/, /^agents$/],
     reuse: "Delegate independent research or review lanes to an installed subagent package.",
     scoutPiBoundary: "The Earth execution DAG stays deterministic and does not become another generic agent scheduler.",
   },
   {
-    id: "goals", label: "Autonomous goals", toolMatches: [/^goal_/], commandMatches: ["goal"],
+    id: "goals", label: "Autonomous goals", catalogQuery: "goal", toolMatches: [/^goal_/], commandMatches: ["goal"],
     reuse: "Use an installed goal package for long-lived autonomous continuation and token/time budgets.",
     scoutPiBoundary: "ScoutPi workflows and triggers own deterministic replay, not the generic conversational goal loop.",
   },
   {
-    id: "interop", label: "Agent interoperability", toolMatches: [/^intercom_/, /^messenger_/, /^a2a_/], commandMatches: [/^intercom/, /^messenger/, /^a2a/],
+    id: "interop", label: "Agent interoperability", catalogQuery: "intercom", toolMatches: [/^intercom_/, /^messenger_/, /^a2a_/], commandMatches: [/^intercom/, /^messenger/, /^a2a/],
     reuse: "Use an installed bounded session-messaging package for cross-agent coordination.",
     scoutPiBoundary: "ScoutPi exchanges typed evidence, context, and trigger events rather than inventing a second message bus.",
   },
   {
-    id: "security", label: "Runtime security", toolMatches: [/^sandbox_/, /^permission_/, /^heimdall_/], commandMatches: ["access-guard", "sandbox", "permissions", "mode", "heimdall"],
+    id: "security", label: "Runtime security", catalogQuery: "sandbox security", toolMatches: [/^sandbox_/, /^permission_/, /^heimdall_/], commandMatches: ["access-guard", "sandbox", "permissions", "mode", "heimdall"],
     reuse: "Compose with an installed path guard or OS sandbox for generic file and process isolation.",
     scoutPiBoundary: "ScoutPi governance remains responsible for domain risk, exact parameter receipts and delegated workflow scope.",
   },
   {
-    id: "package_market", label: "Package market", toolMatches: [/^package_/], commandMatches: ["extensions", "packages"],
+    id: "package_market", label: "Package market", catalogQuery: "catalog", toolMatches: [/^package_/], commandMatches: ["extensions", "packages"],
     reuse: "Use Pi's package catalog and package manager for discovery, install, update, filtering and removal.",
     scoutPiBoundary: "ScoutPi reports compatible peers but never installs or silently activates a package.",
   },
   {
-    id: "evaluation", label: "Agent evaluation", toolMatches: [/^eval_/, /^benchmark_/], commandMatches: [/^eval/, /^benchmark/, "token-burden", "context-usage"],
+    id: "evaluation", label: "Agent evaluation", catalogQuery: "telemetry evaluation", toolMatches: [/^eval_/, /^benchmark_/], commandMatches: [/^eval/, /^benchmark/, "token-burden", "context-usage"],
     reuse: "Reuse generic token/context inspection packages and compare them with ScoutPi's domain harness.",
     scoutPiBoundary: "ScoutPi keeps task completion, evidence coverage, unsupported claims and approval bypass as domain scorers.",
   },
@@ -104,9 +118,50 @@ function matchesName(name: string, pattern: Match): boolean {
 }
 
 function sourceLabel(metadata: { sourceInfo?: PiSourceInfo }): string | undefined {
-  const source = metadata.sourceInfo?.source || metadata.sourceInfo?.origin || metadata.sourceInfo?.path;
-  if (!source) return undefined;
-  return `${metadata.sourceInfo?.scope ? `${metadata.sourceInfo.scope}:` : ""}${source}`.slice(0, 240);
+  const direct = metadata.sourceInfo?.source || metadata.sourceInfo?.origin;
+  const path = metadata.sourceInfo?.path;
+  const source = direct || (path ? path.replaceAll("\\", "/").split("/").filter(Boolean).slice(-2).join("/") : undefined);
+  if (!source || /(?:password|secret|token|key)=/i.test(source)) return undefined;
+  let sanitized = source;
+  try {
+    const url = new URL(source);
+    url.username = "";
+    url.password = "";
+    sanitized = url.toString();
+  } catch {}
+  return `${metadata.sourceInfo?.scope ? `${metadata.sourceInfo.scope}:` : ""}${sanitized}`.slice(0, 240);
+}
+
+function capabilityCatalogUrl(query: string): string {
+  return `${OFFICIAL_CATALOG_URL}&name=${encodeURIComponent(query)}`;
+}
+
+function assertProfile(profile: unknown): asserts profile is PiEcosystemProfile {
+  const value = profile as Partial<PiEcosystemProfile> | undefined;
+  const validCount = (count: unknown) => Number.isInteger(count) && Number(count) >= 0;
+  const safeName = (name: unknown) => typeof name === "string" && /^[\w.:-]{1,160}$/.test(name);
+  const safeSource = (source: unknown) => typeof source === "string" && source.length <= 240 && !/[\u0000-\u001f<>]/.test(source) && !/(?:password|secret|token|key)=/i.test(source);
+  const validCapabilities = Array.isArray(value?.capabilities)
+    && value.capabilities.length === DEFINITIONS.length
+    && DEFINITIONS.every((definition, index) => {
+      const capability = value.capabilities?.[index];
+      return capability?.id === definition.id
+        && capability.label === definition.label
+        && capability.catalogQuery === definition.catalogQuery
+        && capability.catalogUrl === capabilityCatalogUrl(definition.catalogQuery)
+        && typeof capability.detected === "boolean"
+        && Array.isArray(capability.tools) && capability.tools.every(safeName)
+        && Array.isArray(capability.commands) && capability.commands.every(safeName)
+        && Array.isArray(capability.sources) && capability.sources.every(safeSource);
+    });
+  if (value?.schemaVersion !== "scoutpi.pi-ecosystem-profile.v1"
+    || value.officialCatalogUrl !== OFFICIAL_CATALOG_URL
+    || !Array.isArray(value.packageCommands) || value.packageCommands.join("\n") !== PACKAGE_COMMANDS.join("\n")
+    || !validCount(value.toolCount) || !validCount(value.commandCount) || !validCount(value.detectedCount)
+    || !value.generatedAt || !Number.isFinite(Date.parse(value.generatedAt))
+    || !validCapabilities || !Array.isArray(value.routing)) {
+    throw Object.assign(new Error("Pi ecosystem profile is invalid"), { code: "PI_ECOSYSTEM_PROFILE_INVALID" });
+  }
 }
 
 export function inspectPiEcosystem(tools: PiToolMetadata[], commands: PiCommandMetadata[] = []): PiEcosystemProfile {
@@ -116,7 +171,16 @@ export function inspectPiEcosystem(tools: PiToolMetadata[], commands: PiCommandM
     const matchedTools = normalizedTools.filter((tool) => toolMatches.some((pattern) => matchesName(tool.name, pattern)));
     const matchedCommands = normalizedCommands.filter((command) => commandMatches.some((pattern) => matchesName(command.name, pattern)));
     const sources = [...new Set([...matchedTools, ...matchedCommands].map(sourceLabel).filter((value): value is string => Boolean(value)))].sort();
-    return { ...definition, detected: matchedTools.length > 0 || matchedCommands.length > 0, tools: matchedTools.map((tool) => tool.name), commands: matchedCommands.map((command) => command.name), sources };
+    const detected = matchedTools.length > 0 || matchedCommands.length > 0;
+    return {
+      ...definition,
+      detected,
+      tools: matchedTools.map((tool) => tool.name),
+      commands: matchedCommands.map((command) => command.name),
+      sources,
+      catalogUrl: capabilityCatalogUrl(definition.catalogQuery),
+      operatorAction: detected ? "Inspect with pi list; enable or disable package resources with pi config." : "Review source and permissions in the official catalog, then install explicitly with pi install npm:<reviewed-package>.",
+    };
   });
   const capability = (id: ScoutPiCapabilityId) => capabilities.find((item) => item.id === id);
   const has = (id: ScoutPiCapabilityId) => capability(id)?.detected === true;
@@ -124,6 +188,10 @@ export function inspectPiEcosystem(tools: PiToolMetadata[], commands: PiCommandM
   const hasScoutPiBrowser = browserTools.some((name) => name.startsWith("browser_") && name !== "browser_status");
 
   return {
+    schemaVersion: "scoutpi.pi-ecosystem-profile.v1",
+    generatedAt: new Date().toISOString(),
+    officialCatalogUrl: OFFICIAL_CATALOG_URL,
+    packageCommands: [...PACKAGE_COMMANDS],
     toolCount: normalizedTools.length,
     commandCount: normalizedCommands.length,
     detectedCount: capabilities.filter((item) => item.detected).length,
@@ -153,4 +221,37 @@ export function formatPiEcosystemProfile(profile: PiEcosystemProfile): string {
     ...profile.routing.map((item) => `- ${item.task}: ${item.preferred}; fallback=${item.fallback}`),
   ];
   return lines.join("\n");
+}
+
+export class PiEcosystemStore {
+  readonly root: string;
+  readonly profilePath: string;
+
+  constructor(root = process.env.SCOUTPI_ECOSYSTEM_ROOT ?? ".scoutpi/pi-ecosystem") {
+    this.root = resolve(root);
+    this.profilePath = join(this.root, "profile.json");
+  }
+
+  async init(): Promise<void> {
+    await mkdir(this.root, { recursive: true });
+  }
+
+  async save(profile: PiEcosystemProfile): Promise<void> {
+    assertProfile(profile);
+    await this.init();
+    const temporary = join(this.root, `.${basename(this.profilePath)}.${randomUUID()}.tmp`);
+    await writeFile(temporary, `${JSON.stringify(profile, null, 2)}\n`, { flag: "wx" });
+    await rename(temporary, this.profilePath);
+  }
+
+  async get(): Promise<PiEcosystemProfile | undefined> {
+    try {
+      const profile: unknown = JSON.parse(await readFile(this.profilePath, "utf8"));
+      assertProfile(profile);
+      return profile;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw error;
+    }
+  }
 }
