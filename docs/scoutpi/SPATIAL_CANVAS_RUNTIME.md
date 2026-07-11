@@ -18,11 +18,11 @@ The interface has three operational surfaces:
 
 | Surface | Purpose |
 | --- | --- |
-| Left rail: Pi task stream | Current and previous investigations created or selected through Pi |
-| Center: spatial canvas | The exact region, observable, year, imagery, and renderer focused by Pi |
-| Right rail: Pi context | Structured region/dataset state, evidence, analysis graph, and execution activity available to Pi |
+| Left rail: From Pi | Read-only current and previous tasks issued through Pi; the question is primary and the current Pi focus is marked |
+| Center: Pi spatial focus | The exact region, observable, year, imagery, and renderer currently controlled by Pi |
+| Right rail: Pi understanding | The task, current spatial state, tested hypothesis, selected data, evidence, workflow, and run history available to Pi |
 
-The two side rails are read-oriented inspection surfaces and can be collapsed independently. They are not separate GIS toolboxes. The canvas resizes without recreating the task or requesting a new Earth Engine computation.
+The two side rails are read-oriented projections of Pi runtime state and can be collapsed independently. They are not separate GIS toolboxes and they do not decide what analysis runs. That decision starts in the Pi session. The canvas resizes without recreating the task or requesting a new Earth Engine computation.
 
 ## Pi Control Contract
 

@@ -197,3 +197,12 @@
 - Follow mode dynamically switched a live browser from a Yangtze Delta 2D `built_surface` focus to a Shanghai 3D `land_cover` visualization after a state revision. Manual 2D selection detached to local inspection; Follow Pi restored the durable 3D focus.
 - Visual QA: 1440x1000 and 390x844 have no horizontal overflow or console errors. Cesium reports ready=true, two frames, one region feature, one live analysis layer and an 869x872 canvas.
 - Verification: `pnpm check` passes all 73 tests, Python compile, Earth/MCP harnesses, extracted Pi package boot, and production build. Package is 51 entries, 146,815 packed bytes and 533,936 unpacked bytes; production audit and diff checks pass.
+
+## 2026-07-11 13:21 - Pi-first Workbench comprehension pass
+
+- Problem: the two rails still looked like an independent GIS dashboard, so it was not immediately clear that the user gives work to Pi and that Pi chooses the spatial task, data, focus and execution.
+- Decision: keep the Workbench read-oriented. Reframe the left rail as task history **from Pi**, the center as the **Pi spatial focus**, and the right rail as Pi's current structured spatial understanding. Local 2D/3D inspection remains non-authoritative.
+- Changes: promoted task questions above regions in history, marked the durable Pi focus, replaced technical context blocks with current focus/state/tested-hypothesis/selected-data sections, moved operation/revision/plan/geometry into collapsed runtime details, and aligned English/Chinese labels and public docs.
+- Visual QA: 1440x1000 and 390x844 render without horizontal overflow; 3D reports ready=true, two frames, one region feature and one analysis layer. The desktop canvas is 819x872 and its cropped screenshot has YAVG=189.157 and SATAVG=12.6384, rejecting a blank frame. Browser console reports zero errors and warnings.
+- Commands: `pnpm web:build`; `pnpm typecheck && pnpm test`; Playwright desktop/mobile screenshots and state checks; `ffmpeg` cropped-frame signal statistics.
+- Git snapshot: the UI/docs milestone is scoped separately from the existing unstaged Pi RPC harness work in `harness/pi/` and `tests/piHarness.test.ts`.

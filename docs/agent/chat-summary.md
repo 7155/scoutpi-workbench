@@ -146,3 +146,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Normal product builds hide direct create/run/export controls; a development-only environment flag restores them in a secondary menu.
 - Desktop/mobile visual QA, dynamic follow/detach behavior, 73 tests, package extraction, full build, audit, and runtime harnesses pass.
 - Next: finish the privacy-safe real Pi RPC evaluation harness, including explicit skill loading and outcome-based scoring, without weakening the new Pi-first product boundary.
+
+### 2026-07-11 - Pi-first Workbench comprehension
+
+- Corrected the visible product model again: users assign work in Pi; the Workbench does not decide the investigation.
+- Left now shows read-only tasks from Pi with question-first hierarchy and a current-focus marker; center shows the Pi-controlled spatial focus; right shows current spatial state, tested hypothesis and Pi-selected data before any technical runtime IDs.
+- Technical operation/revision/plan/geometry fields moved behind disclosure, while local map inspection still detaches without mutating Pi state.
+- Bilingual desktop/mobile QA, nonblank Cesium checks, 73 tests, TypeScript and the production frontend build pass.
+- Next: commit this UI milestone without staging the separate Pi RPC scorer work, then continue the privacy-safe real Agent evaluation layer.

@@ -3,7 +3,7 @@
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark"><Orbit :size="20" /></div>
-        <div><strong>ScoutPi Earth</strong><span>{{ t('Pi Spatial Runtime') }}</span></div>
+        <div><strong>ScoutPi Spatial</strong><span>{{ t('Pi extension runtime') }}</span></div>
       </div>
       <div class="top-context" v-if="selectedPlan">
         <Bot :size="14" />
@@ -37,22 +37,26 @@
 
     <aside :class="['sidebar', { open: showSidebar }]">
       <div class="sidebar-head">
-        <div><span>{{ t('Pi control') }}</span><strong>{{ t('Task stream') }}</strong></div>
+        <div><span>{{ t('From Pi') }}</span><strong>{{ t('Pi task history') }}</strong></div>
         <button v-if="manualControls" class="icon-button" :title="t('Create local test task')" @click="newDialog = true"><Plus :size="18" /></button>
       </div>
-      <label class="search-box"><Search :size="15" /><input v-model="search" :placeholder="t('Search task history')"></label>
+      <label class="search-box"><Search :size="15" /><input v-model="search" :placeholder="t('Search Pi task history')"></label>
       <div class="plan-list">
-        <button v-for="plan in filteredPlans" :key="plan.planId" :class="['plan-item', { active: plan.planId === selectedPlanId }]" @click="inspectPlan(plan.planId)">
+        <button v-for="plan in filteredPlans" :key="plan.planId" :class="['plan-item', { active: plan.planId === selectedPlanId, current: plan.planId === spatialView?.target?.planId }]" @click="inspectPlan(plan.planId)">
           <span class="plan-state" :class="latestJob(plan.planId)?.state || 'draft'"></span>
-          <span class="plan-copy"><strong>{{ plan.spec.region.name || plan.spec.investigationId }}</strong><small>{{ plan.spec.question }}</small></span>
-          <span class="plan-years">{{ plan.spec.period.startYear }}-{{ plan.spec.period.endYear }}</span>
+          <span class="plan-copy">
+            <strong>{{ plan.spec.question }}</strong>
+            <small>{{ plan.spec.region.name || plan.spec.investigationId }}</small>
+            <span class="plan-meta"><span>{{ plan.spec.period.startYear }}-{{ plan.spec.period.endYear }}</span><span>{{ statusLabel(latestJob(plan.planId)?.state || 'draft') }}</span></span>
+          </span>
+          <span v-if="plan.planId === spatialView?.target?.planId" class="pi-focus-tag">{{ t('Pi focus') }}</span>
         </button>
         <div v-if="!filteredPlans.length" class="sidebar-empty"><FolderSearch :size="26" /><span>{{ t('No Pi tasks') }}</span></div>
       </div>
       <div class="environment-block">
         <div><Bot :size="15" /><span>{{ t('Pi session') }}</span><strong>{{ piControlLabel }}</strong></div>
-        <div><Database :size="15" /><span>{{ t('Spatial contracts') }}</span><strong>{{ adapters.length }}</strong></div>
-        <div><Database :size="15" /><span>{{ t('Tasks / runs') }}</span><strong>{{ plans.length }} / {{ jobs.length }}</strong></div>
+        <div><Database :size="15" /><span>{{ t('Tasks from Pi') }}</span><strong>{{ plans.length }}</strong></div>
+        <div><Database :size="15" /><span>{{ t('Spatial data sources') }}</span><strong>{{ adapters.length }}</strong></div>
         <button :title="t('Open Runtime Center')" @click="registryDialog = true"><Waypoints :size="15" /><span>{{ t('Runtime center') }}</span><strong>{{ runtimeAttention ? t('count.review', { count: runtimeAttention }) : t('count.adapters', { count: adapters.length }) }}</strong></button>
       </div>
     </aside>
@@ -73,7 +77,7 @@
         <div class="empty-map-grid"></div>
         <Orbit :size="36" />
         <h1>{{ t('Pi spatial canvas') }}</h1>
-        <p>{{ t('Waiting for the next Pi task.') }}</p>
+        <p>{{ t('Waiting for a spatial task from Pi.') }}</p>
         <button v-if="manualControls" class="secondary" @click="newDialog = true"><Plus :size="16" />{{ t('Create local test task') }}</button>
       </div>
     </main>
@@ -81,10 +85,10 @@
     <aside class="inspector">
       <template v-if="selectedPlan">
         <header class="inspector-head">
-          <div><span>{{ t('Pi context') }}</span><h1>{{ selectedPlan.spec.question }}</h1></div>
+          <div><span class="inspector-eyebrow"><Bot :size="12" />{{ followPi ? t('Pi understanding') : t('Local inspection') }}</span><h1>{{ selectedPlan.spec.question }}</h1><p>{{ selectedPlan.spec.region.name || selectedPlan.spec.investigationId }} · {{ selectedYear }}</p></div>
           <button class="icon-button" :title="t('Runtime registry')" @click="registryDialog = true"><MoreHorizontal :size="18" /></button>
         </header>
-        <div class="role-strip"><strong>{{ t('Observables') }}</strong><span v-for="item in selectedPlan.datasets" :key="item.role" :class="{ active: item.role === selectedRole }">{{ roleLabel(item.role) }}</span></div>
+        <div class="role-strip"><strong>{{ followPi ? t('Pi selected') : t('Selected layer') }}</strong><span v-for="item in selectedPlan.datasets" :key="item.role" :class="{ active: item.role === selectedRole }">{{ roleLabel(item.role) }}</span></div>
         <nav class="inspector-tabs">
           <button v-for="tab in tabs" :key="tab.id" :class="{ active: activeTab === tab.id }" :title="tab.label" @click="activeTab = tab.id"><component :is="tab.icon" :size="16" /><span>{{ tab.label }}</span></button>
         </nav>
@@ -145,7 +149,7 @@
           </div>
         </div>
       </template>
-      <div v-else class="inspector-empty"><ScanSearch :size="28" /><span>{{ t('Select an investigation') }}</span></div>
+      <div v-else class="inspector-empty"><Bot :size="28" /><strong>{{ t('Waiting for Pi') }}</strong><span>{{ t('No spatial task is active.') }}</span></div>
     </aside>
 
     <NewInvestigationDialog :open="newDialog" :saving="saving" @close="newDialog = false" @create="createPlan" />
@@ -159,7 +163,7 @@
 
 <script setup lang="ts">
 import { computed, markRaw, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { Activity, AlertCircle, AlertTriangle, Ban, BookOpen, Bot, ChevronLeft, ChevronRight, Database, Download, ExternalLink, Eye, FileText, FlaskConical, FolderSearch, GitBranch, Info, Languages, ListChecks, LoaderCircle, MoreHorizontal, Orbit, PanelLeft, PanelRight, Play, Plus, RefreshCw, RotateCcw, RotateCw, ScanSearch, Search, Waypoints, X } from "lucide-vue-next";
+import { Activity, AlertCircle, AlertTriangle, Ban, BookOpen, Bot, ChevronLeft, ChevronRight, Database, Download, ExternalLink, Eye, FileText, FlaskConical, FolderSearch, GitBranch, Info, Languages, ListChecks, LoaderCircle, MoreHorizontal, Orbit, PanelLeft, PanelRight, Play, Plus, RefreshCw, RotateCcw, RotateCw, Search, Waypoints, X } from "lucide-vue-next";
 import { api } from "./api";
 import { useI18n } from "./i18n";
 import InvestigationMap from "./components/InvestigationMap.vue";
@@ -232,10 +236,10 @@ const followPi = ref(true);
 const error = ref("");
 const manualControls = import.meta.env.VITE_SCOUTPI_MANUAL_CONTROLS === "1";
 const tabs = computed(() => [
-  { id: "context", label: t("Pi sees"), icon: markRaw(Eye) },
+  { id: "context", label: t("Current state"), icon: markRaw(Eye) },
   { id: "evidence", label: t("Evidence"), icon: markRaw(ListChecks) },
-  { id: "plan", label: t("Analysis"), icon: markRaw(GitBranch) },
-  { id: "runs", label: t("Activity"), icon: markRaw(Activity) },
+  { id: "plan", label: t("Workflow"), icon: markRaw(GitBranch) },
+  { id: "runs", label: t("Run history"), icon: markRaw(Activity) },
 ]);
 
 const selectedPlan = computed(() => plans.value.find((plan) => plan.planId === selectedPlanId.value));

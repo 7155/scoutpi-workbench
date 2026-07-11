@@ -12,6 +12,7 @@
     ></div>
 
     <div class="map-overlay map-title">
+      <em>{{ t('Pi spatial focus') }}</em>
       <span>{{ regionName }}</span>
       <strong>{{ periodLabel }}</strong>
       <small v-if="visualizationLoading">{{ t('Loading Earth Engine layer') }}</small>
@@ -29,7 +30,7 @@
     </div>
 
     <button :class="['map-follow', { active: followPi }]" :title="followPi ? t('Following Pi spatial focus') : t('Resume following Pi')" @click="emit('toggleFollow')">
-      <Crosshair :size="14" /><span>{{ followPi ? t('Following Pi') : t('Local inspection') }}</span>
+      <Crosshair :size="14" /><span>{{ followPi ? t('Pi controls view') : t('Local inspection') }}</span>
     </button>
 
     <div v-if="mapMode === '3d' && (globeLoading || globeError)" :class="['map-overlay', 'globe-status', { error: globeError }]" role="status">
@@ -345,6 +346,7 @@ onBeforeUnmount(() => {
 .cesium-surface :deep(.cesium-viewer-bottom) { right: 8px; bottom: 5px; left: auto; }
 .map-overlay { position: absolute; z-index: 3; border: 1px solid rgba(43, 56, 49, .18); background: rgba(252, 253, 251, .92); box-shadow: 0 8px 20px rgba(32, 45, 38, .1); backdrop-filter: blur(8px); }
 .map-title { top: 14px; left: 14px; display: grid; gap: 1px; max-width: min(360px, calc(100% - 410px)); padding: 9px 11px; border-radius: 6px; }
+.map-title em { color: #748079; font-size: 8px; font-style: normal; font-weight: 750; text-transform: uppercase; }
 .map-title span { overflow: hidden; color: #25322b; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .map-title strong { color: #607067; font: 11px ui-monospace, SFMono-Regular, monospace; }
 .map-title small { color: #2f7d59; font-size: 9px; }

@@ -17,11 +17,11 @@ The interface is deliberately not a manual GIS editor:
 
 | Surface | Meaning |
 | --- | --- |
-| Left rail: Pi task stream | Investigations created or selected by Pi, with persisted run state |
-| Center: spatial canvas | The region, observable, year, imagery, and 2D/3D perspective currently focused by Pi |
-| Right rail: Pi context | The structured region contract, datasets, evidence, plan, and execution state available to Pi |
+| Left rail: From Pi | Read-only task history issued through Pi, with the current Pi focus marked |
+| Center: Pi spatial focus | The region, observable, year, imagery, and 2D/3D perspective currently controlled by Pi |
+| Right rail: Pi understanding | The task, current spatial state, tested hypothesis, selected data, evidence, workflow, and run history available to Pi |
 
-The canvas follows Pi by default. A human can temporarily inspect another task, year, layer, or renderer without mutating Pi's state, then select **Follow Pi** to return to the current Agent focus. Direct plan/run/export controls are hidden in the normal product surface; developers can opt into local test controls with `VITE_SCOUTPI_MANUAL_CONTROLS=1`.
+The user gives the task to Pi, not to the Workbench. The canvas follows Pi by default. A human can temporarily inspect another task, year, layer, or renderer without mutating Pi's state, then select **Follow Pi** to return to the current Agent focus. Direct plan/run/export controls are hidden in the normal product surface; developers can opt into local test controls with `VITE_SCOUTPI_MANUAL_CONTROLS=1`.
 
 ## Why This Runtime
 
