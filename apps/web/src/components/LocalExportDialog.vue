@@ -1,37 +1,37 @@
 <template>
   <div v-if="open && plan" class="export-backdrop" @mousedown.self="$emit('close')">
-    <form class="export-dialog" role="dialog" aria-modal="true" aria-label="Local GeoTIFF export" @submit.prevent="submit">
+    <form class="export-dialog" role="dialog" aria-modal="true" :aria-label="t('Local GeoTIFF export')" @submit.prevent="submit">
       <header>
-        <div><p>Artifact export</p><h2>Local GeoTIFF</h2></div>
-        <button type="button" class="icon-button" title="Close" @click="$emit('close')"><X :size="18" /></button>
+        <div><p>{{ t('Artifact export') }}</p><h2>{{ t('Local GeoTIFF') }}</h2></div>
+        <button type="button" class="icon-button" :title="t('Close')" @click="$emit('close')"><X :size="18" /></button>
       </header>
 
       <div class="export-body">
-        <div class="mode-control" role="group" aria-label="Export mode">
-          <button type="button" :class="{ active: mode === 'year' }" @click="mode = 'year'">Single year</button>
-          <button type="button" :class="{ active: mode === 'change' }" :disabled="years.length < 2" @click="mode = 'change'">Change layer</button>
+        <div class="mode-control" role="group" :aria-label="t('Export mode')">
+          <button type="button" :class="{ active: mode === 'year' }" @click="mode = 'year'">{{ t('Single year') }}</button>
+          <button type="button" :class="{ active: mode === 'change' }" :disabled="years.length < 2" @click="mode = 'change'">{{ t('Change layer') }}</button>
         </div>
 
-        <label><span>Observable</span><select v-model="role"><option v-for="item in plan.datasets" :key="item.role" :value="item.role">{{ item.role.replaceAll('_', ' ') }} · {{ item.dataset.title }}</option></select></label>
+        <label><span>{{ t('Observable') }}</span><select v-model="role"><option v-for="item in plan.datasets" :key="item.role" :value="item.role">{{ roleLabel(item.role) }} · {{ item.dataset.title }}</option></select></label>
         <div v-if="mode === 'year'" class="field-grid single">
-          <label><span>Year</span><select v-model.number="year"><option v-for="value in years" :key="value" :value="value">{{ value }}</option></select></label>
+          <label><span>{{ t('Year') }}</span><select v-model.number="year"><option v-for="value in years" :key="value" :value="value">{{ value }}</option></select></label>
         </div>
         <div v-else class="field-grid">
-          <label><span>Baseline</span><select v-model.number="baselineYear"><option v-for="value in years.slice(0, -1)" :key="value" :value="value">{{ value }}</option></select></label>
-          <label><span>Target</span><select v-model.number="targetYear"><option v-for="value in years.slice(1)" :key="value" :value="value">{{ value }}</option></select></label>
+          <label><span>{{ t('Baseline') }}</span><select v-model.number="baselineYear"><option v-for="value in years.slice(0, -1)" :key="value" :value="value">{{ value }}</option></select></label>
+          <label><span>{{ t('Target') }}</span><select v-model.number="targetYear"><option v-for="value in years.slice(1)" :key="value" :value="value">{{ value }}</option></select></label>
         </div>
         <div class="field-grid">
-          <label><span>Scale (m)</span><input v-model.number="scaleMeters" type="number" :min="minimumScale" max="100000" step="1" required></label>
+          <label><span>{{ t('Scale (m)') }}</span><input v-model.number="scaleMeters" type="number" :min="minimumScale" max="100000" step="1" required></label>
           <label><span>CRS</span><select v-model="crs"><option value="EPSG:4326">EPSG:4326</option><option value="EPSG:3857">EPSG:3857</option></select></label>
         </div>
-        <label><span>Data type</span><select v-model="dtype"><option value="float32">float32</option><option value="float64">float64</option><option value="int16">int16</option><option value="uint16">uint16</option><option value="uint8">uint8</option></select></label>
+        <label><span>{{ t('Data type') }}</span><select v-model="dtype"><option value="float32">float32</option><option value="float64">float64</option><option value="int16">int16</option><option value="uint16">uint16</option><option value="uint8">uint8</option></select></label>
 
-        <div class="export-estimate"><Gauge :size="17" /><div><span>Estimated export</span><strong>{{ estimatedPixels === undefined ? 'review required' : formatPixels(estimatedPixels) }}</strong></div><code>geedim</code></div>
+        <div class="export-estimate"><Gauge :size="17" /><div><span>{{ t('Estimated export') }}</span><strong>{{ estimatedPixels === undefined ? t('review required') : formatPixels(estimatedPixels) }}</strong></div><code>geedim</code></div>
       </div>
 
       <footer>
-        <button type="button" class="secondary" @click="$emit('close')">Cancel</button>
-        <button class="primary" :disabled="saving || !valid"><LoaderCircle v-if="saving" class="spin" :size="15" /><Download v-else :size="15" />Queue export</button>
+        <button type="button" class="secondary" @click="$emit('close')">{{ t('Cancel') }}</button>
+        <button class="primary" :disabled="saving || !valid"><LoaderCircle v-if="saving" class="spin" :size="15" /><Download v-else :size="15" />{{ t('Queue export') }}</button>
       </footer>
     </form>
   </div>
@@ -40,10 +40,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { Download, Gauge, LoaderCircle, X } from "lucide-vue-next";
+import { useI18n } from "../i18n";
 import type { InvestigationPlan } from "../types";
 
 const props = defineProps<{ open: boolean; saving: boolean; plan?: InvestigationPlan; selectedRole: string; selectedYear: number }>();
 const emit = defineEmits<{ close: []; export: [request: Record<string, unknown>] }>();
+const { t, roleLabel } = useI18n();
 const mode = ref<"year" | "change">("year");
 const role = ref("");
 const year = ref(0);
@@ -73,7 +75,7 @@ watch(() => props.open, (open) => {
 });
 watch(role, () => { scaleMeters.value = Math.max(scaleMeters.value, minimumScale.value); });
 
-function formatPixels(value: number) { return value >= 1_000_000 ? `${(value / 1_000_000).toFixed(1)}M pixels` : value >= 1_000 ? `${(value / 1_000).toFixed(1)}K pixels` : `${value} pixels`; }
+function formatPixels(value: number) { return value >= 1_000_000 ? t("{{count}} pixels", { count: `${(value / 1_000_000).toFixed(1)}M` }) : value >= 1_000 ? t("{{count}} pixels", { count: `${(value / 1_000).toFixed(1)}K` }) : t("{{count}} pixels", { count: value }); }
 function submit() {
   if (!valid.value) return;
   emit("export", {

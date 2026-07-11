@@ -1,49 +1,49 @@
 <template>
   <div v-if="open" class="recipe-backdrop" @mousedown.self="$emit('close')">
-    <section class="recipe-dialog" role="dialog" aria-modal="true" aria-label="Recipes and workflows">
+    <section class="recipe-dialog" role="dialog" aria-modal="true" :aria-label="t('Recipes and workflows')">
       <header>
-        <div><p>Deterministic reuse</p><h2>Recipes and workflows</h2></div>
-        <button class="icon-button" title="Close" @click="$emit('close')"><X :size="18" /></button>
+        <div><p>{{ t('Deterministic reuse') }}</p><h2>{{ t('Recipes and workflows') }}</h2></div>
+        <button class="icon-button" :title="t('Close')" @click="$emit('close')"><X :size="18" /></button>
       </header>
       <nav>
-        <button :class="{ active: active === 'recipes' }" @click="active = 'recipes'"><BookOpen :size="15" />Recipes<span>{{ recipes.length }}</span></button>
-        <button :class="{ active: active === 'workflows' }" @click="active = 'workflows'"><Workflow :size="15" />Workflows<span>{{ workflows.length }}</span></button>
+        <button :class="{ active: active === 'recipes' }" @click="active = 'recipes'"><BookOpen :size="15" />{{ t('Recipes') }}<span>{{ recipes.length }}</span></button>
+        <button :class="{ active: active === 'workflows' }" @click="active = 'workflows'"><Workflow :size="15" />{{ t('Workflows') }}<span>{{ workflows.length }}</span></button>
       </nav>
 
       <template v-if="active === 'recipes'">
         <form v-if="currentSpec" class="reuse-save" @submit.prevent="saveRecipe">
-          <div><strong>Save typed spec</strong><span>{{ currentSpec.investigationId }}</span></div>
-          <label><span>Recipe ID</span><input v-model="recipeId" pattern="[a-zA-Z0-9][a-zA-Z0-9._\-]{2,100}" required></label>
-          <label><span>Name</span><input v-model="recipeName" required></label>
-          <button class="primary" :disabled="saving"><LoaderCircle v-if="saving" class="spin" :size="15" /><BookmarkPlus v-else :size="15" />Save</button>
+          <div><strong>{{ t('Save typed spec') }}</strong><span>{{ currentSpec.investigationId }}</span></div>
+          <label><span>{{ t('Recipe ID') }}</span><input v-model="recipeId" pattern="[a-zA-Z0-9][a-zA-Z0-9._\-]{2,100}" required></label>
+          <label><span>{{ t('Name') }}</span><input v-model="recipeName" required></label>
+          <button class="primary" :disabled="saving"><LoaderCircle v-if="saving" class="spin" :size="15" /><BookmarkPlus v-else :size="15" />{{ t('Save') }}</button>
         </form>
         <div class="reuse-list">
-          <div class="list-head"><strong>Saved recipes</strong><span>{{ recipes.length }}</span></div>
+          <div class="list-head"><strong>{{ t('Saved recipes') }}</strong><span>{{ recipes.length }}</span></div>
           <article v-for="recipe in recipes" :key="recipe.recipeId">
             <div><strong>{{ recipe.name }}</strong><code>{{ recipe.recipeId }}</code><small>{{ formatDate(recipe.savedAt) }}</small></div>
-            <button :disabled="saving" @click="$emit('instantiate', recipe.recipeId)"><Play :size="14" />Create plan</button>
+            <button :disabled="saving" @click="$emit('instantiate', recipe.recipeId)"><Play :size="14" />{{ t('Create plan') }}</button>
           </article>
-          <div v-if="!recipes.length" class="empty"><BookOpen :size="24" /><span>No saved recipes.</span></div>
+          <div v-if="!recipes.length" class="empty"><BookOpen :size="24" /><span>{{ t('No saved recipes.') }}</span></div>
         </div>
       </template>
 
       <template v-else>
         <form v-if="currentPlan && currentJob?.state === 'completed'" class="reuse-save" @submit.prevent="compileWorkflow">
-          <div><strong>Compile successful run</strong><span>{{ currentJob.jobId }}</span></div>
-          <label><span>Workflow ID</span><input v-model="workflowId" pattern="[a-z0-9][a-z0-9._\-]{2,100}" required></label>
-          <label><span>Name</span><input v-model="workflowName" required></label>
-          <button class="primary" :disabled="saving"><LoaderCircle v-if="saving" class="spin" :size="15" /><GitMerge v-else :size="15" />Compile</button>
+          <div><strong>{{ t('Compile successful run') }}</strong><span>{{ currentJob.jobId }}</span></div>
+          <label><span>{{ t('Workflow ID') }}</span><input v-model="workflowId" pattern="[a-z0-9][a-z0-9._\-]{2,100}" required></label>
+          <label><span>{{ t('Name') }}</span><input v-model="workflowName" required></label>
+          <button class="primary" :disabled="saving"><LoaderCircle v-if="saving" class="spin" :size="15" /><GitMerge v-else :size="15" />{{ t('Compile') }}</button>
         </form>
         <div class="reuse-list workflow-list">
-          <div class="list-head"><strong>Compiled workflows</strong><span>{{ workflows.length }}</span></div>
+          <div class="list-head"><strong>{{ t('Compiled workflows') }}</strong><span>{{ workflows.length }}</span></div>
           <article v-for="workflow in workflows" :key="workflow.workflowId">
-            <span :class="['stage', workflow.stage]">{{ workflow.stage }}</span>
+            <span :class="['stage', workflow.stage]">{{ statusLabel(workflow.stage) }}</span>
             <div><strong>{{ workflow.name }}</strong><code>{{ workflow.workflowId }} · rev {{ workflow.revision }} · {{ workflow.fingerprint.slice(0, 12) }}</code><small>{{ workflow.executionKind }} · {{ workflow.successCount }}/{{ workflow.replayCount }} successful · {{ workflow.failureCount }} blocked/failed</small></div>
-            <button :disabled="saving" @click="$emit('replay', workflow.workflowId)"><RefreshCw :size="14" />Replay</button>
+            <button :disabled="saving" @click="$emit('replay', workflow.workflowId)"><RefreshCw :size="14" />{{ t('Replay') }}</button>
           </article>
-          <div v-if="!workflows.length" class="empty"><Workflow :size="24" /><span>No compiled workflows.</span></div>
+          <div v-if="!workflows.length" class="empty"><Workflow :size="24" /><span>{{ t('No compiled workflows.') }}</span></div>
           <div v-if="workflowRuns.length" class="run-strip">
-            <span>Recent replay</span><code>{{ workflowRuns[0].replayId }}</code><strong :class="workflowRuns[0].state">{{ workflowRuns[0].state }}</strong>
+            <span>{{ t('Recent replay') }}</span><code>{{ workflowRuns[0].replayId }}</code><strong :class="workflowRuns[0].state">{{ statusLabel(workflowRuns[0].state) }}</strong>
           </div>
         </div>
       </template>
@@ -54,6 +54,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { BookmarkPlus, BookOpen, GitMerge, LoaderCircle, Play, RefreshCw, Workflow, X } from "lucide-vue-next";
+import { useI18n } from "../i18n";
 import type { EarthJob, EarthWorkflowReplay, EarthWorkflowSummary, InvestigationPlan, InvestigationSpec, RecipeSummary } from "../types";
 
 const props = defineProps<{ open: boolean; saving: boolean; recipes: RecipeSummary[]; workflows: EarthWorkflowSummary[]; workflowRuns: EarthWorkflowReplay[]; currentSpec?: InvestigationSpec; currentPlan?: InvestigationPlan; currentJob?: EarthJob }>();
@@ -64,6 +65,7 @@ const emit = defineEmits<{
   compile: [input: { workflowId: string; name: string; planId: string; jobId: string; stage: "ready" }];
   replay: [workflowId: string];
 }>();
+const { locale, t, statusLabel } = useI18n();
 const active = ref<"recipes" | "workflows">("recipes");
 const recipeId = ref("");
 const recipeName = ref("");
@@ -84,7 +86,7 @@ function saveRecipe() {
 function compileWorkflow() {
   if (props.currentPlan && props.currentJob) emit("compile", { workflowId: workflowId.value, name: workflowName.value.trim(), planId: props.currentPlan.planId, jobId: props.currentJob.jobId, stage: "ready" });
 }
-function formatDate(value: string) { return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" }).format(new Date(value)); }
+function formatDate(value: string) { return new Intl.DateTimeFormat(locale.value, { year: "numeric", month: "short", day: "numeric" }).format(new Date(value)); }
 </script>
 
 <style scoped>

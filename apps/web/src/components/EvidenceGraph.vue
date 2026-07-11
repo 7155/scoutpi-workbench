@@ -1,50 +1,57 @@
 <template>
   <div class="evidence-graph">
     <section v-if="review" :class="['review-card', review.status]">
-      <header><span class="review-icon"><ShieldCheck v-if="review.status === 'passed'" :size="15" /><CircleAlert v-else :size="15" /></span><div><strong>Evidence review</strong><span>Claim, computation and provenance gate</span></div><b>{{ review.status }}</b></header>
-      <div class="review-metrics"><span><strong>{{ review.summary.blocking }}</strong> blocking</span><span><strong>{{ review.summary.warnings }}</strong> warnings</span><span><strong>{{ review.summary.completedLiveJobs }}</strong> live runs</span><span><strong>{{ review.summary.contradictingSources }}</strong> counter sources</span></div>
+      <header><span class="review-icon"><ShieldCheck v-if="review.status === 'passed'" :size="15" /><CircleAlert v-else :size="15" /></span><div><strong>{{ t('Evidence review') }}</strong><span>{{ t('Claim, computation and provenance gate') }}</span></div><b>{{ statusLabel(review.status) }}</b></header>
+      <div class="review-metrics"><span><strong>{{ review.summary.blocking }}</strong> {{ t('blocking') }}</span><span><strong>{{ review.summary.warnings }}</strong> {{ t('warnings') }}</span><span><strong>{{ review.summary.completedLiveJobs }}</strong> {{ t('live runs') }}</span><span><strong>{{ review.summary.contradictingSources }}</strong> {{ t('counter sources') }}</span></div>
       <article v-for="item in review.issues.slice(0, 6)" :key="item.issueId"><span :class="['issue-dot', item.severity]"></span><div><strong>{{ item.code.replaceAll('_', ' ') }}</strong><p>{{ item.message }}</p><small>{{ item.resolution }}</small></div></article>
     </section>
     <div v-if="graph" class="coverage-strip">
-      <div><Globe2 :size="14" /><span>Sources</span><strong>{{ graph.coverage.browserEvidence }}</strong></div>
-      <div><Quote :size="14" /><span>Claims</span><strong>{{ graph.coverage.claims }}</strong></div>
-      <div><Cpu :size="14" /><span>Runs</span><strong>{{ graph.coverage.computedRuns }}</strong></div>
-      <div :class="{ warning: graph.coverage.coveredHypotheses < graph.coverage.hypotheses }"><Target :size="14" /><span>Coverage</span><strong>{{ graph.coverage.coveredHypotheses }}/{{ graph.coverage.hypotheses }}</strong></div>
+      <div><Globe2 :size="14" /><span>{{ t('Sources') }}</span><strong>{{ graph.coverage.browserEvidence }}</strong></div>
+      <div><Quote :size="14" /><span>{{ t('Claims') }}</span><strong>{{ graph.coverage.claims }}</strong></div>
+      <div><Cpu :size="14" /><span>{{ t('Runs') }}</span><strong>{{ graph.coverage.computedRuns }}</strong></div>
+      <div :class="{ warning: graph.coverage.coveredHypotheses < graph.coverage.hypotheses }"><Target :size="14" /><span>{{ t('Coverage') }}</span><strong>{{ graph.coverage.coveredHypotheses }}/{{ graph.coverage.hypotheses }}</strong></div>
     </div>
 
     <article v-for="row in hypothesisRows" :key="row.node.nodeId" class="hypothesis-chain">
       <header>
         <span :class="['coverage-dot', { covered: row.covered }]"></span>
         <div><code>{{ row.node.ref }}</code><strong>{{ row.node.label }}</strong></div>
-        <span :class="['coverage-state', { covered: row.covered }]">{{ row.covered ? 'covered' : 'open' }}</span>
+        <span :class="['coverage-state', { covered: row.covered }]">{{ t(row.covered ? 'covered' : 'open') }}</span>
       </header>
       <div v-for="source in row.sources" :key="source.evidenceId" class="chain-row source-chain">
-        <Globe2 :size="14" /><div><a :href="source.source.url" target="_blank">{{ source.source.title }}<ExternalLink :size="11" /></a><span>{{ source.binding?.relation || 'documents' }} · {{ source.source.trust }} trust</span></div>
+        <Globe2 :size="14" /><div><a :href="source.source.url" target="_blank">{{ source.source.title }}<ExternalLink :size="11" /></a><span>{{ statusLabel(source.binding?.relation || 'documents') }} · {{ statusLabel(source.source.trust) }} {{ t('trust') }}</span></div>
       </div>
       <div v-for="run in row.runs" :key="run.nodeId" class="chain-row run-chain">
         <Cpu :size="14" /><div><strong>{{ run.label }}</strong><span>{{ run.ref }} · {{ run.metadata?.artifactCount || 0 }} artifacts</span></div>
       </div>
       <div v-for="finding in row.findings" :key="finding.nodeId" class="chain-row finding-chain">
-        <FileCheck2 :size="14" /><div><strong>{{ finding.label }}</strong><span>EarthStory finding</span></div>
+        <FileCheck2 :size="14" /><div><strong>{{ findingLabel(finding.label, finding.status) }}</strong><span>{{ t('EarthStory finding') }}</span></div>
       </div>
-      <div v-if="!row.sources.length && !row.runs.length && !row.findings.length" class="chain-empty"><CircleAlert :size="14" />No bound source or completed computation.</div>
+      <div v-if="!row.sources.length && !row.runs.length && !row.findings.length" class="chain-empty"><CircleAlert :size="14" />{{ t('No bound source or completed computation.') }}</div>
     </article>
 
     <section v-if="unassignedSources.length" class="unassigned-sources">
-      <div class="mini-heading"><strong>Unassigned browser evidence</strong><span>{{ unassignedSources.length }}</span></div>
+      <div class="mini-heading"><strong>{{ t('Unassigned browser evidence') }}</strong><span>{{ unassignedSources.length }}</span></div>
       <a v-for="source in unassignedSources" :key="source.evidenceId" :href="source.source.url" target="_blank"><Globe2 :size="13" /><span><strong>{{ source.source.title }}</strong><small>{{ source.evidenceId }}</small></span><ExternalLink :size="11" /></a>
     </section>
 
-    <div v-if="!graph || (!hypothesisRows.length && !records.length)" class="graph-empty"><GitFork :size="24" /><span>No evidence graph for this investigation.</span></div>
+    <div v-if="!graph || (!hypothesisRows.length && !records.length)" class="graph-empty"><GitFork :size="24" /><span>{{ t('No evidence graph for this investigation.') }}</span></div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import { CircleAlert, Cpu, ExternalLink, FileCheck2, GitFork, Globe2, Quote, ShieldCheck, Target } from "lucide-vue-next";
+import { useI18n } from "../i18n";
 import type { BrowserEvidenceRecord, EvidenceGraph, EvidenceReviewReport } from "../types";
 
 const props = defineProps<{ graph?: EvidenceGraph; records: BrowserEvidenceRecord[]; review?: EvidenceReviewReport }>();
+const { t, statusLabel } = useI18n();
+
+function findingLabel(label: string, status?: string): string {
+  const count = label.match(/·\s*(\d+)\s+evidence statements?$/i)?.[1];
+  return count ? `${statusLabel(status || label.split("·")[0].trim())} · ${count} ${t('evidence statements')}` : label;
+}
 
 const nodeMap = computed(() => new Map((props.graph?.nodes || []).map((node) => [node.nodeId, node])));
 const hypothesisRows = computed(() => (props.graph?.nodes || []).filter((node) => node.kind === "hypothesis").map((node) => {

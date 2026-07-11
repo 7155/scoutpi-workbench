@@ -122,3 +122,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Proxy semantics are declared by reviewed adapters through bounded literal `claimRule` metadata rather than hard-coded project branches.
 - Review reports are content-minimal artifacts available through the API and the Workbench Evidence view. A blocked candidate does not overwrite the last accepted story.
 - Desktop/mobile QA, all 65 tests, full package verification, production build/audit, and a real `gpt-5.6` Pi RPC startup pass. Next: commit and push this reviewer milestone, then continue with the real Pi Agent evaluation layer.
+
+### 2026-07-11 - Bilingual Workbench
+
+- Workbench now switches immediately between English and Simplified Chinese, persists the browser-local choice, and follows browser language on first use.
+- Desktop uses a stable segmented control; mobile exposes the same command through the existing overflow menu to avoid crowding map/run controls.
+- Core navigation, dialogs, maps, evidence, charts, Runtime Center, status/role labels, and automation controls are localized. User-authored and evidence-bearing domain content remains verbatim by design.
+- Desktop/mobile screenshots, locale persistence, document metadata, no-overflow checks, zero-console-error checks, all 66 tests, full build, and extracted Pi package verification pass.
+- Next: commit and push this UI milestone, then return to privacy-safe real Pi Agent evaluation artifacts and outcome scoring.

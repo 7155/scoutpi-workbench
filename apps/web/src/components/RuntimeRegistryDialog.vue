@@ -1,26 +1,26 @@
 <template>
   <div v-if="open" class="runtime-backdrop" @mousedown.self="$emit('close')">
-    <section class="runtime-dialog" role="dialog" aria-modal="true" aria-label="Runtime Center">
+    <section class="runtime-dialog" role="dialog" aria-modal="true" :aria-label="t('Runtime Center')">
       <header class="runtime-header">
         <div class="runtime-title">
           <span class="runtime-mark"><Waypoints :size="18" /></span>
-          <div><p>Pi control plane</p><h2>Runtime Center</h2></div>
+          <div><p>{{ t('Pi control plane') }}</p><h2>{{ t('Runtime Center') }}</h2></div>
           <span :class="['posture-badge', runtimeTone]">{{ runtimeStatusLabel }}</span>
         </div>
         <div class="header-actions">
-          <button class="icon-button" title="Refresh runtime state" :disabled="saving" @click="$emit('refresh')"><RefreshCw :class="{ spin: saving }" :size="17" /></button>
-          <button class="icon-button" title="Close" @click="$emit('close')"><X :size="18" /></button>
+          <button class="icon-button" :title="t('Refresh runtime state')" :disabled="saving" @click="$emit('refresh')"><RefreshCw :class="{ spin: saving }" :size="17" /></button>
+          <button class="icon-button" :title="t('Close')" @click="$emit('close')"><X :size="18" /></button>
         </div>
       </header>
 
-      <section class="runtime-summary" aria-label="Runtime summary">
-        <div><Boxes :size="17" /><span>Pi tool surface</span><strong>3 gateways</strong><small>{{ mcpProfile ? `${mcpProfile.tools.length} MCP gateways isolated` : `${adapters.length} adapters` }}</small></div>
-        <div><BrainCircuit :size="17" /><span>Context budget</span><strong>{{ latestContext ? formatNumber(latestContext.budget.deliveredTokens) : 0 }} tokens</strong><small>{{ latestContext ? `${latestContext.budget.selectedCount} selected items` : 'No active pack' }}</small></div>
-        <div><ServerCog :size="17" /><span>Backend probes</span><strong>{{ availableBackends }}/{{ backendManifests.length }}</strong><small>{{ backendManifests.length ? 'available now' : 'No providers' }}</small></div>
-        <div :class="{ attention: runtimeAttention > 0 }"><ShieldCheck :size="17" /><span>Operator queue</span><strong>{{ runtimeAttention }}</strong><small>{{ runtimeAttention ? 'review required' : 'No action required' }}</small></div>
+      <section class="runtime-summary" :aria-label="t('Runtime summary')">
+        <div><Boxes :size="17" /><span>{{ t('Pi tool surface') }}</span><strong>{{ t('count.gateways', { count: 3 }) }}</strong><small>{{ mcpProfile ? t('count.mcpGateways', { count: mcpProfile.tools.length }) : t('count.adapters', { count: adapters.length }) }}</small></div>
+        <div><BrainCircuit :size="17" /><span>{{ t('Context budget') }}</span><strong>{{ t('count.tokens', { count: latestContext ? formatNumber(latestContext.budget.deliveredTokens) : 0 }) }}</strong><small>{{ latestContext ? t('count.selectedItems', { count: latestContext.budget.selectedCount }) : t('No active pack') }}</small></div>
+        <div><ServerCog :size="17" /><span>{{ t('Backend probes') }}</span><strong>{{ availableBackends }}/{{ backendManifests.length }}</strong><small>{{ backendManifests.length ? t('available now') : t('No providers') }}</small></div>
+        <div :class="{ attention: runtimeAttention > 0 }"><ShieldCheck :size="17" /><span>{{ t('Operator queue') }}</span><strong>{{ runtimeAttention }}</strong><small>{{ runtimeAttention ? t('review required') : t('No action required') }}</small></div>
       </section>
 
-      <nav class="runtime-tabs" aria-label="Runtime views">
+      <nav class="runtime-tabs" :aria-label="t('Runtime views')">
         <button v-for="tab in tabs" :key="tab.id" :class="{ active: active === tab.id }" :aria-current="active === tab.id ? 'page' : undefined" @click="active = tab.id">
           <component :is="tab.icon" :size="16" /><span class="tab-label">{{ tab.label }}</span><span v-if="tab.count !== undefined" class="tab-count">{{ tab.count }}</span>
         </button>
@@ -28,93 +28,93 @@
 
       <div v-if="active === 'overview'" class="overview-view">
         <section class="overview-column">
-          <div class="section-title"><div><strong>Runtime layers</strong><span>Current execution posture</span></div><span>{{ runtimeLayers.filter((item) => item.tone === 'ready').length }}/{{ runtimeLayers.length }} ready</span></div>
+          <div class="section-title"><div><strong>{{ t('Runtime layers') }}</strong><span>{{ t('Current execution posture') }}</span></div><span>{{ runtimeLayers.filter((item) => item.tone === 'ready').length }}/{{ runtimeLayers.length }} {{ t('ready') }}</span></div>
           <article v-for="layer in runtimeLayers" :key="layer.id" class="layer-row">
             <span :class="['layer-icon', layer.tone]"><component :is="layer.icon" :size="16" /></span>
             <div><strong>{{ layer.title }}</strong><span>{{ layer.detail }}</span></div>
-            <div class="layer-value"><strong>{{ layer.value }}</strong><span :class="['state-label', layer.tone]">{{ layer.state }}</span></div>
+            <div class="layer-value"><strong>{{ layer.value }}</strong><span :class="['state-label', layer.tone]">{{ statusLabel(layer.state) }}</span></div>
           </article>
         </section>
 
         <section class="overview-column queue-column">
-          <div class="section-title"><div><strong>Operator queue</strong><span>Human decisions and recovery</span></div><span>{{ operatorQueue.length }}</span></div>
+          <div class="section-title"><div><strong>{{ t('Operator queue') }}</strong><span>{{ t('Human decisions and recovery') }}</span></div><span>{{ operatorQueue.length }}</span></div>
           <article v-for="item in operatorQueue" :key="item.id" class="queue-row">
             <span :class="['queue-icon', item.tone]"><component :is="item.icon" :size="15" /></span>
             <div><strong>{{ item.title }}</strong><span>{{ item.detail }}</span></div>
-            <button v-if="item.tab" title="Open related runtime view" @click="active = item.tab"><ArrowUpRight :size="14" /></button>
+            <button v-if="item.tab" :title="t('Open related runtime view')" @click="active = item.tab"><ArrowUpRight :size="14" /></button>
           </article>
-          <div v-if="!operatorQueue.length" class="empty-state compact"><CircleCheck :size="25" /><strong>Queue clear</strong><span>No approval, writeback, or recovery action is waiting.</span></div>
+          <div v-if="!operatorQueue.length" class="empty-state compact"><CircleCheck :size="25" /><strong>{{ t('Queue clear') }}</strong><span>{{ t('No approval, writeback, or recovery action is waiting.') }}</span></div>
 
-          <div class="section-title recent-run-title"><div><strong>Latest Agent run</strong><span>Provider-reported usage</span></div><span>{{ agentRuns.length }}</span></div>
+          <div class="section-title recent-run-title"><div><strong>{{ t('Latest Agent run') }}</strong><span>{{ t('Provider-reported usage') }}</span></div><span>{{ agentRuns.length }}</span></div>
           <article v-if="latestRun" class="latest-run">
-            <div class="latest-run-head"><span :class="['run-state', latestRun.state]"></span><code>{{ latestRun.runId }}</code><span :class="['state-label', latestRun.state === 'completed' ? 'ready' : latestRun.state === 'running' ? 'active' : 'attention']">{{ latestRun.state }}</span></div>
-            <strong>{{ latestRun.model || 'Model not reported' }}</strong>
-            <div class="run-metrics"><span><b>{{ latestRun.turns }}</b> turns</span><span><b>{{ latestRun.toolCalls }}</b> tools</span><span><b>{{ formatNumber(latestRun.modelUsage.totalTokens) }}</b> tokens</span><span><b>${{ latestRun.modelUsage.reportedCostUsd.toFixed(4) }}</b> cost</span></div>
+            <div class="latest-run-head"><span :class="['run-state', latestRun.state]"></span><code>{{ latestRun.runId }}</code><span :class="['state-label', latestRun.state === 'completed' ? 'ready' : latestRun.state === 'running' ? 'active' : 'attention']">{{ statusLabel(latestRun.state) }}</span></div>
+            <strong>{{ latestRun.model || t('Model not reported') }}</strong>
+            <div class="run-metrics"><span><b>{{ latestRun.turns }}</b> {{ t('turns') }}</span><span><b>{{ latestRun.toolCalls }}</b> {{ t('tools') }}</span><span><b>{{ formatNumber(latestRun.modelUsage.totalTokens) }}</b> {{ t('tokens') }}</span><span><b>${{ latestRun.modelUsage.reportedCostUsd.toFixed(4) }}</b> {{ t('cost') }}</span></div>
           </article>
-          <div v-else class="empty-state compact"><Radio :size="24" /><strong>No Agent trace</strong><span>The next Pi run will appear here.</span></div>
+          <div v-else class="empty-state compact"><Radio :size="24" /><strong>{{ t('No Agent trace') }}</strong><span>{{ t('The next Pi run will appear here.') }}</span></div>
         </section>
       </div>
 
       <div v-else-if="active === 'adapters'" class="registry-content">
         <section class="registry-list">
-          <div class="section-title"><div><strong>Dataset adapters</strong><span>Versioned and probe-bound execution contracts</span></div><span>{{ adapters.length }}</span></div>
+          <div class="section-title"><div><strong>{{ t('Dataset adapters') }}</strong><span>{{ t('Versioned and probe-bound execution contracts') }}</span></div><span>{{ adapters.length }}</span></div>
           <article v-for="row in adapters" :key="row.adapter.datasetId" :class="['adapter-row', { disabled: !row.enabled }]">
             <Database :size="17" />
-            <div><strong>{{ row.adapter.title }}</strong><code>{{ row.adapter.datasetId }}</code><span>{{ row.adapter.roles.join(' · ') }}</span></div>
-            <div class="registry-meta"><span :class="['verify-state', row.verification.status]">{{ row.verification.status.replace('_', ' ') }}</span><small>rev {{ row.revision }} · {{ row.adapter.scaleMeters }} m</small></div>
+            <div><strong>{{ row.adapter.title }}</strong><code>{{ row.adapter.datasetId }}</code><span>{{ row.adapter.roles.map((role) => roleLabel(role)).join(' · ') }}</span></div>
+            <div class="registry-meta"><span :class="['verify-state', row.verification.status]">{{ statusLabel(row.verification.status) }}</span><small>rev {{ row.revision }} · {{ row.adapter.scaleMeters }} m</small></div>
             <div class="registry-actions">
-              <button title="Probe adapter against Earth Engine" :disabled="saving || !row.enabled" @click="$emit('probe', row.adapter.datasetId)"><ShieldCheck :size="15" /></button>
-              <button :title="row.enabled ? 'Disable adapter' : 'Enable adapter'" :disabled="saving" @click="$emit('state', row.adapter.datasetId, !row.enabled)"><Power :size="15" /></button>
+              <button :title="t('Probe adapter against Earth Engine')" :disabled="saving || !row.enabled" @click="$emit('probe', row.adapter.datasetId)"><ShieldCheck :size="15" /></button>
+              <button :title="t(row.enabled ? 'Disable adapter' : 'Enable adapter')" :disabled="saving" @click="$emit('state', row.adapter.datasetId, !row.enabled)"><Power :size="15" /></button>
             </div>
           </article>
-          <div v-if="!adapters.length" class="empty-state"><Blocks :size="27" /><strong>No adapters</strong><span>Import a reviewed adapter contract to begin.</span></div>
+          <div v-if="!adapters.length" class="empty-state"><Blocks :size="27" /><strong>{{ t('No adapters') }}</strong><span>{{ t('Import a reviewed adapter contract to begin.') }}</span></div>
         </section>
         <form class="json-editor" @submit.prevent="submitRegistry">
-          <div class="editor-heading"><div><strong>Import contract</strong><span>Adapter or pack JSON</span></div><button type="button" title="Load adapter template" @click="loadTemplate('adapter')"><Braces :size="14" /></button></div>
-          <textarea v-model="registryJson" rows="9" spellcheck="false" aria-label="Adapter or pack JSON" required></textarea>
-          <button class="primary" :disabled="saving"><LoaderCircle v-if="saving" class="spin" :size="15" /><Upload v-else :size="15" />Validate and import</button>
+          <div class="editor-heading"><div><strong>{{ t('Import contract') }}</strong><span>{{ t('Adapter or pack JSON') }}</span></div><button type="button" :title="t('Load adapter template')" @click="loadTemplate('adapter')"><Braces :size="14" /></button></div>
+          <textarea v-model="registryJson" rows="9" spellcheck="false" :aria-label="t('Adapter or pack JSON')" required></textarea>
+          <button class="primary" :disabled="saving"><LoaderCircle v-if="saving" class="spin" :size="15" /><Upload v-else :size="15" />{{ t('Validate and import') }}</button>
         </form>
       </div>
 
       <div v-else-if="active === 'skills'" class="registry-content">
         <section class="registry-list">
-          <div class="section-title"><div><strong>Generated skills</strong><span>Reviewed workflows prepared for Pi</span></div><span>{{ skills.length }}</span></div>
+          <div class="section-title"><div><strong>{{ t('Generated skills') }}</strong><span>{{ t('Reviewed workflows prepared for Pi') }}</span></div><span>{{ skills.length }}</span></div>
           <article v-for="skill in skills" :key="skill.skillId" class="skill-row">
             <BookOpen :size="17" />
             <div><strong>{{ skill.name }}</strong><code>{{ skill.skillId }}</code><span>{{ skill.description }}</span></div>
-            <button title="Publish skill to Pi" :disabled="saving" @click="$emit('publish', skill.skillId)"><Rocket :size="14" />Publish</button>
+            <button :title="t('Publish skill to Pi')" :disabled="saving" @click="$emit('publish', skill.skillId)"><Rocket :size="14" />{{ t('Publish') }}</button>
           </article>
-          <div v-if="!skills.length" class="empty-state"><BookOpen :size="27" /><strong>No generated skills</strong><span>Validated skill drafts will remain reviewable here.</span></div>
+          <div v-if="!skills.length" class="empty-state"><BookOpen :size="27" /><strong>{{ t('No generated skills') }}</strong><span>{{ t('Validated skill drafts will remain reviewable here.') }}</span></div>
         </section>
         <form class="json-editor" @submit.prevent="submitSkill">
-          <div class="editor-heading"><div><strong>Save skill draft</strong><span>Declarative definition JSON</span></div><button type="button" title="Load skill template" @click="loadTemplate('skill')"><Braces :size="14" /></button></div>
-          <textarea v-model="skillJson" rows="9" spellcheck="false" aria-label="Skill definition JSON" required></textarea>
-          <button class="primary" :disabled="saving"><LoaderCircle v-if="saving" class="spin" :size="15" /><Save v-else :size="15" />Validate and save</button>
+          <div class="editor-heading"><div><strong>{{ t('Save skill draft') }}</strong><span>{{ t('Declarative definition JSON') }}</span></div><button type="button" :title="t('Load skill template')" @click="loadTemplate('skill')"><Braces :size="14" /></button></div>
+          <textarea v-model="skillJson" rows="9" spellcheck="false" :aria-label="t('Skill definition JSON')" required></textarea>
+          <button class="primary" :disabled="saving"><LoaderCircle v-if="saving" class="spin" :size="15" /><Save v-else :size="15" />{{ t('Validate and save') }}</button>
         </form>
       </div>
 
       <div v-else-if="active === 'backends'" class="backend-view">
-        <div class="section-title"><div><strong>Reviewed backend providers</strong><span>Executable code stays behind typed contracts</span></div><span>{{ backendManifests.length }}</span></div>
+        <div class="section-title"><div><strong>{{ t('Reviewed backend providers') }}</strong><span>{{ t('Executable code stays behind typed contracts') }}</span></div><span>{{ backendManifests.length }}</span></div>
         <div class="backend-grid">
           <article v-for="backend in backendManifests" :key="backend.backendId" :class="{ installed: backendProbes[backend.backendId]?.available }">
             <span class="backend-state"></span>
             <div><strong>{{ backend.displayName }}</strong><code>{{ backend.backendId }}@{{ backend.version }}</code><p>{{ backend.description }}</p><span>{{ backend.capabilities.join(' · ') }}</span><small>{{ backend.provider }} · {{ backend.operations.length }} operations</small></div>
-            <div class="backend-actions"><small>{{ probeLabel(backend.backendId) }}</small><button title="Probe backend" :disabled="saving" @click="$emit('probeBackend', backend.backendId)"><Radar :size="15" /></button></div>
+            <div class="backend-actions"><small>{{ probeLabel(backend.backendId) }}</small><button :title="t('Probe backend')" :disabled="saving" @click="$emit('probeBackend', backend.backendId)"><Radar :size="15" /></button></div>
           </article>
-          <div v-if="!backendManifests.length" class="empty-state"><ServerCog :size="27" /><strong>No reviewed backends</strong><span>Executable providers must be installed through the Backend SDK.</span></div>
+          <div v-if="!backendManifests.length" class="empty-state"><ServerCog :size="27" /><strong>{{ t('No reviewed backends') }}</strong><span>{{ t('Executable providers must be installed through the Backend SDK.') }}</span></div>
         </div>
       </div>
 
       <div v-else-if="active === 'ecosystem'" class="ecosystem-view">
         <header class="ecosystem-heading">
-          <div><strong>Pi extension ecosystem</strong><span>Operator-selected capabilities from the official package catalog</span></div>
-          <a :href="piEcosystem?.officialCatalogUrl || 'https://pi.dev/packages?type=extension'" target="_blank" title="Open the official Pi extension catalog"><ArrowUpRight :size="15" /></a>
+          <div><strong>{{ t('Pi extension ecosystem') }}</strong><span>{{ t('Operator-selected capabilities from the official package catalog') }}</span></div>
+          <a :href="piEcosystem?.officialCatalogUrl || 'https://pi.dev/packages?type=extension'" target="_blank" :title="t('Open the official Pi extension catalog')"><ArrowUpRight :size="15" /></a>
         </header>
         <section v-if="piEcosystem" class="ecosystem-summary">
-          <div><strong>{{ piEcosystem.detectedCount }}/{{ piEcosystem.capabilities.length }}</strong><span>capability groups ready</span></div>
-          <div><strong>{{ piEcosystem.toolCount }}</strong><span>installed tools inspected</span></div>
-          <div><strong>{{ piEcosystem.commandCount }}</strong><span>slash commands inspected</span></div>
-          <div><strong>{{ formatTime(piEcosystem.generatedAt) }}</strong><span>last Pi session scan</span></div>
+          <div><strong>{{ piEcosystem.detectedCount }}/{{ piEcosystem.capabilities.length }}</strong><span>{{ t('capability groups ready') }}</span></div>
+          <div><strong>{{ piEcosystem.toolCount }}</strong><span>{{ t('installed tools inspected') }}</span></div>
+          <div><strong>{{ piEcosystem.commandCount }}</strong><span>{{ t('slash commands inspected') }}</span></div>
+          <div><strong>{{ formatTime(piEcosystem.generatedAt) }}</strong><span>{{ t('last Pi session scan') }}</span></div>
         </section>
         <section v-if="piEcosystem" class="ecosystem-ledger">
           <article v-for="capability in piEcosystem.capabilities" :key="capability.id">
@@ -124,17 +124,17 @@
             <a :href="capability.catalogUrl" target="_blank" :title="`Review ${capability.label} packages in the official catalog`"><ArrowUpRight :size="14" /></a>
           </article>
         </section>
-        <div v-else class="empty-state"><Boxes :size="27" /><strong>No Pi session scan</strong><span>Start Pi once to inspect installed tools, commands, and source metadata. ScoutPi never installs a package automatically.</span></div>
+        <div v-else class="empty-state"><Boxes :size="27" /><strong>{{ t('No Pi session scan') }}</strong><span>{{ t('Start Pi once to inspect installed tools, commands, and source metadata. ScoutPi never installs a package automatically.') }}</span></div>
         <footer class="ecosystem-commands"><code v-for="command in piEcosystem?.packageCommands || defaultPackageCommands" :key="command">{{ command }}</code></footer>
       </div>
 
       <div v-else-if="active === 'context'" class="context-view">
         <section class="context-column">
-          <div class="section-title"><div><strong>Context packs</strong><span>Task-ranked memory with source provenance</span></div><span>{{ contextPacks.length }}</span></div>
+          <div class="section-title"><div><strong>{{ t('Context packs') }}</strong><span>{{ t('Task-ranked memory with source provenance') }}</span></div><span>{{ contextPacks.length }}</span></div>
           <article v-for="pack in contextPacks.slice(0, 10)" :key="pack.packId" class="context-pack-row">
             <div class="context-row-head"><BrainCircuit :size="16" /><code>{{ pack.packId }}</code><time>{{ formatTime(pack.createdAt) }}</time></div>
             <div class="context-budget"><span :style="{ width: `${budgetPercent(pack)}%` }"></span></div>
-            <div class="context-row-meta"><span>{{ pack.budget.selectedCount }}/{{ pack.budget.candidateCount }} items</span><span>{{ pack.budget.deliveredTokens }}/{{ pack.budget.maxTokens }} tokens</span><span>{{ pack.budget.estimator }}</span><span v-if="pack.budget.truncated" class="warning-text">truncated</span></div>
+            <div class="context-row-meta"><span>{{ pack.budget.selectedCount }}/{{ pack.budget.candidateCount }} {{ t('items') }}</span><span>{{ pack.budget.deliveredTokens }}/{{ pack.budget.maxTokens }} {{ t('tokens') }}</span><span>{{ pack.budget.estimator }}</span><span v-if="pack.budget.truncated" class="warning-text">{{ t('truncated') }}</span></div>
             <p v-if="pack.items[0]">{{ pack.items[0].text }}</p>
             <div class="provider-line">
               <span v-for="provider in pack.providers || []" :key="provider.providerId" :class="['provider-status', provider.state]" :title="provider.errorCode || `${provider.itemCount} candidates · ${provider.latencyMs} ms end to end${provider.sourceLatencyMs ? ` · ${provider.sourceLatencyMs} ms Core` : ''}`"><i></i>{{ provider.displayName }}<b v-if="provider.state === 'ready'">{{ Math.round(provider.latencyMs) }} ms · {{ provider.workerReused ? 'warm' : 'cold' }} · {{ provider.itemCount }}</b><b v-else>{{ provider.state }}</b></span>
@@ -142,22 +142,22 @@
               <small v-if="!pack.sourceProviders.length && !(pack.providers || []).length">{{ pack.detectedMemoryTools.length ? `Delegated to ${pack.detectedMemoryTools.join(' · ')}` : 'No provider data' }}</small>
             </div>
           </article>
-          <div v-if="!contextPacks.length" class="empty-state"><BrainCircuit :size="27" /><strong>No context pack</strong><span>The next Pi turn can assemble a bounded pack from installed memory providers.</span></div>
+          <div v-if="!contextPacks.length" class="empty-state"><BrainCircuit :size="27" /><strong>{{ t('No context pack') }}</strong><span>{{ t('The next Pi turn can assemble a bounded pack from installed memory providers.') }}</span></div>
         </section>
         <section class="context-column context-runtime-column">
-          <div class="section-title"><div><strong>Durable checkpoints</strong><span>Content-minimal recovery state</span></div><span>{{ checkpoints.length }}</span></div>
+          <div class="section-title"><div><strong>{{ t('Durable checkpoints') }}</strong><span>{{ t('Content-minimal recovery state') }}</span></div><span>{{ checkpoints.length }}</span></div>
           <article v-for="checkpoint in checkpoints.slice(0, 6)" :key="checkpoint.checkpointId" class="context-state-row">
-            <History :size="15" /><div><code>{{ checkpoint.sessionId }}</code><small>{{ checkpoint.state }} · r{{ checkpoint.revision }} · {{ checkpoint.references.length }} refs</small></div><span :class="['state-label', checkpoint.recovery.recoverable ? 'attention' : 'ready']">{{ checkpoint.recovery.recoverable ? 'recover' : 'settled' }}</span>
+            <History :size="15" /><div><code>{{ checkpoint.sessionId }}</code><small>{{ statusLabel(checkpoint.state) }} · r{{ checkpoint.revision }} · {{ checkpoint.references.length }} refs</small></div><span :class="['state-label', checkpoint.recovery.recoverable ? 'attention' : 'ready']">{{ statusLabel(checkpoint.recovery.recoverable ? 'recover' : 'settled') }}</span>
           </article>
-          <div v-if="!checkpoints.length" class="empty-state compact"><History :size="24" /><strong>No checkpoint</strong><span>No interrupted session needs recovery.</span></div>
-          <div class="section-title writeback-heading"><div><strong>Writeback review</strong><span>Provider outbox, never silent mutation</span></div><span>{{ contextWritebacks.length }}</span></div>
+          <div v-if="!checkpoints.length" class="empty-state compact"><History :size="24" /><strong>{{ t('No checkpoint') }}</strong><span>{{ t('No interrupted session needs recovery.') }}</span></div>
+          <div class="section-title writeback-heading"><div><strong>{{ t('Writeback review') }}</strong><span>{{ t('Provider outbox, never silent mutation') }}</span></div><span>{{ contextWritebacks.length }}</span></div>
           <article v-for="writeback in contextWritebacks.slice(0, 8)" :key="writeback.writebackId" class="context-state-row">
             <CircleCheck v-if="writebackState(writeback) === 'delivered'" :size="15" />
             <CircleX v-else-if="writebackState(writeback) === 'rejected' || writebackState(writeback) === 'failed'" :size="15" />
             <Hourglass v-else :size="15" />
-            <div><code>{{ writeback.writebackId }}</code><small>{{ writeback.candidates.length }} candidates · {{ writebackDeliveryDetail(writeback) }}</small></div><span :class="['state-label', writebackStateTone(writeback)]">{{ writebackState(writeback) }}</span>
+            <div><code>{{ writeback.writebackId }}</code><small>{{ writeback.candidates.length }} {{ t('candidates') }} · {{ writebackDeliveryDetail(writeback) }}</small></div><span :class="['state-label', writebackStateTone(writeback)]">{{ statusLabel(writebackState(writeback)) }}</span>
           </article>
-          <div v-if="!contextWritebacks.length" class="empty-state compact"><Hourglass :size="24" /><strong>No writeback</strong><span>Runtime learning candidates will wait here for review.</span></div>
+          <div v-if="!contextWritebacks.length" class="empty-state compact"><Hourglass :size="24" /><strong>{{ t('No writeback') }}</strong><span>{{ t('Runtime learning candidates will wait here for review.') }}</span></div>
         </section>
       </div>
 
@@ -165,28 +165,28 @@
 
       <div v-else class="telemetry-view">
         <section class="telemetry-metrics">
-          <div><Activity :size="17" /><span>Events</span><strong>{{ telemetry?.eventCount || 0 }}</strong></div>
-          <div><Gauge :size="17" /><span>Estimated tokens</span><strong>{{ formatNumber(telemetry?.estimatedTokens.total || 0) }}</strong></div>
-          <div><Clock3 :size="17" /><span>Runtime</span><strong>{{ formatDuration(telemetry?.elapsedMs || 0) }}</strong></div>
-          <div><Database :size="17" /><span>Pixel-years</span><strong>{{ formatNumber(telemetry?.cost.pixelYears || 0) }}</strong></div>
-          <div><HardDriveDownload :size="17" /><span>Raster estimate</span><strong>{{ formatBytes(telemetry?.cost.estimatedRasterBytes || 0) }}</strong></div>
-          <div><Coins :size="17" /><span>Reported cost</span><strong>${{ modelCost.toFixed(4) }}</strong></div>
+          <div><Activity :size="17" /><span>{{ t('Events') }}</span><strong>{{ telemetry?.eventCount || 0 }}</strong></div>
+          <div><Gauge :size="17" /><span>{{ t('Estimated tokens') }}</span><strong>{{ formatNumber(telemetry?.estimatedTokens.total || 0) }}</strong></div>
+          <div><Clock3 :size="17" /><span>{{ t('Runtime') }}</span><strong>{{ formatDuration(telemetry?.elapsedMs || 0) }}</strong></div>
+          <div><Database :size="17" /><span>{{ t('Pixel-years') }}</span><strong>{{ formatNumber(telemetry?.cost.pixelYears || 0) }}</strong></div>
+          <div><HardDriveDownload :size="17" /><span>{{ t('Raster estimate') }}</span><strong>{{ formatBytes(telemetry?.cost.estimatedRasterBytes || 0) }}</strong></div>
+          <div><Coins :size="17" /><span>{{ t('Reported cost') }}</span><strong>${{ modelCost.toFixed(4) }}</strong></div>
         </section>
         <div class="telemetry-columns">
           <section class="operation-ledger">
-            <div class="section-title"><div><strong>Operation ledger</strong><span>Output budget and elapsed time</span></div><span>{{ telemetry?.byOperation.length || 0 }}</span></div>
-            <div class="operation-row operation-head"><span>Operation</span><span>Calls</span><span>Tokens</span><span>Time</span></div>
+            <div class="section-title"><div><strong>{{ t('Operation ledger') }}</strong><span>{{ t('Output budget and elapsed time') }}</span></div><span>{{ telemetry?.byOperation.length || 0 }}</span></div>
+            <div class="operation-row operation-head"><span>{{ t('Operation') }}</span><span>{{ t('Calls') }}</span><span>{{ t('tokens') }}</span><span>{{ t('Time') }}</span></div>
             <div v-for="row in telemetry?.byOperation.slice(0, 14) || []" :key="row.operation" class="operation-row">
               <div><code>{{ row.operation }}</code><span class="token-bar"><i :class="{ failed: row.failures > 0 }" :style="{ width: `${operationPercent(row.outputEstimatedTokens)}%` }"></i></span></div><span>{{ row.calls }}</span><span>{{ row.outputEstimatedTokens }}</span><span>{{ formatDuration(row.elapsedMs) }}</span>
             </div>
-            <div v-if="!telemetry?.byOperation.length" class="empty-state compact"><Activity :size="24" /><strong>No telemetry</strong><span>Runtime operations will be aggregated here.</span></div>
+            <div v-if="!telemetry?.byOperation.length" class="empty-state compact"><Activity :size="24" /><strong>{{ t('No telemetry') }}</strong><span>{{ t('Runtime operations will be aggregated here.') }}</span></div>
           </section>
           <section class="agent-ledger">
-            <div class="section-title"><div><strong>Agent runs</strong><span>Exact provider usage when reported</span></div><span>{{ agentRuns.length }}</span></div>
+            <div class="section-title"><div><strong>{{ t('Agent runs') }}</strong><span>{{ t('Exact provider usage when reported') }}</span></div><span>{{ agentRuns.length }}</span></div>
             <article v-for="run in agentRuns.slice(0, 8)" :key="run.runId"><span :class="['run-state', run.state]"></span><div><code>{{ run.runId }}</code><small>{{ run.model || 'model unknown' }} · {{ run.turns }} turns · {{ run.toolCalls }} tools · {{ formatNumber(run.modelUsage.totalTokens) }} tokens</small></div><strong>${{ run.modelUsage.reportedCostUsd.toFixed(4) }}</strong></article>
-            <div v-if="!agentRuns.length" class="empty-state compact"><Radio :size="24" /><strong>No Agent runs</strong><span>Pi lifecycle traces will appear here.</span></div>
-            <div class="section-title approval-heading"><div><strong>Approval receipts</strong><span>Bound to exact call parameters</span></div><span>{{ approvals.length }}</span></div>
-            <article v-for="approval in approvals.slice(0, 6)" :key="approval.approvalId" class="approval-row"><ShieldCheck :size="15" /><div><code>{{ approval.operation }}</code><small>{{ approval.risk }} risk · {{ approval.state }} · {{ formatTime(approval.approvedAt) }}</small></div><span :class="['state-label', approval.state === 'pending' ? 'attention' : 'ready']">{{ approval.state }}</span></article>
+            <div v-if="!agentRuns.length" class="empty-state compact"><Radio :size="24" /><strong>{{ t('No Agent runs') }}</strong><span>{{ t('Pi lifecycle traces will appear here.') }}</span></div>
+            <div class="section-title approval-heading"><div><strong>{{ t('Approval receipts') }}</strong><span>{{ t('Bound to exact call parameters') }}</span></div><span>{{ approvals.length }}</span></div>
+            <article v-for="approval in approvals.slice(0, 6)" :key="approval.approvalId" class="approval-row"><ShieldCheck :size="15" /><div><code>{{ approval.operation }}</code><small>{{ approval.risk }} risk · {{ statusLabel(approval.state) }} · {{ formatTime(approval.approvedAt) }}</small></div><span :class="['state-label', approval.state === 'pending' ? 'attention' : 'ready']">{{ statusLabel(approval.state) }}</span></article>
           </section>
         </div>
       </div>
@@ -198,6 +198,7 @@
 import { computed, markRaw, onBeforeUnmount, onMounted, ref } from "vue";
 import { Activity, ArrowUpRight, Blocks, BookOpen, Boxes, Braces, BrainCircuit, CircleCheck, CircleX, Clock3, Coins, Database, Gauge, HardDriveDownload, History, Hourglass, LoaderCircle, Network, Power, Radar, Radio, RefreshCw, Rocket, Save, ServerCog, ShieldCheck, TimerReset, Upload, Waypoints, X } from "lucide-vue-next";
 import { api } from "../api";
+import { useI18n } from "../i18n";
 import AutomationPanel from "./AutomationPanel.vue";
 import type { AgentCheckpointSummary, AgentRunSummary, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthSkillSummary, EarthWorkflowSummary, PiEcosystemProfile, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "../types";
 
@@ -206,6 +207,7 @@ type RuntimeTone = "ready" | "active" | "idle" | "attention" | "blocked";
 
 const props = defineProps<{ open: boolean; saving: boolean; adapters: RegisteredAdapter[]; skills: EarthSkillSummary[]; backendManifests: EarthBackendManifest[]; backendProbes: Record<string, EarthBackendProbe>; telemetry?: RuntimeTelemetrySummary; agentRuns: AgentRunSummary[]; checkpoints: AgentCheckpointSummary[]; contextPacks: ContextPackSummary[]; contextWritebacks: ContextWritebackSummary[]; evidenceCount: number; mcpProfile?: ScoutPiMcpProfile; piEcosystem?: PiEcosystemProfile; triggers: WorkflowTrigger[]; triggerRuns: TriggerRun[]; delegations: DelegationGrantSummary[]; workflows: EarthWorkflowSummary[]; approvals: RuntimeApproval[] }>();
 const emit = defineEmits<{ close: []; refresh: []; import: [payload: Record<string, unknown>]; probe: [datasetId: string]; probeBackend: [backendId: string]; state: [datasetId: string, enabled: boolean]; saveSkill: [payload: Record<string, unknown>]; publish: [skillId: string]; createTrigger: [payload: Record<string, unknown>]; approveTrigger: [triggerId: string]; triggerState: [triggerId: string, state: "paused" | "active" | "revoked"]; invokeTrigger: [triggerId: string]; invalid: [message: string] }>();
+const { locale, t, statusLabel, roleLabel } = useI18n();
 const active = ref<RuntimeTab>("overview");
 const registryJson = ref("");
 const skillJson = ref("");
@@ -220,39 +222,39 @@ const interruptedRuns = computed(() => props.agentRuns.filter((item) => item.sta
 const pendingTriggers = computed(() => props.triggers.filter((item) => item.state === "draft"));
 const runtimeAttention = computed(() => pendingWritebacks.value.length + undeliveredWritebacks.value.length + recoverableCheckpoints.value.length + pendingApprovals.value.length + interruptedRuns.value.length + pendingTriggers.value.length);
 const runtimeTone = computed<RuntimeTone>(() => runtimeAttention.value ? "attention" : props.agentRuns.some((item) => item.state === "running") ? "active" : "ready");
-const runtimeStatusLabel = computed(() => runtimeAttention.value ? `${runtimeAttention.value} to review` : runtimeTone.value === "active" ? "Agent running" : "Operational");
+const runtimeStatusLabel = computed(() => runtimeAttention.value ? t("{{count}} to review", { count: runtimeAttention.value }) : runtimeTone.value === "active" ? t("Agent running") : t("Operational"));
 const latestContext = computed(() => [...props.contextPacks].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]);
 const latestRun = computed(() => [...props.agentRuns].sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]);
 const modelCost = computed(() => props.agentRuns.reduce((sum, run) => sum + run.modelUsage.reportedCostUsd, 0));
 const maxOperationTokens = computed(() => Math.max(1, ...(props.telemetry?.byOperation.map((item) => item.outputEstimatedTokens) || [1])));
 const tabs = computed(() => [
-  { id: "overview" as const, label: "Overview", icon: markRaw(Waypoints), count: runtimeAttention.value || undefined },
-  { id: "adapters" as const, label: "Adapters", icon: markRaw(Blocks), count: props.adapters.length },
-  { id: "skills" as const, label: "Skills", icon: markRaw(BookOpen), count: props.skills.length },
-  { id: "backends" as const, label: "Backends", icon: markRaw(ServerCog), count: props.backendManifests.length },
-  { id: "ecosystem" as const, label: "Extensions", icon: markRaw(Boxes), count: props.piEcosystem?.detectedCount },
-  { id: "context" as const, label: "Context", icon: markRaw(BrainCircuit), count: props.contextPacks.length + props.contextWritebacks.length },
-  { id: "automation" as const, label: "Automation", icon: markRaw(TimerReset), count: props.triggers.length },
-  { id: "telemetry" as const, label: "Telemetry", icon: markRaw(Activity), count: props.agentRuns.length },
+  { id: "overview" as const, label: t("Overview"), icon: markRaw(Waypoints), count: runtimeAttention.value || undefined },
+  { id: "adapters" as const, label: t("Adapters"), icon: markRaw(Blocks), count: props.adapters.length },
+  { id: "skills" as const, label: t("Skills"), icon: markRaw(BookOpen), count: props.skills.length },
+  { id: "backends" as const, label: t("Backends"), icon: markRaw(ServerCog), count: props.backendManifests.length },
+  { id: "ecosystem" as const, label: t("Extensions"), icon: markRaw(Boxes), count: props.piEcosystem?.detectedCount },
+  { id: "context" as const, label: t("Context"), icon: markRaw(BrainCircuit), count: props.contextPacks.length + props.contextWritebacks.length },
+  { id: "automation" as const, label: t("Automation"), icon: markRaw(TimerReset), count: props.triggers.length },
+  { id: "telemetry" as const, label: t("Telemetry"), icon: markRaw(Activity), count: props.agentRuns.length },
 ]);
 const runtimeLayers = computed(() => [
-  { id: "surface", title: "Pi tool surface", detail: `${props.adapters.length} dataset contracts behind a compact gateway`, value: "3 gateways", state: "bounded", tone: "ready" as RuntimeTone, icon: markRaw(Boxes) },
-  { id: "context", title: "Context engineering", detail: latestContext.value ? `${latestContext.value.sourceProviders.length} providers · ${latestContext.value.budget.deliveredTokens}/${latestContext.value.budget.maxTokens} tokens` : "Waiting for the next task-ranked pack", value: latestContext.value ? `${latestContext.value.budget.selectedCount} items` : "No pack", state: latestContext.value ? "ready" : "idle", tone: latestContext.value ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(BrainCircuit) },
-  { id: "governance", title: "Execution governance", detail: `${props.approvals.length} receipts · ${pendingWritebacks.value.length} decisions · ${undeliveredWritebacks.value.length} deliveries`, value: runtimeAttention.value ? `${runtimeAttention.value} review` : "Clear", state: runtimeAttention.value ? "attention" : "ready", tone: runtimeAttention.value ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(ShieldCheck) },
-  { id: "continuity", title: "Durable continuity", detail: `${props.checkpoints.length} session checkpoints with integrity journals`, value: recoverableCheckpoints.value.length ? `${recoverableCheckpoints.value.length} recover` : "Settled", state: recoverableCheckpoints.value.length ? "attention" : "ready", tone: recoverableCheckpoints.value.length ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(History) },
-  { id: "evidence", title: "Evidence bridge", detail: "Browser sources normalized into provenance-bound investigation records", value: `${props.evidenceCount} sources`, state: props.evidenceCount ? "connected" : "idle", tone: props.evidenceCount ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Radio) },
-  { id: "mcp", title: "MCP compatibility", detail: props.mcpProfile ? `${props.mcpProfile.transport} · external clients · state-changing operations blocked` : "Compatibility profile unavailable", value: props.mcpProfile ? `${props.mcpProfile.tools.length} gateways` : "Offline", state: props.mcpProfile ? "available" : "idle", tone: props.mcpProfile ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Network) },
-  { id: "ecosystem", title: "Pi extension market", detail: props.piEcosystem ? `${props.piEcosystem.toolCount} tools · ${props.piEcosystem.commandCount} commands · operator-controlled packages` : "Waiting for a Pi session capability scan", value: props.piEcosystem ? `${props.piEcosystem.detectedCount}/${props.piEcosystem.capabilities.length}` : "Not scanned", state: props.piEcosystem ? "inspected" : "idle", tone: props.piEcosystem ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Boxes) },
-  { id: "automation", title: "Event automation", detail: `${props.delegations.filter((item) => item.state === "active").length} signed delegations · ${props.triggerRuns.length} durable runs`, value: `${props.triggers.filter((item) => item.state === "active").length} active`, state: pendingTriggers.value.length ? `${pendingTriggers.value.length} review` : "bounded", tone: pendingTriggers.value.length ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(TimerReset) },
-  { id: "backends", title: "Backend providers", detail: `${props.backendManifests.length} reviewed manifests, executable code kept outside the model`, value: `${availableBackends.value}/${props.backendManifests.length}`, state: Object.keys(props.backendProbes).length ? "probed" : "not probed", tone: availableBackends.value ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(ServerCog) },
+  { id: "surface", title: t("Pi tool surface"), detail: t("{{count}} dataset contracts behind a compact gateway", { count: props.adapters.length }), value: t("{{count}} gateways", { count: 3 }), state: "bounded", tone: "ready" as RuntimeTone, icon: markRaw(Boxes) },
+  { id: "context", title: t("Context engineering"), detail: latestContext.value ? t("{{count}} providers · {{used}}/{{max}} tokens", { count: latestContext.value.sourceProviders.length, used: latestContext.value.budget.deliveredTokens, max: latestContext.value.budget.maxTokens }) : t("Waiting for the next task-ranked pack"), value: latestContext.value ? t("{{count}} items", { count: latestContext.value.budget.selectedCount }) : t("No pack"), state: latestContext.value ? "ready" : "idle", tone: latestContext.value ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(BrainCircuit) },
+  { id: "governance", title: t("Execution governance"), detail: t("{{receipts}} receipts · {{decisions}} decisions · {{deliveries}} deliveries", { receipts: props.approvals.length, decisions: pendingWritebacks.value.length, deliveries: undeliveredWritebacks.value.length }), value: runtimeAttention.value ? t("{{count}} review", { count: runtimeAttention.value }) : t("Clear"), state: runtimeAttention.value ? "attention" : "ready", tone: runtimeAttention.value ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(ShieldCheck) },
+  { id: "continuity", title: t("Durable continuity"), detail: t("{{count}} session checkpoints with integrity journals", { count: props.checkpoints.length }), value: recoverableCheckpoints.value.length ? t("{{count}} recover", { count: recoverableCheckpoints.value.length }) : t("Settled"), state: recoverableCheckpoints.value.length ? "attention" : "ready", tone: recoverableCheckpoints.value.length ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(History) },
+  { id: "evidence", title: t("Evidence bridge"), detail: t("Browser sources normalized into provenance-bound investigation records"), value: t("{{count}} sources", { count: props.evidenceCount }), state: props.evidenceCount ? "connected" : "idle", tone: props.evidenceCount ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Radio) },
+  { id: "mcp", title: t("MCP compatibility"), detail: props.mcpProfile ? t("{{transport}} · external clients · state-changing operations blocked", { transport: props.mcpProfile.transport }) : t("Compatibility profile unavailable"), value: props.mcpProfile ? t("{{count}} gateways", { count: props.mcpProfile.tools.length }) : t("Offline"), state: props.mcpProfile ? "available" : "idle", tone: props.mcpProfile ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Network) },
+  { id: "ecosystem", title: t("Pi extension market"), detail: props.piEcosystem ? t("{{tools}} tools · {{commands}} commands · operator-controlled packages", { tools: props.piEcosystem.toolCount, commands: props.piEcosystem.commandCount }) : t("Waiting for a Pi session capability scan"), value: props.piEcosystem ? `${props.piEcosystem.detectedCount}/${props.piEcosystem.capabilities.length}` : t("Not scanned"), state: props.piEcosystem ? "inspected" : "idle", tone: props.piEcosystem ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Boxes) },
+  { id: "automation", title: t("Event automation"), detail: t("{{delegations}} signed delegations · {{runs}} durable runs", { delegations: props.delegations.filter((item) => item.state === "active").length, runs: props.triggerRuns.length }), value: t("{{count}} active", { count: props.triggers.filter((item) => item.state === "active").length }), state: pendingTriggers.value.length ? t("{{count}} review", { count: pendingTriggers.value.length }) : "bounded", tone: pendingTriggers.value.length ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(TimerReset) },
+  { id: "backends", title: t("Backend providers"), detail: t("{{count}} reviewed manifests, executable code kept outside the model", { count: props.backendManifests.length }), value: `${availableBackends.value}/${props.backendManifests.length}`, state: Object.keys(props.backendProbes).length ? "probed" : "not_probed", tone: availableBackends.value ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(ServerCog) },
 ]);
 const operatorQueue = computed(() => [
-  ...pendingWritebacks.value.slice(0, 3).map((item) => ({ id: item.writebackId, title: "Memory writeback awaiting decision", detail: `${item.candidates.length} candidates · ${item.providerTargets.join(" · ") || "provider outbox"}`, tone: "attention" as RuntimeTone, icon: markRaw(BrainCircuit), tab: "context" as RuntimeTab })),
-  ...undeliveredWritebacks.value.slice(0, 2).map((item) => ({ id: `delivery:${item.writebackId}`, title: item.deliveries?.some((delivery) => delivery.state === "failed") ? "Memory provider delivery failed" : "Approved memory awaiting provider", detail: writebackDeliveryDetail(item), tone: item.deliveries?.some((delivery) => delivery.state === "failed") ? "blocked" as RuntimeTone : "attention" as RuntimeTone, icon: markRaw(BrainCircuit), tab: "context" as RuntimeTab })),
-  ...pendingTriggers.value.slice(0, 3).map((item) => ({ id: item.triggerId, title: "Trigger delegation awaiting review", detail: `${item.name} · ${item.workflowId}`, tone: "attention" as RuntimeTone, icon: markRaw(TimerReset), tab: "automation" as RuntimeTab })),
-  ...recoverableCheckpoints.value.slice(0, 2).map((item) => ({ id: item.checkpointId, title: "Interrupted session can recover", detail: `${item.sessionId} · ${item.references.length} durable references`, tone: "active" as RuntimeTone, icon: markRaw(History), tab: "context" as RuntimeTab })),
-  ...pendingApprovals.value.slice(0, 2).map((item) => ({ id: item.approvalId, title: `${item.operation} receipt not consumed`, detail: `${item.risk} risk · expires ${formatTime(item.expiresAt)}`, tone: "attention" as RuntimeTone, icon: markRaw(ShieldCheck), tab: "telemetry" as RuntimeTab })),
-  ...interruptedRuns.value.slice(0, 1).map((item) => ({ id: item.runId, title: "Agent run interrupted", detail: `${item.model || "model unknown"} · ${item.toolCalls} tool calls`, tone: "blocked" as RuntimeTone, icon: markRaw(Radio), tab: "telemetry" as RuntimeTab })),
+  ...pendingWritebacks.value.slice(0, 3).map((item) => ({ id: item.writebackId, title: t("Memory writeback awaiting decision"), detail: t("{{count}} candidates · {{target}}", { count: item.candidates.length, target: item.providerTargets.join(" · ") || t("provider outbox") }), tone: "attention" as RuntimeTone, icon: markRaw(BrainCircuit), tab: "context" as RuntimeTab })),
+  ...undeliveredWritebacks.value.slice(0, 2).map((item) => ({ id: `delivery:${item.writebackId}`, title: t(item.deliveries?.some((delivery) => delivery.state === "failed") ? "Memory provider delivery failed" : "Approved memory awaiting provider"), detail: writebackDeliveryDetail(item), tone: item.deliveries?.some((delivery) => delivery.state === "failed") ? "blocked" as RuntimeTone : "attention" as RuntimeTone, icon: markRaw(BrainCircuit), tab: "context" as RuntimeTab })),
+  ...pendingTriggers.value.slice(0, 3).map((item) => ({ id: item.triggerId, title: t("Trigger delegation awaiting review"), detail: `${item.name} · ${item.workflowId}`, tone: "attention" as RuntimeTone, icon: markRaw(TimerReset), tab: "automation" as RuntimeTab })),
+  ...recoverableCheckpoints.value.slice(0, 2).map((item) => ({ id: item.checkpointId, title: t("Interrupted session can recover"), detail: t("{{session}} · {{count}} durable references", { session: item.sessionId, count: item.references.length }), tone: "active" as RuntimeTone, icon: markRaw(History), tab: "context" as RuntimeTab })),
+  ...pendingApprovals.value.slice(0, 2).map((item) => ({ id: item.approvalId, title: t("{{operation}} receipt not consumed", { operation: item.operation }), detail: t("{{risk}} risk · expires {{time}}", { risk: item.risk, time: formatTime(item.expiresAt) }), tone: "attention" as RuntimeTone, icon: markRaw(ShieldCheck), tab: "telemetry" as RuntimeTab })),
+  ...interruptedRuns.value.slice(0, 1).map((item) => ({ id: item.runId, title: t("Agent run interrupted"), detail: t("{{model}} · {{count}} tool calls", { model: item.model || t("model unknown"), count: item.toolCalls }), tone: "blocked" as RuntimeTone, icon: markRaw(Radio), tab: "telemetry" as RuntimeTab })),
 ].slice(0, 6));
 
 function parse(value: string): Record<string, unknown> | undefined {
@@ -274,10 +276,10 @@ function writebackStateTone(writeback: ContextWritebackSummary): RuntimeTone { c
 function writebackDeliveryDetail(writeback: ContextWritebackSummary) { const delivery = writeback.deliveries?.[0]; if (!delivery) return writeback.providerTargets.join(" · ") || "provider outbox"; if (delivery.state === "delivered") return `${delivery.providerId} · ${delivery.receipt?.itemCount || writeback.candidates.length} delivered${delivery.receipt?.duplicateCount ? ` · ${delivery.receipt.duplicateCount} deduped` : ""}`; if (delivery.state === "failed") return `${delivery.providerId} · ${delivery.errorCode || "delivery failed"}`; return `${delivery.providerId} · staged`; }
 function budgetPercent(pack: ContextPackSummary) { return Math.min(100, pack.budget.maxTokens ? pack.budget.deliveredTokens / pack.budget.maxTokens * 100 : 0); }
 function operationPercent(tokens: number) { return Math.max(tokens ? 5 : 0, Math.min(100, tokens / maxOperationTokens.value * 100)); }
-function formatNumber(value: number) { return new Intl.NumberFormat(undefined, { notation: value >= 100_000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value); }
+function formatNumber(value: number) { return new Intl.NumberFormat(locale.value, { notation: value >= 100_000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value); }
 function formatDuration(value: number) { return value < 1_000 ? `${Math.round(value)} ms` : value < 60_000 ? `${(value / 1_000).toFixed(1)} s` : `${(value / 60_000).toFixed(1)} min`; }
 function formatBytes(value: number) { if (value < 1_024) return `${value} B`; if (value < 1_048_576) return `${(value / 1_024).toFixed(1)} KB`; return `${(value / 1_048_576).toFixed(1)} MB`; }
-function formatTime(value: string) { const date = new Date(value); return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(date) : value; }
+function formatTime(value: string) { const date = new Date(value); return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(locale.value, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(date) : value; }
 function onKeydown(event: KeyboardEvent) { if (props.open && event.key === "Escape") emit("close"); }
 onMounted(() => window.addEventListener("keydown", onKeydown));
 onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));

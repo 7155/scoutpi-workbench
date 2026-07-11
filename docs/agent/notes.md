@@ -166,3 +166,12 @@
 - Safety: blocked candidates persist their review but never replace the last accepted EarthStory. Claim rules accept bounded literal terms only and cannot execute arbitrary code or regular expressions.
 - Visual QA: 1440x1000 and 390x844 Evidence views show the review status without horizontal overflow; console reports zero errors and warnings.
 - Verification: all 65 tests, TypeScript, Python compile, Earth/MCP harnesses, package extraction/RPC boot, and production build pass. The package remains 7 extensions/1 skill and is now 51 entries, 143,405 packed bytes, and 518,945 unpacked bytes. Production audit is clean; real Pi RPC initializes `gpt-5.6`, `xhigh`, all extensions, and no extension errors.
+
+## 2026-07-11 11:20 - English and Chinese Workbench
+
+- Added a dependency-free reactive locale store with browser-language detection, explicit `EN / 中` desktop control, mobile overflow action, local persistence, and synchronized document language/title.
+- Localized product-owned navigation, maps, evidence review, charts, plan/run controls, creation/export/reuse dialogs, Runtime Center, extension/context/telemetry views, and durable automation controls.
+- Kept investigation questions, claims, evidence excerpts, dataset titles, identifiers, and provider errors verbatim so localization cannot mutate provenance or scientific content.
+- Known runtime states and observable roles use bounded bilingual label maps; unknown values remain visible through a readable fallback.
+- Visual QA: English and Chinese switch immediately on desktop and mobile, the mobile language action remains available without crowding primary controls, 1440x1000 and 390x844 have no horizontal overflow, and a fresh browser session reports zero console errors/warnings.
+- Verification: all 66 tests, TypeScript, Python compile, Earth/MCP harnesses, extracted Pi package boot, and production Workbench build pass. Package size is 51 entries, 143,529 packed bytes, and 519,388 unpacked bytes.

@@ -2,66 +2,68 @@
   <div v-if="open" class="backdrop" @mousedown.self="$emit('close')">
     <form class="dialog" @submit.prevent="submit">
       <header>
-        <div><p>New investigation</p><h2>Define a testable question</h2></div>
-        <button type="button" class="icon-button" title="Close" @click="$emit('close')"><X :size="18" /></button>
+        <div><p>{{ t('New investigation') }}</p><h2>{{ t('Define a testable question') }}</h2></div>
+        <button type="button" class="icon-button" :title="t('Close')" @click="$emit('close')"><X :size="18" /></button>
       </header>
 
-      <div class="template-row" role="group" aria-label="Investigation templates">
+      <div class="template-row" role="group" :aria-label="t('Investigation templates')">
         <button v-for="item in templates" :key="item.id" type="button" :class="{ active: template === item.id }" @click="applyTemplate(item.id)">{{ item.label }}</button>
       </div>
 
       <div class="form-scroll">
-        <label class="wide"><span>Question</span><textarea v-model="form.question" rows="2" required></textarea></label>
-        <label><span>Investigation ID</span><input v-model="form.investigationId" pattern="[a-z0-9][a-z0-9._\-]{2,79}" required></label>
-        <label><span>Region name</span><input v-model="form.regionName" required></label>
+        <label class="wide"><span>{{ t('Question') }}</span><textarea v-model="form.question" rows="2" required></textarea></label>
+        <label><span>{{ t('Investigation ID') }}</span><input v-model="form.investigationId" pattern="[a-z0-9][a-z0-9._\-]{2,79}" required></label>
+        <label><span>{{ t('Region name') }}</span><input v-model="form.regionName" required></label>
 
         <fieldset class="wide bbox-fields">
-          <legend>Bounding box</legend>
-          <label><span>West</span><input v-model.number="form.west" type="number" step="0.0001" required></label>
-          <label><span>South</span><input v-model.number="form.south" type="number" step="0.0001" required></label>
-          <label><span>East</span><input v-model.number="form.east" type="number" step="0.0001" required></label>
-          <label><span>North</span><input v-model.number="form.north" type="number" step="0.0001" required></label>
+          <legend>{{ t('Bounding box') }}</legend>
+          <label><span>{{ t('West') }}</span><input v-model.number="form.west" type="number" step="0.0001" required></label>
+          <label><span>{{ t('South') }}</span><input v-model.number="form.south" type="number" step="0.0001" required></label>
+          <label><span>{{ t('East') }}</span><input v-model.number="form.east" type="number" step="0.0001" required></label>
+          <label><span>{{ t('North') }}</span><input v-model.number="form.north" type="number" step="0.0001" required></label>
         </fieldset>
 
-        <label><span>Start year</span><input v-model.number="form.startYear" type="number" min="1950" :max="currentYear" required></label>
-        <label><span>End year</span><input v-model.number="form.endYear" type="number" min="1950" :max="currentYear" required></label>
-        <label><span>Start month</span><select v-model.number="form.startMonth"><option v-for="month in 12" :key="month" :value="month">{{ month }}</option></select></label>
-        <label><span>End month</span><select v-model.number="form.endMonth"><option v-for="month in 12" :key="month" :value="month">{{ month }}</option></select></label>
+        <label><span>{{ t('Start year') }}</span><input v-model.number="form.startYear" type="number" min="1950" :max="currentYear" required></label>
+        <label><span>{{ t('End year') }}</span><input v-model.number="form.endYear" type="number" min="1950" :max="currentYear" required></label>
+        <label><span>{{ t('Start month') }}</span><select v-model.number="form.startMonth"><option v-for="month in 12" :key="month" :value="month">{{ month }}</option></select></label>
+        <label><span>{{ t('End month') }}</span><select v-model.number="form.endMonth"><option v-for="month in 12" :key="month" :value="month">{{ month }}</option></select></label>
 
         <fieldset class="wide hypotheses">
-          <legend>Hypotheses</legend>
+          <legend>{{ t('Hypotheses') }}</legend>
           <div v-for="(hypothesis, index) in form.hypotheses" :key="hypothesis.id" class="hypothesis-row">
-            <input v-model="hypothesis.statement" placeholder="Testable statement" required>
-            <select v-model="hypothesis.role" aria-label="Observable role">
-              <option v-for="role in roles" :key="role" :value="role">{{ role.replaceAll('_', ' ') }}</option>
+            <input v-model="hypothesis.statement" :placeholder="t('Testable statement')" required>
+            <select v-model="hypothesis.role" :aria-label="t('Observable role')">
+              <option v-for="role in roles" :key="role" :value="role">{{ roleLabel(role) }}</option>
             </select>
-            <button type="button" class="icon-button" title="Remove hypothesis" :disabled="form.hypotheses.length === 1" @click="form.hypotheses.splice(index, 1)"><Trash2 :size="16" /></button>
+            <button type="button" class="icon-button" :title="t('Remove hypothesis')" :disabled="form.hypotheses.length === 1" @click="form.hypotheses.splice(index, 1)"><Trash2 :size="16" /></button>
           </div>
-          <button type="button" class="text-button" @click="addHypothesis"><Plus :size="15" />Add hypothesis</button>
+          <button type="button" class="text-button" @click="addHypothesis"><Plus :size="15" />{{ t('Add hypothesis') }}</button>
         </fieldset>
 
-        <label class="wide"><span>Confounders, one per line</span><textarea v-model="form.confounders" rows="3"></textarea></label>
+        <label class="wide"><span>{{ t('Confounders, one per line') }}</span><textarea v-model="form.confounders" rows="3"></textarea></label>
       </div>
 
       <footer>
         <span v-if="error" class="form-error">{{ error }}</span>
-        <button type="button" @click="$emit('close')">Cancel</button>
-        <button class="primary" :disabled="saving"><LoaderCircle v-if="saving" class="spin" :size="16" /><Play v-else :size="16" />Compile plan</button>
+        <button type="button" @click="$emit('close')">{{ t('Cancel') }}</button>
+        <button class="primary" :disabled="saving"><LoaderCircle v-if="saving" class="spin" :size="16" /><Play v-else :size="16" />{{ t('Compile plan') }}</button>
       </footer>
     </form>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import { LoaderCircle, Play, Plus, Trash2, X } from "lucide-vue-next";
+import { useI18n } from "../i18n";
 import type { InvestigationSpec } from "../types";
 
 defineProps<{ open: boolean; saving: boolean }>();
 const emit = defineEmits<{ close: []; create: [spec: InvestigationSpec] }>();
+const { t, roleLabel } = useI18n();
 const currentYear = new Date().getUTCFullYear();
 const roles = ["built_surface", "human_activity", "vegetation", "surface_temperature", "water_extent", "precipitation", "fire_recovery", "climate_background", "flood_extent", "land_cover"];
-const templates = [{ id: "blank", label: "Blank" }, { id: "urban", label: "Urban change" }, { id: "water", label: "Water balance" }, { id: "fire", label: "Fire recovery" }];
+const templates = computed(() => [{ id: "blank", label: t("Blank") }, { id: "urban", label: t("Urban change") }, { id: "water", label: t("Water balance") }, { id: "fire", label: t("Fire recovery") }]);
 const template = ref("blank");
 const error = ref("");
 const form = reactive({ investigationId: "new-investigation", question: "What changed in this region, and which observations support or contradict it?", regionName: "Investigation area", west: 120.9, south: 30.8, east: 121.2, north: 31.1, startYear: 2018, endYear: Math.min(currentYear, 2025), startMonth: 6, endMonth: 8, hypotheses: [{ id: "h1", statement: "The observed phenomenon changed over time", role: "vegetation" }], confounders: "Use the same season in every comparison year" });
@@ -85,7 +87,7 @@ function applyTemplate(id: string) {
 function addHypothesis() { form.hypotheses.push({ id: `h${form.hypotheses.length + 1}`, statement: "", role: "vegetation" }); }
 function submit() {
   error.value = "";
-  if (form.west >= form.east || form.south >= form.north) { error.value = "Bounding box order is invalid."; return; }
+  if (form.west >= form.east || form.south >= form.north) { error.value = t("Bounding box order is invalid."); return; }
   emit("create", {
     schemaVersion: "scoutpi.investigation.v1", investigationId: form.investigationId, question: form.question, phenomenon: template.value,
     region: { kind: "bbox", bbox: [form.west, form.south, form.east, form.north], name: form.regionName },

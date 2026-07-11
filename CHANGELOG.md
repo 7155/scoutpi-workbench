@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added persistent English/Simplified Chinese Workbench switching across core navigation, dialogs, maps, evidence, runtime controls, status labels, and responsive mobile actions.
 - Added a deterministic Evidence Reviewer with plan/job/source provenance gates, dry-run and unsupported-claim blocking, counterevidence/unit warnings, declarative adapter proxy rules, persisted reports, API access, and Workbench review status.
 
 - Added content-minimal durable Agent checkpoints with atomic writes, integrity verification, compaction preservation, interrupted-call recovery, API access, and Workbench visibility.

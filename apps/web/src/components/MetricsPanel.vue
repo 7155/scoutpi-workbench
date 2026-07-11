@@ -1,12 +1,12 @@
 <template>
   <div class="metrics-wrap">
     <div class="metric-strip">
-      <div><span>Datasets</span><strong>{{ plan?.datasets.length || 0 }}</strong></div>
-      <div><span>Years</span><strong>{{ plan?.estimatedCost.years || 0 }}</strong></div>
-      <div><span>DAG nodes</span><strong>{{ plan?.dag.length || 0 }}</strong></div>
-      <div><span>Blocking checks</span><strong>{{ blocking }}</strong></div>
+      <div><span>{{ t('Datasets') }}</span><strong>{{ plan?.datasets.length || 0 }}</strong></div>
+      <div><span>{{ t('Years') }}</span><strong>{{ plan?.estimatedCost.years || 0 }}</strong></div>
+      <div><span>{{ t('DAG nodes') }}</span><strong>{{ plan?.dag.length || 0 }}</strong></div>
+      <div><span>{{ t('Blocking checks') }}</span><strong>{{ blocking }}</strong></div>
     </div>
-    <div ref="chartEl" class="chart" role="img" aria-label="Dataset spatial resolution chart"></div>
+    <div ref="chartEl" class="chart" role="img" :aria-label="t('Dataset spatial resolution chart')"></div>
   </div>
 </template>
 
@@ -16,10 +16,12 @@ import { BarChart } from "echarts/charts";
 import { GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useI18n } from "../i18n";
 import type { InvestigationPlan } from "../types";
 
 echarts.use([BarChart, GridComponent, TooltipComponent, CanvasRenderer]);
 const props = defineProps<{ plan?: InvestigationPlan }>();
+const { locale, t, roleLabel } = useI18n();
 const chartEl = ref<HTMLElement>();
 let chart: echarts.ECharts | undefined;
 const blocking = computed(() => props.plan?.criticChecks.filter((item) => item.severity === "blocking").length || 0);
@@ -29,14 +31,14 @@ function render() {
   chart.setOption({
     animationDuration: 350,
     grid: { left: 90, right: 26, top: 18, bottom: 34 },
-    tooltip: { trigger: "axis", formatter: (rows: any) => `${rows[0].name}<br>Nominal scale: ${rows[0].value} m` },
-    xAxis: { type: "value", name: "Nominal scale (m)", nameLocation: "middle", nameGap: 25, axisLabel: { color: "#67746d" }, splitLine: { lineStyle: { color: "#e8ece9" } } },
-    yAxis: { type: "category", data: datasets.map((item) => item.role.replaceAll("_", " ")), axisLabel: { width: 82, overflow: "truncate", color: "#4c5a52" }, axisTick: { show: false }, axisLine: { show: false } },
+    tooltip: { trigger: "axis", formatter: (rows: any) => `${rows[0].name}<br>${t('Scale')}: ${rows[0].value} m` },
+    xAxis: { type: "value", name: `${t('Scale')} (m)`, nameLocation: "middle", nameGap: 25, axisLabel: { color: "#67746d" }, splitLine: { lineStyle: { color: "#e8ece9" } } },
+    yAxis: { type: "category", data: datasets.map((item) => roleLabel(item.role)), axisLabel: { width: 82, overflow: "truncate", color: "#4c5a52" }, axisTick: { show: false }, axisLine: { show: false } },
     series: [{ type: "bar", data: datasets.map((item, index) => ({ value: item.dataset.scaleMeters, itemStyle: { color: ["#2f7d59", "#d18b36", "#4e7396", "#a85f48"][index % 4], borderRadius: [0, 3, 3, 0] } })), barMaxWidth: 22 }],
   });
 }
 onMounted(() => { chart = echarts.init(chartEl.value!); render(); window.addEventListener("resize", resize); });
-watch(() => props.plan?.planId, render);
+watch([() => props.plan?.planId, locale], render);
 function resize() { chart?.resize(); }
 onBeforeUnmount(() => { window.removeEventListener("resize", resize); chart?.dispose(); });
 </script>

@@ -1,20 +1,22 @@
 <template>
   <div class="run-ledger">
-    <div v-if="!jobs.length" class="empty">No runs for this plan.</div>
+    <div v-if="!jobs.length" class="empty">{{ t('No runs for this plan.') }}</div>
     <button v-for="job in jobs" :key="job.jobId" class="run-row" @click="$emit('select', job)">
       <span :class="['state-dot', job.state]"></span>
-      <span class="run-main"><strong>{{ job.mode.replace('_', ' ') }}</strong><small>{{ formatTime(job.updatedAt) }}</small></span>
-      <span :class="['state-label', job.state]">{{ job.state.replace('_', ' ') }}</span>
+      <span class="run-main"><strong>{{ statusLabel(job.mode) }}</strong><small>{{ formatTime(job.updatedAt) }}</small></span>
+      <span :class="['state-label', job.state]">{{ statusLabel(job.state) }}</span>
       <code>{{ job.jobId }}</code>
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from "../i18n";
 import type { EarthJob } from "../types";
 defineProps<{ jobs: EarthJob[] }>();
 defineEmits<{ select: [job: EarthJob] }>();
-function formatTime(value: string) { return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value)); }
+const { locale, t, statusLabel } = useI18n();
+function formatTime(value: string) { return new Intl.DateTimeFormat(locale.value, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value)); }
 </script>
 
 <style scoped>

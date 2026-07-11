@@ -1,24 +1,24 @@
 <template>
   <div class="automation-view">
-    <section class="automation-statusbar" aria-label="Automation posture">
+    <section class="automation-statusbar" :aria-label="t('Automation posture')">
       <div class="posture-copy">
         <span class="posture-icon"><ShieldCheck :size="17" /></span>
         <div>
-          <span>Delegation posture</span>
-          <strong>{{ activeTriggers.length ? `${activeTriggers.length} active` : "No active delegation" }}</strong>
+          <span>{{ t('Delegation posture') }}</span>
+          <strong>{{ activeTriggers.length ? t('count.active', { count: activeTriggers.length }) : t('No active delegation') }}</strong>
         </div>
       </div>
       <div class="posture-metrics">
-        <div><span>Review</span><strong>{{ reviewTriggers.length }}</strong></div>
-        <div><span>Completed</span><strong>{{ completedRuns.length }}</strong></div>
-        <div><span>Success</span><strong>{{ successRate }}</strong></div>
+        <div><span>{{ t('Review') }}</span><strong>{{ reviewTriggers.length }}</strong></div>
+        <div><span>{{ t('Completed') }}</span><strong>{{ completedRuns.length }}</strong></div>
+        <div><span>{{ t('Success') }}</span><strong>{{ successRate }}</strong></div>
       </div>
-      <span class="scope-badge"><LockKeyhole :size="12" />Dry-run replay only</span>
+      <span class="scope-badge"><LockKeyhole :size="12" />{{ t('Dry-run replay only') }}</span>
     </section>
 
     <section class="trigger-column">
       <div class="automation-heading">
-        <div><strong>Durable triggers</strong><span>Identity-bound workflow authorization</span></div>
+        <div><strong>{{ t('Durable triggers') }}</strong><span>{{ t('Identity-bound workflow authorization') }}</span></div>
         <span>{{ triggers.length }}</span>
       </div>
       <div class="trigger-list">
@@ -29,68 +29,68 @@
               <strong>{{ trigger.name }}</strong>
               <code>{{ trigger.triggerId }}</code>
             </div>
-            <span :class="['trigger-state', trigger.state]">{{ trigger.state }}</span>
+            <span :class="['trigger-state', trigger.state]">{{ statusLabel(trigger.state) }}</span>
           </div>
 
           <div class="trigger-contract">
-            <span title="Workflow"><GitBranch :size="12" />{{ trigger.workflowId }}</span>
+            <span :title="t('Workflow')"><GitBranch :size="12" />{{ trigger.workflowId }}</span>
             <span :title="trigger.subject.principalId"><Fingerprint :size="12" />{{ trigger.subject.displayName }}</span>
-            <span title="Trigger condition"><Clock3 :size="12" />{{ conditionLabel(trigger) }}</span>
+            <span :title="t('Trigger condition')"><Clock3 :size="12" />{{ conditionLabel(trigger) }}</span>
           </div>
 
           <div class="grant-line">
             <div class="grant-copy">
               <span><KeyRound :size="12" />{{ grantLabel(trigger) }}</span>
-              <span>{{ usedRuns(trigger) }}/{{ trigger.limits.maxRuns }} runs</span>
+              <span>{{ usedRuns(trigger) }}/{{ trigger.limits.maxRuns }} {{ t('Runs') }}</span>
             </div>
             <div class="grant-progress" aria-hidden="true"><i :style="{ width: `${grantProgress(trigger)}%` }"></i></div>
             <div class="trigger-limits">
-              <span>{{ trigger.limits.cooldownSeconds }}s cooldown</span>
-              <span>expires {{ formatDate(trigger.limits.expiresAt) }}</span>
+              <span>{{ trigger.limits.cooldownSeconds }}s {{ t('cooldown') }}</span>
+              <span>{{ t('expires') }} {{ formatDate(trigger.limits.expiresAt) }}</span>
             </div>
           </div>
 
           <div class="trigger-actions">
-            <button v-if="trigger.state === 'draft' || (trigger.state === 'paused' && grantByTrigger.get(trigger.triggerId)?.state !== 'active')" class="primary-action" title="Authorize dry-run delegation" :disabled="saving" @click="$emit('approve', trigger.triggerId)"><ShieldCheck :size="14" />Authorize</button>
-            <button v-if="trigger.state === 'paused' && grantByTrigger.get(trigger.triggerId)?.state === 'active'" title="Resume trigger" :disabled="saving" @click="$emit('state', trigger.triggerId, 'active')"><Play :size="14" />Resume</button>
-            <button v-if="trigger.state === 'active'" title="Invoke once with a unique idempotency key" :disabled="saving" @click="$emit('invoke', trigger.triggerId)"><Play :size="14" />Run now</button>
-            <button v-if="trigger.state === 'active'" class="icon-action" aria-label="Pause trigger" title="Pause trigger" :disabled="saving" @click="$emit('state', trigger.triggerId, 'paused')"><Pause :size="14" /></button>
-            <button v-if="trigger.state !== 'revoked'" class="icon-action danger" aria-label="Revoke trigger" title="Revoke trigger and delegation" :disabled="saving" @click="revoke(trigger)"><Ban :size="14" /></button>
+            <button v-if="trigger.state === 'draft' || (trigger.state === 'paused' && grantByTrigger.get(trigger.triggerId)?.state !== 'active')" class="primary-action" :title="t('Authorize dry-run delegation')" :disabled="saving" @click="$emit('approve', trigger.triggerId)"><ShieldCheck :size="14" />{{ t('Authorize') }}</button>
+            <button v-if="trigger.state === 'paused' && grantByTrigger.get(trigger.triggerId)?.state === 'active'" :title="t('Resume trigger')" :disabled="saving" @click="$emit('state', trigger.triggerId, 'active')"><Play :size="14" />{{ t('Resume') }}</button>
+            <button v-if="trigger.state === 'active'" :title="t('Invoke once with a unique idempotency key')" :disabled="saving" @click="$emit('invoke', trigger.triggerId)"><Play :size="14" />{{ t('Run now') }}</button>
+            <button v-if="trigger.state === 'active'" class="icon-action" :aria-label="t('Pause trigger')" :title="t('Pause trigger')" :disabled="saving" @click="$emit('state', trigger.triggerId, 'paused')"><Pause :size="14" /></button>
+            <button v-if="trigger.state !== 'revoked'" class="icon-action danger" :aria-label="t('Revoke trigger')" :title="t('Revoke trigger and delegation')" :disabled="saving" @click="revoke(trigger)"><Ban :size="14" /></button>
           </div>
         </article>
       </div>
-      <div v-if="!triggers.length" class="automation-empty"><TimerReset :size="25" /><strong>No durable trigger</strong><span>Reviewed workflows can be scheduled without adding another model tool.</span></div>
+      <div v-if="!triggers.length" class="automation-empty"><TimerReset :size="25" /><strong>{{ t('No durable trigger') }}</strong><span>{{ t('Reviewed workflows can be scheduled without adding another model tool.') }}</span></div>
     </section>
 
     <section class="automation-side">
       <form class="trigger-form" @submit.prevent="submit">
-        <div class="automation-heading"><div><strong>New trigger draft</strong><span>Authorization remains a separate operator action</span></div><Plus :size="16" /></div>
-        <label><span>Name</span><input v-model.trim="name" maxlength="160" placeholder="Weekly evidence review" required /></label>
-        <label><span>Ready workflow</span><select v-model="workflowId" required><option value="" disabled>Select workflow</option><option v-for="workflow in readyWorkflows" :key="workflow.workflowId" :value="workflow.workflowId">{{ workflow.name }}</option></select></label>
-        <div class="condition-switch" aria-label="Trigger condition">
-          <button type="button" :class="{ active: kind === 'manual' }" :aria-pressed="kind === 'manual'" @click="kind = 'manual'"><MousePointerClick :size="14" />Manual</button>
-          <button type="button" :class="{ active: kind === 'interval' }" :aria-pressed="kind === 'interval'" @click="kind = 'interval'"><Clock3 :size="14" />Interval</button>
-          <button type="button" :class="{ active: kind === 'event' }" :aria-pressed="kind === 'event'" @click="kind = 'event'"><Radio :size="14" />Event</button>
+        <div class="automation-heading"><div><strong>{{ t('New trigger draft') }}</strong><span>{{ t('Authorization remains a separate operator action') }}</span></div><Plus :size="16" /></div>
+        <label><span>{{ t('Name') }}</span><input v-model.trim="name" maxlength="160" :placeholder="t('Weekly evidence review')" required /></label>
+        <label><span>{{ t('Ready workflow') }}</span><select v-model="workflowId" required><option value="" disabled>{{ t('Select workflow') }}</option><option v-for="workflow in readyWorkflows" :key="workflow.workflowId" :value="workflow.workflowId">{{ workflow.name }}</option></select></label>
+        <div class="condition-switch" :aria-label="t('Trigger condition')">
+          <button type="button" :class="{ active: kind === 'manual' }" :aria-pressed="kind === 'manual'" @click="kind = 'manual'"><MousePointerClick :size="14" />{{ t('Manual') }}</button>
+          <button type="button" :class="{ active: kind === 'interval' }" :aria-pressed="kind === 'interval'" @click="kind = 'interval'"><Clock3 :size="14" />{{ t('Interval') }}</button>
+          <button type="button" :class="{ active: kind === 'event' }" :aria-pressed="kind === 'event'" @click="kind = 'event'"><Radio :size="14" />{{ t('Event') }}</button>
         </div>
-        <label v-if="kind === 'interval'"><span>Every minutes</span><input v-model.number="everyMinutes" type="number" min="1" max="10080" required /></label>
-        <label v-if="kind === 'event'"><span>Event name</span><input v-model.trim="eventName" maxlength="100" pattern="[A-Za-z0-9][A-Za-z0-9._:-]+" placeholder="browser.evidence.imported" required /></label>
+        <label v-if="kind === 'interval'"><span>{{ t('Every minutes') }}</span><input v-model.number="everyMinutes" type="number" min="1" max="10080" required /></label>
+        <label v-if="kind === 'event'"><span>{{ t('Event name') }}</span><input v-model.trim="eventName" maxlength="100" pattern="[A-Za-z0-9][A-Za-z0-9._:-]+" placeholder="browser.evidence.imported" required /></label>
         <div class="limit-grid">
-          <label><span>Maximum runs</span><input v-model.number="maxRuns" type="number" min="1" max="1000" required /></label>
-          <label><span>Cooldown seconds</span><input v-model.number="cooldownSeconds" type="number" min="0" max="86400" required /></label>
-          <label><span>Expires in days</span><input v-model.number="expiryDays" type="number" min="1" max="365" required /></label>
+          <label><span>{{ t('Maximum runs') }}</span><input v-model.number="maxRuns" type="number" min="1" max="1000" required /></label>
+          <label><span>{{ t('Cooldown seconds') }}</span><input v-model.number="cooldownSeconds" type="number" min="0" max="86400" required /></label>
+          <label><span>{{ t('Expires in days') }}</span><input v-model.number="expiryDays" type="number" min="1" max="365" required /></label>
         </div>
-        <button class="create-trigger" :disabled="saving || !readyWorkflows.length"><LoaderCircle v-if="saving" class="spin" :size="15" /><Plus v-else :size="15" />Create draft</button>
-        <div v-if="!readyWorkflows.length" class="form-state"><TriangleAlert :size="14" /><span>No reviewed dry-run workflow is ready.</span></div>
+        <button class="create-trigger" :disabled="saving || !readyWorkflows.length"><LoaderCircle v-if="saving" class="spin" :size="15" /><Plus v-else :size="15" />{{ t('Create draft') }}</button>
+        <div v-if="!readyWorkflows.length" class="form-state"><TriangleAlert :size="14" /><span>{{ t('No reviewed dry-run workflow is ready.') }}</span></div>
       </form>
 
       <div class="run-ledger">
-        <div class="automation-heading"><div><strong>Trigger runs</strong><span>Idempotent replay ledger</span></div><span>{{ runs.length }}</span></div>
+        <div class="automation-heading"><div><strong>{{ t('Trigger runs') }}</strong><span>{{ t('Idempotent replay ledger') }}</span></div><span>{{ runs.length }}</span></div>
         <article v-for="run in orderedRuns.slice(0, 10)" :key="run.runId">
           <span :class="['run-dot', run.state]"></span>
           <div><code>{{ run.triggerId }}</code><small>{{ run.eventKey }} · {{ formatTime(run.startedAt) }}</small></div>
-          <span :class="['run-status', run.state]">{{ run.state }}</span>
+          <span :class="['run-status', run.state]">{{ statusLabel(run.state) }}</span>
         </article>
-        <div v-if="!runs.length" class="automation-empty compact"><History :size="22" /><strong>No trigger run</strong><span>The execution ledger is empty.</span></div>
+        <div v-if="!runs.length" class="automation-empty compact"><History :size="22" /><strong>{{ t('No trigger run') }}</strong><span>{{ t('The execution ledger is empty.') }}</span></div>
       </div>
     </section>
   </div>
@@ -99,10 +99,12 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { Ban, Clock3, Fingerprint, GitBranch, History, KeyRound, LoaderCircle, LockKeyhole, MousePointerClick, Pause, Play, Plus, Radio, ShieldCheck, TimerReset, TriangleAlert } from "lucide-vue-next";
+import { useI18n } from "../i18n";
 import type { DelegationGrantSummary, EarthWorkflowSummary, TriggerRun, WorkflowTrigger } from "../types";
 
 const props = defineProps<{ triggers: WorkflowTrigger[]; runs: TriggerRun[]; grants: DelegationGrantSummary[]; workflows: EarthWorkflowSummary[]; saving: boolean }>();
 const emit = defineEmits<{ create: [input: Record<string, unknown>]; approve: [triggerId: string]; state: [triggerId: string, state: "paused" | "active" | "revoked"]; invoke: [triggerId: string] }>();
+const { locale, isChinese, t, statusLabel } = useI18n();
 const name = ref("");
 const workflowId = ref("");
 const kind = ref<"manual" | "interval" | "event">("manual");
@@ -124,13 +126,13 @@ const orderedRuns = computed(() => [...props.runs].sort((a, b) => b.startedAt.lo
 
 function triggerRank(state: WorkflowTrigger["state"]) { return state === "draft" ? 0 : state === "active" ? 1 : state === "paused" ? 2 : 3; }
 function conditionIcon(trigger: WorkflowTrigger) { return trigger.condition.kind === "manual" ? MousePointerClick : trigger.condition.kind === "interval" ? Clock3 : Radio; }
-function conditionLabel(trigger: WorkflowTrigger) { return trigger.condition.kind === "manual" ? "manual" : trigger.condition.kind === "interval" ? `every ${trigger.condition.everyMinutes}m` : trigger.condition.eventName; }
+function conditionLabel(trigger: WorkflowTrigger) { return trigger.condition.kind === "manual" ? t("Manual") : trigger.condition.kind === "interval" ? t("every {{count}}m", { count: trigger.condition.everyMinutes }) : trigger.condition.eventName; }
 function usedRuns(trigger: WorkflowTrigger) { return grantByTrigger.value.get(trigger.triggerId)?.usedRuns || 0; }
 function grantProgress(trigger: WorkflowTrigger) { return Math.min(100, trigger.limits.maxRuns ? usedRuns(trigger) / trigger.limits.maxRuns * 100 : 0); }
-function grantLabel(trigger: WorkflowTrigger) { const grant = grantByTrigger.value.get(trigger.triggerId); return grant ? `${grant.state} grant` : "not authorized"; }
-function formatDate(value: string) { return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(value)); }
-function formatTime(value: string) { return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value)); }
-function revoke(trigger: WorkflowTrigger) { if (window.confirm(`Revoke ${trigger.name} and its delegation?`)) emit("state", trigger.triggerId, "revoked"); }
+function grantLabel(trigger: WorkflowTrigger) { const grant = grantByTrigger.value.get(trigger.triggerId); return grant ? t("{{state}} grant", { state: statusLabel(grant.state) }) : t("not authorized"); }
+function formatDate(value: string) { return new Intl.DateTimeFormat(locale.value, { month: "short", day: "numeric", year: "numeric" }).format(new Date(value)); }
+function formatTime(value: string) { return new Intl.DateTimeFormat(locale.value, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value)); }
+function revoke(trigger: WorkflowTrigger) { const message = isChinese.value ? `撤销 ${trigger.name} 及其委托？` : `Revoke ${trigger.name} and its delegation?`; if (window.confirm(message)) emit("state", trigger.triggerId, "revoked"); }
 function submit() {
   const condition = kind.value === "manual" ? { kind: "manual" } : kind.value === "interval" ? { kind: "interval", everyMinutes: everyMinutes.value } : { kind: "event", eventName: eventName.value };
   emit("create", { name: name.value, workflowId: workflowId.value, condition, limits: { maxRuns: maxRuns.value, cooldownSeconds: cooldownSeconds.value, expiresAt: new Date(Date.now() + expiryDays.value * 86_400_000).toISOString() } });

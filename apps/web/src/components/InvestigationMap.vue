@@ -3,15 +3,15 @@
     <div class="map-overlay map-title">
       <span>{{ regionName }}</span>
       <strong>{{ periodLabel }}</strong>
-      <small v-if="visualizationLoading">Loading Earth Engine layer</small>
+      <small v-if="visualizationLoading">{{ t('Loading Earth Engine layer') }}</small>
       <small v-else-if="visualizationError" class="layer-error">{{ visualizationError }}</small>
-      <small v-else-if="visualization">Live tile · {{ visualization.outputName }}</small>
+      <small v-else-if="visualization">{{ t('Live tile') }} · {{ visualization.outputName }}</small>
     </div>
     <div class="map-overlay map-legend">
-      <span><i class="swatch boundary"></i>Investigation area</span>
+      <span><i class="swatch boundary"></i>{{ t('Investigation area') }}</span>
       <button v-for="item in plan?.datasets || []" :key="item.role" :class="{ active: item.role === selectedRole }" @click="$emit('selectRole', item.role)">
         <i v-if="item.role === selectedRole && visualization" class="swatch ramp" :style="{ background: `linear-gradient(90deg, ${visualization.legend.palette.map((color) => `#${color}`).join(', ')})` }"></i>
-        <i v-else class="swatch dataset"></i>{{ item.role.replaceAll('_', ' ') }}
+        <i v-else class="swatch dataset"></i>{{ roleLabel(item.role) }}
       </button>
       <div v-if="visualization" class="legend-range"><code>{{ visualization.legend.min }}</code><span></span><code>{{ visualization.legend.max }}</code></div>
     </div>
@@ -21,10 +21,12 @@
 <script setup lang="ts">
 import maplibregl, { type GeoJSONSource, type Map } from "maplibre-gl";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useI18n } from "../i18n";
 import type { EarthVisualization, InvestigationPlan } from "../types";
 
 const props = defineProps<{ plan?: InvestigationPlan; selectedYear?: number; selectedRole?: string; visualization?: EarthVisualization; visualizationLoading?: boolean; visualizationError?: string }>();
 defineEmits<{ selectRole: [role: string] }>();
+const { t, roleLabel } = useI18n();
 const container = ref<HTMLElement>();
 let map: Map | undefined;
 let regionSyncPending = false;

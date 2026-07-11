@@ -58,6 +58,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Generated `scoutpi.earth.skill.v1` drafts with confirmed publishing and overwrite protection
 - Automatic workflow candidates from verified successful jobs, explicit promotion, deterministic replay, cost assertions, and adapter-drift rejection
 - Vue Workbench for maps, plans, jobs, artifacts, recipes, workflows, and a responsive Runtime Center that consolidates capabilities, Context Packs, continuity, approvals, Agent traces, and token/cost telemetry
+- Persistent English/Simplified Chinese Workbench localization for navigation, controls, dialogs, charts, runtime states, and observable roles while preserving user-authored evidence text verbatim
 - Pi Capability Broker over tools and commands, with a durable path-safe capability profile and operator-facing Extensions view, so market-provided research, MCP, memory, browser, context, goals, security, interoperability, evaluation, and subagent capabilities are reused rather than copied
 
 The core does not silently ship an active domain catalog. `examples/adapter-packs/earth-engine-starter.json` is an explicit demo pack and remains separate from runtime code.
@@ -293,6 +294,7 @@ The current live smoke path also verifies a real Dynamic World tile and a small 
 - [Context Bridge](docs/scoutpi/CONTEXT_BRIDGE.md)
 - [Browser Evidence Bridge](docs/scoutpi/BROWSER_EVIDENCE_BRIDGE.md)
 - [Evidence Reviewer](docs/scoutpi/EVIDENCE_REVIEWER.md)
+- [Workbench localization](docs/scoutpi/WORKBENCH_LOCALIZATION.md)
 - [MCP compatibility server](docs/scoutpi/MCP_COMPATIBILITY.md)
 - [Durable triggers and delegation](docs/scoutpi/DURABLE_TRIGGERS_AND_DELEGATION.md)
 - [Workflow Compiler](docs/scoutpi/WORKFLOW_COMPILER.md)

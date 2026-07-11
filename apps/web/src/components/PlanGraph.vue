@@ -1,7 +1,7 @@
 <template>
   <div class="graph-shell">
-    <div class="stage-row" aria-hidden="true"><span>Source</span><span>Annual</span><span>Compare</span><span>Review</span><span>Export</span></div>
-    <div ref="chartEl" class="graph" role="img" aria-label="Analysis plan dependency graph"></div>
+    <div class="stage-row" aria-hidden="true"><span>{{ t('Source') }}</span><span>{{ t('Annual') }}</span><span>{{ t('Compare') }}</span><span>{{ t('Review') }}</span><span>{{ t('Export') }}</span></div>
+    <div ref="chartEl" class="graph" role="img" :aria-label="t('Analysis plan dependency graph')"></div>
   </div>
 </template>
 
@@ -11,10 +11,12 @@ import { GraphChart } from "echarts/charts";
 import { TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useI18n } from "../i18n";
 import type { AnalysisNode } from "../types";
 
 echarts.use([GraphChart, TooltipComponent, CanvasRenderer]);
 const props = defineProps<{ nodes: AnalysisNode[] }>();
+const { locale, t, roleLabel } = useI18n();
 const chartEl = ref<HTMLElement>();
 let chart: echarts.ECharts | undefined;
 const colors: Record<string, string> = { source: "#4e7396", annual_metric: "#2f7d59", compare: "#d18b36", trend: "#a85f48", critic: "#9d3f4f", export: "#725c96" };
@@ -44,7 +46,7 @@ function render() {
       emphasis: { focus: "adjacency", lineStyle: { width: 2 } },
       data: shown.map((node) => ({
         id: node.nodeId,
-        name: node.nodeId.replace(rolePattern, "").replaceAll("_", " "),
+        name: roleLabel(node.nodeId.replace(rolePattern, "")),
         op: node.op,
         ...position(node),
         symbolSize: node.op === "critic" || node.op === "export" ? 28 : node.op === "source" ? 22 : 17,
@@ -61,7 +63,7 @@ function render() {
 }
 
 onMounted(() => { chart = echarts.init(chartEl.value!); render(); window.addEventListener("resize", resize); });
-watch(() => props.nodes, render, { deep: true });
+watch([() => props.nodes, locale], render, { deep: true });
 function resize() { chart?.resize(); }
 onBeforeUnmount(() => { window.removeEventListener("resize", resize); chart?.dispose(); });
 </script>

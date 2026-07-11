@@ -3,7 +3,7 @@
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark"><Orbit :size="20" /></div>
-        <div><strong>ScoutPi Earth</strong><span>Investigation Workbench</span></div>
+        <div><strong>ScoutPi Earth</strong><span>{{ t('Investigation Workbench') }}</span></div>
       </div>
       <div class="top-context" v-if="selectedPlan">
         <span>{{ selectedPlan.spec.region.name || selectedPlan.spec.investigationId }}</span>
@@ -11,41 +11,43 @@
         <strong>{{ selectedPlan.spec.period.startYear }}-{{ selectedPlan.spec.period.endYear }}</strong>
       </div>
       <div class="top-actions">
-        <button :class="['runtime-launch', { attention: runtimeAttention > 0, ready: runtimeAttention === 0 && environment.authenticated }]" title="Open Runtime Center" @click="mobileActionMenu = false; registryDialog = true"><span class="runtime-dot"></span><span>Runtime</span><strong>{{ runtimeAttention ? `${runtimeAttention} review` : environment.authenticated ? 'Ready' : 'Dry run' }}</strong><Waypoints :size="15" /></button>
-        <button class="icon-button mobile-only" title="Investigations" @click="mobileActionMenu = false; showSidebar = !showSidebar"><PanelLeft :size="18" /></button>
-        <button class="icon-button compact-on-mobile" title="Refresh workspace" :disabled="loading" @click="refresh"><RefreshCw :class="{ spin: loading }" :size="17" /></button>
-        <button class="icon-button compact-on-mobile" title="Recipes and compiled workflows" @click="recipeDialog = true"><BookOpen :size="17" /></button>
-        <button class="icon-button compact-on-mobile" :title="geedimReady ? 'Export selected layer' : 'Install the pipeline extra to export GeoTIFF'" :disabled="!selectedPlan || !environment.authenticated || !geedimReady" @click="exportDialog = true"><Download :size="17" /></button>
-        <button class="icon-button mobile-actions-only" title="More workspace actions" @click="mobileActionMenu = !mobileActionMenu"><MoreHorizontal :size="18" /></button>
-        <button class="secondary" :disabled="!selectedPlan || running" @click="runPlan('dry_run')"><FlaskConical :size="16" />Dry run</button>
-        <button class="primary" :disabled="!selectedPlan || running || !environment.authenticated" @click="runPlan('live')"><Play :size="16" />Run live</button>
+        <div class="locale-switch" role="group" :aria-label="t('Language')"><button :class="{ active: locale === 'en' }" @click="setLocale('en')">EN</button><button :class="{ active: locale === 'zh-CN' }" @click="setLocale('zh-CN')">中</button></div>
+        <button :class="['runtime-launch', { attention: runtimeAttention > 0, ready: runtimeAttention === 0 && environment.authenticated }]" :title="t('Open Runtime Center')" @click="mobileActionMenu = false; registryDialog = true"><span class="runtime-dot"></span><span>{{ t('Runtime') }}</span><strong>{{ runtimeAttention ? t('count.review', { count: runtimeAttention }) : environment.authenticated ? t('Ready') : t('Dry run') }}</strong><Waypoints :size="15" /></button>
+        <button class="icon-button mobile-only" :title="t('Investigations')" @click="mobileActionMenu = false; showSidebar = !showSidebar"><PanelLeft :size="18" /></button>
+        <button class="icon-button compact-on-mobile" :title="t('Refresh workspace')" :disabled="loading" @click="refresh"><RefreshCw :class="{ spin: loading }" :size="17" /></button>
+        <button class="icon-button compact-on-mobile" :title="t('Recipes and compiled workflows')" @click="recipeDialog = true"><BookOpen :size="17" /></button>
+        <button class="icon-button compact-on-mobile" :title="geedimReady ? t('Export selected layer') : t('Install the pipeline extra to export GeoTIFF')" :disabled="!selectedPlan || !environment.authenticated || !geedimReady" @click="exportDialog = true"><Download :size="17" /></button>
+        <button class="icon-button mobile-actions-only" :title="t('More workspace actions')" @click="mobileActionMenu = !mobileActionMenu"><MoreHorizontal :size="18" /></button>
+        <button class="secondary" :disabled="!selectedPlan || running" @click="runPlan('dry_run')"><FlaskConical :size="16" />{{ t('Dry run') }}</button>
+        <button class="primary" :disabled="!selectedPlan || running || !environment.authenticated" @click="runPlan('live')"><Play :size="16" />{{ t('Run live') }}</button>
         <div v-if="mobileActionMenu" class="mobile-action-menu">
-          <button :disabled="loading" @click="mobileActionMenu = false; refresh()"><RefreshCw :class="{ spin: loading }" :size="16" /><span>Refresh workspace</span></button>
-          <button @click="mobileActionMenu = false; recipeDialog = true"><BookOpen :size="16" /><span>Recipes and workflows</span></button>
-          <button :disabled="!selectedPlan || !environment.authenticated || !geedimReady" @click="mobileActionMenu = false; exportDialog = true"><Download :size="16" /><span>Export selected layer</span></button>
+          <button @click="toggleLocale"><Languages :size="16" /><span>{{ isChinese ? t('Switch to English') : t('Switch to Chinese') }}</span></button>
+          <button :disabled="loading" @click="mobileActionMenu = false; refresh()"><RefreshCw :class="{ spin: loading }" :size="16" /><span>{{ t('Refresh workspace') }}</span></button>
+          <button @click="mobileActionMenu = false; recipeDialog = true"><BookOpen :size="16" /><span>{{ t('Recipes and workflows') }}</span></button>
+          <button :disabled="!selectedPlan || !environment.authenticated || !geedimReady" @click="mobileActionMenu = false; exportDialog = true"><Download :size="16" /><span>{{ t('Export selected layer') }}</span></button>
         </div>
       </div>
     </header>
 
     <aside :class="['sidebar', { open: showSidebar }]">
       <div class="sidebar-head">
-        <div><span>Workspace</span><strong>Investigations</strong></div>
-        <button class="icon-button primary-icon" title="New investigation" @click="newDialog = true"><Plus :size="18" /></button>
+        <div><span>{{ t('Workspace') }}</span><strong>{{ t('Investigations') }}</strong></div>
+        <button class="icon-button primary-icon" :title="t('New investigation')" @click="newDialog = true"><Plus :size="18" /></button>
       </div>
-      <label class="search-box"><Search :size="15" /><input v-model="search" placeholder="Search investigations"></label>
+      <label class="search-box"><Search :size="15" /><input v-model="search" :placeholder="t('Search investigations')"></label>
       <div class="plan-list">
         <button v-for="plan in filteredPlans" :key="plan.planId" :class="['plan-item', { active: plan.planId === selectedPlanId }]" @click="selectPlan(plan.planId)">
           <span class="plan-state" :class="latestJob(plan.planId)?.state || 'draft'"></span>
           <span class="plan-copy"><strong>{{ plan.spec.region.name || plan.spec.investigationId }}</strong><small>{{ plan.spec.question }}</small></span>
           <span class="plan-years">{{ plan.spec.period.startYear }}-{{ plan.spec.period.endYear }}</span>
         </button>
-        <div v-if="!filteredPlans.length" class="sidebar-empty"><FolderSearch :size="26" /><span>No investigations</span></div>
+        <div v-if="!filteredPlans.length" class="sidebar-empty"><FolderSearch :size="26" /><span>{{ t('No investigations') }}</span></div>
       </div>
       <div class="environment-block">
-        <div><Server :size="15" /><span>Earth runtime</span><strong>{{ environment.installed ? environment.earthengineVersion || 'installed' : 'missing' }}</strong></div>
-        <div><KeyRound :size="15" /><span>Authentication</span><strong>{{ environment.authenticated ? 'connected' : 'required for live' }}</strong></div>
-        <div><Database :size="15" /><span>Plans / runs</span><strong>{{ plans.length }} / {{ jobs.length }}</strong></div>
-        <button title="Open Runtime Center" @click="registryDialog = true"><Waypoints :size="15" /><span>Runtime center</span><strong>{{ runtimeAttention ? `${runtimeAttention} review` : `${adapters.length} adapters` }}</strong></button>
+        <div><Server :size="15" /><span>{{ t('Earth runtime') }}</span><strong>{{ environment.installed ? environment.earthengineVersion || t('installed') : t('missing') }}</strong></div>
+        <div><KeyRound :size="15" /><span>{{ t('Authentication') }}</span><strong>{{ environment.authenticated ? t('connected') : t('required for live') }}</strong></div>
+        <div><Database :size="15" /><span>{{ t('Plans / runs') }}</span><strong>{{ plans.length }} / {{ jobs.length }}</strong></div>
+        <button :title="t('Open Runtime Center')" @click="registryDialog = true"><Waypoints :size="15" /><span>{{ t('Runtime center') }}</span><strong>{{ runtimeAttention ? t('count.review', { count: runtimeAttention }) : t('count.adapters', { count: adapters.length }) }}</strong></button>
       </div>
     </aside>
 
@@ -53,30 +55,30 @@
       <template v-if="selectedPlan">
         <div class="map-region"><InvestigationMap :plan="selectedPlan" :selected-year="selectedYear" :selected-role="selectedRole" :visualization="visualization" :visualization-loading="visualizationLoading" :visualization-error="visualizationError" @select-role="selectedRole = $event" /></div>
         <div class="timeline">
-          <button class="icon-button" title="Previous year" @click="stepYear(-1)"><ChevronLeft :size="17" /></button>
+          <button class="icon-button" :title="t('Previous year')" @click="stepYear(-1)"><ChevronLeft :size="17" /></button>
           <div class="timeline-track">
             <button v-for="year in years" :key="year" :class="{ active: year === selectedYear, edge: year === years[0] || year === years.at(-1) }" @click="selectedYear = year"><span></span><small>{{ year }}</small></button>
           </div>
-          <button class="icon-button" title="Next year" @click="stepYear(1)"><ChevronRight :size="17" /></button>
-          <div class="year-readout"><span>View year</span><strong>{{ selectedYear }}</strong></div>
+          <button class="icon-button" :title="t('Next year')" @click="stepYear(1)"><ChevronRight :size="17" /></button>
+          <div class="year-readout"><span>{{ t('View year') }}</span><strong>{{ selectedYear }}</strong></div>
         </div>
       </template>
       <div v-else class="empty-workspace">
         <div class="empty-map-grid"></div>
         <Orbit :size="36" />
-        <h1>Earth Investigation Workbench</h1>
-        <p>Create a typed investigation to compile datasets, evidence checks and an executable analysis graph.</p>
-        <button class="primary" @click="newDialog = true"><Plus :size="16" />New investigation</button>
+        <h1>{{ t('Earth Investigation Workbench') }}</h1>
+        <p>{{ t('Create a typed investigation to compile datasets, evidence checks and an executable analysis graph.') }}</p>
+        <button class="primary" @click="newDialog = true"><Plus :size="16" />{{ t('New investigation') }}</button>
       </div>
     </main>
 
     <aside class="inspector">
       <template v-if="selectedPlan">
         <header class="inspector-head">
-          <div><span>Investigation</span><h1>{{ selectedPlan.spec.question }}</h1></div>
-          <button class="icon-button" title="Runtime registry" @click="registryDialog = true"><MoreHorizontal :size="18" /></button>
+          <div><span>{{ t('Investigation') }}</span><h1>{{ selectedPlan.spec.question }}</h1></div>
+          <button class="icon-button" :title="t('Runtime registry')" @click="registryDialog = true"><MoreHorizontal :size="18" /></button>
         </header>
-        <div class="role-strip"><span v-for="item in selectedPlan.datasets" :key="item.role">{{ item.role.replaceAll('_', ' ') }}</span></div>
+        <div class="role-strip"><span v-for="item in selectedPlan.datasets" :key="item.role">{{ roleLabel(item.role) }}</span></div>
         <nav class="inspector-tabs">
           <button v-for="tab in tabs" :key="tab.id" :class="{ active: activeTab === tab.id }" :title="tab.label" @click="activeTab = tab.id"><component :is="tab.icon" :size="16" /><span>{{ tab.label }}</span></button>
         </nav>
@@ -84,75 +86,76 @@
         <div class="inspector-scroll">
           <div v-if="activeTab === 'evidence'" class="panel-section evidence-section">
             <section>
-              <div class="section-heading"><h2>Evidence graph</h2><span>{{ evidenceGraph?.nodes.length || 0 }} nodes</span></div>
+              <div class="section-heading"><h2>{{ t('Evidence graph') }}</h2><span>{{ t('count.nodes', { count: evidenceGraph?.nodes.length || 0 }) }}</span></div>
               <EvidenceGraph :graph="evidenceGraph" :records="selectedEvidence" :review="evidenceReview" />
             </section>
             <section>
-              <div class="section-heading"><h2>Hypotheses</h2><span>{{ selectedPlan.spec.hypotheses.length }}</span></div>
+              <div class="section-heading"><h2>{{ t('Hypotheses') }}</h2><span>{{ selectedPlan.spec.hypotheses.length }}</span></div>
               <article v-for="hypothesis in selectedPlan.spec.hypotheses" :key="hypothesis.id" class="hypothesis">
                 <code>{{ hypothesis.id }}</code><p>{{ hypothesis.statement }}</p>
-                <span v-for="role in hypothesis.observableRoles" :key="role">{{ role.replaceAll('_', ' ') }}</span>
+                <span v-for="role in hypothesis.observableRoles" :key="role">{{ roleLabel(role) }}</span>
               </article>
             </section>
             <section>
-              <div class="section-heading"><h2>Evidence critic</h2><span>{{ selectedPlan.criticChecks.length }}</span></div>
+              <div class="section-heading"><h2>{{ t('Evidence critic') }}</h2><span>{{ selectedPlan.criticChecks.length }}</span></div>
               <article v-for="check in selectedPlan.criticChecks" :key="check.checkId" :class="['critic', check.severity]">
                 <AlertTriangle v-if="check.severity !== 'info'" :size="16" /><Info v-else :size="16" />
                 <div><strong>{{ check.message }}</strong><p v-if="check.resolution">{{ check.resolution }}</p></div>
               </article>
             </section>
             <section v-if="selectedStory?.claims.length">
-              <div class="section-heading"><h2>Source claims</h2><span>{{ selectedStory.claims.length }}</span></div>
-              <article v-for="claim in selectedStory.claims" :key="claim.claimId" class="claim"><p>{{ claim.claim }}</p><a :href="claim.sourceUrl" target="_blank">Open source <ExternalLink :size="12" /></a></article>
+              <div class="section-heading"><h2>{{ t('Source claims') }}</h2><span>{{ selectedStory.claims.length }}</span></div>
+              <article v-for="claim in selectedStory.claims" :key="claim.claimId" class="claim"><p>{{ claim.claim }}</p><a :href="claim.sourceUrl" target="_blank">{{ t('Open source') }} <ExternalLink :size="12" /></a></article>
             </section>
           </div>
           <MetricsPanel v-else-if="activeTab === 'metrics'" :plan="selectedPlan" />
           <div v-else-if="activeTab === 'plan'" class="panel-section plan-section">
-            <div class="section-heading"><h2>Analysis graph</h2><span>{{ selectedPlan.dag.length }} nodes</span></div>
+            <div class="section-heading"><h2>{{ t('Analysis graph') }}</h2><span>{{ t('count.nodes', { count: selectedPlan.dag.length }) }}</span></div>
             <PlanGraph :nodes="selectedPlan.dag" />
             <section class="dataset-table">
-              <div class="dataset-row dataset-head"><span>Role</span><span>Dataset</span><span>Scale</span></div>
-              <div v-for="item in selectedPlan.datasets" :key="item.role" class="dataset-row"><span>{{ item.role.replaceAll('_', ' ') }}</span><strong>{{ item.dataset.title }}</strong><code>{{ item.dataset.scaleMeters }} m</code></div>
+              <div class="dataset-row dataset-head"><span>{{ t('Role') }}</span><span>{{ t('Dataset') }}</span><span>{{ t('Scale') }}</span></div>
+              <div v-for="item in selectedPlan.datasets" :key="item.role" class="dataset-row"><span>{{ roleLabel(item.role) }}</span><strong>{{ item.dataset.title }}</strong><code>{{ item.dataset.scaleMeters }} m</code></div>
             </section>
           </div>
           <div v-else class="panel-section runs-section">
-            <div class="section-heading"><h2>Run ledger</h2><span>{{ planJobs.length }}</span></div>
+            <div class="section-heading"><h2>{{ t('Run ledger') }}</h2><span>{{ planJobs.length }}</span></div>
             <RunLedger :jobs="planJobs" @select="selectJob" />
             <section v-if="selectedJob" class="job-detail">
               <div class="job-actions">
-                <button title="Refresh job" :disabled="refreshingJob" @click="refreshSelectedJob"><RotateCw :class="{ spin: refreshingJob }" :size="14" />Refresh</button>
-                <button v-if="selectedJob.state === 'failed' && selectedJob.result?.execution === 'local_export'" title="Retry local export" :disabled="retryingJob" @click="retrySelectedJob"><RotateCcw :class="{ spin: retryingJob }" :size="14" />Retry</button>
-                <button v-if="selectedJob.state === 'running' || selectedJob.state === 'queued'" class="danger-button" title="Cancel job" :disabled="cancelling" @click="cancelSelectedJob"><Ban :size="14" />Cancel</button>
+                <button :title="t('Refresh job')" :disabled="refreshingJob" @click="refreshSelectedJob"><RotateCw :class="{ spin: refreshingJob }" :size="14" />{{ t('Refresh') }}</button>
+                <button v-if="selectedJob.state === 'failed' && selectedJob.result?.execution === 'local_export'" :title="t('Retry local export')" :disabled="retryingJob" @click="retrySelectedJob"><RotateCcw :class="{ spin: retryingJob }" :size="14" />{{ t('Retry') }}</button>
+                <button v-if="selectedJob.state === 'running' || selectedJob.state === 'queued'" class="danger-button" :title="t('Cancel job')" :disabled="cancelling" @click="cancelSelectedJob"><Ban :size="14" />{{ t('Cancel') }}</button>
               </div>
-              <dl><dt>State</dt><dd>{{ selectedJob.state }}</dd><dt>Mode</dt><dd>{{ selectedJob.mode }}</dd><dt>Tasks</dt><dd>{{ selectedJob.taskIds.length }}</dd><dt>Artifact</dt><dd>{{ selectedJob.artifactDir }}</dd></dl>
+              <dl><dt>{{ t('State') }}</dt><dd>{{ statusLabel(selectedJob.state) }}</dd><dt>{{ t('Mode') }}</dt><dd>{{ statusLabel(selectedJob.mode) }}</dd><dt>{{ t('Tasks') }}</dt><dd>{{ selectedJob.taskIds.length }}</dd><dt>{{ t('Artifact') }}</dt><dd>{{ selectedJob.artifactDir }}</dd></dl>
               <p v-if="selectedJob.error" class="job-error">{{ selectedJob.error }}</p>
               <div class="artifact-list">
-                <div class="section-heading"><h2>Artifacts</h2><span>{{ artifacts.length }}</span></div>
+                <div class="section-heading"><h2>{{ t('Artifacts') }}</h2><span>{{ artifacts.length }}</span></div>
                 <a v-for="artifact in artifacts" :key="artifact.name" :href="api.artifactUrl(selectedJob.jobId, artifact.name)" target="_blank">
                   <FileText :size="14" /><span><strong>{{ artifact.name }}</strong><small>{{ formatBytes(artifact.size) }}</small></span><Download :size="13" />
                 </a>
-                <p v-if="!artifacts.length" class="artifact-empty">No artifacts recorded.</p>
+                <p v-if="!artifacts.length" class="artifact-empty">{{ t('No artifacts recorded.') }}</p>
               </div>
             </section>
           </div>
         </div>
       </template>
-      <div v-else class="inspector-empty"><ScanSearch :size="28" /><span>Select an investigation</span></div>
+      <div v-else class="inspector-empty"><ScanSearch :size="28" /><span>{{ t('Select an investigation') }}</span></div>
     </aside>
 
     <NewInvestigationDialog :open="newDialog" :saving="saving" @close="newDialog = false" @create="createPlan" />
     <RecipeDialog :open="recipeDialog" :saving="savingRecipe" :recipes="recipes" :workflows="workflows" :workflow-runs="workflowRuns" :current-spec="selectedPlan?.spec" :current-plan="selectedPlan" :current-job="workflowSourceJob" @close="recipeDialog = false" @save="saveRecipe" @instantiate="instantiateRecipe" @compile="compileSelectedWorkflow" @replay="replayCompiledWorkflow" />
     <LocalExportDialog :open="exportDialog" :saving="exportingLocal" :plan="selectedPlan" :selected-role="selectedRole" :selected-year="selectedYear" @close="exportDialog = false" @export="queueLocalExport" />
     <RuntimeRegistryDialog :open="registryDialog" :saving="savingRegistry || loading" :adapters="adapters" :skills="skills" :backend-manifests="backendManifests" :backend-probes="backendProbes" :telemetry="telemetry" :agent-runs="agentRuns" :checkpoints="checkpoints" :context-packs="contextPacks" :context-writebacks="contextWritebacks" :evidence-count="evidenceRecords.length" :mcp-profile="mcpProfile" :pi-ecosystem="piEcosystem" :triggers="triggers" :trigger-runs="triggerRuns" :delegations="delegations" :workflows="workflows" :approvals="approvals" @close="registryDialog = false" @refresh="refresh" @import="importRegistry" @probe="probeRegistryAdapter" @probe-backend="probeRuntimeBackend" @state="setRegistryAdapterState" @save-skill="saveGeneratedSkill" @publish="publishGeneratedSkill" @create-trigger="createTrigger" @approve-trigger="approveTrigger" @trigger-state="setTriggerState" @invoke-trigger="invokeTrigger" @invalid="error = $event" />
-    <div v-if="error" class="toast"><AlertCircle :size="17" /><span>{{ error }}</span><button title="Dismiss" @click="error = ''"><X :size="15" /></button></div>
-    <div v-if="running" class="run-progress"><LoaderCircle class="spin" :size="16" /><span>Submitting Earth workspace job</span></div>
+    <div v-if="error" class="toast"><AlertCircle :size="17" /><span>{{ error }}</span><button :title="t('Dismiss')" @click="error = ''"><X :size="15" /></button></div>
+    <div v-if="running" class="run-progress"><LoaderCircle class="spin" :size="16" /><span>{{ t('Submitting Earth workspace job') }}</span></div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, markRaw, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { AlertCircle, AlertTriangle, Ban, BarChart3, BookOpen, ChevronLeft, ChevronRight, Database, Download, ExternalLink, FileText, FlaskConical, FolderSearch, GitBranch, Info, KeyRound, Layers3, ListChecks, LoaderCircle, MoreHorizontal, Orbit, PanelLeft, Play, Plus, RefreshCw, RotateCcw, RotateCw, ScanSearch, Search, Server, Waypoints, X } from "lucide-vue-next";
+import { AlertCircle, AlertTriangle, Ban, BarChart3, BookOpen, ChevronLeft, ChevronRight, Database, Download, ExternalLink, FileText, FlaskConical, FolderSearch, GitBranch, Info, KeyRound, Languages, Layers3, ListChecks, LoaderCircle, MoreHorizontal, Orbit, PanelLeft, Play, Plus, RefreshCw, RotateCcw, RotateCw, ScanSearch, Search, Server, Waypoints, X } from "lucide-vue-next";
 import { api } from "./api";
+import { useI18n } from "./i18n";
 import InvestigationMap from "./components/InvestigationMap.vue";
 import EvidenceGraph from "./components/EvidenceGraph.vue";
 import LocalExportDialog from "./components/LocalExportDialog.vue";
@@ -163,6 +166,8 @@ import RecipeDialog from "./components/RecipeDialog.vue";
 import RuntimeRegistryDialog from "./components/RuntimeRegistryDialog.vue";
 import RunLedger from "./components/RunLedger.vue";
 import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph as EvidenceGraphState, EvidenceReviewReport, InvestigationPlan, InvestigationSpec, JobArtifact, PiEcosystemProfile, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "./types";
+
+const { locale, isChinese, t, statusLabel, roleLabel, setLocale, toggleLocale } = useI18n();
 
 const plans = ref<InvestigationPlan[]>([]);
 const jobs = ref<EarthJob[]>([]);
@@ -215,12 +220,12 @@ const savingRegistry = ref(false);
 const showSidebar = ref(false);
 const mobileActionMenu = ref(false);
 const error = ref("");
-const tabs = [
-  { id: "evidence", label: "Evidence", icon: markRaw(ListChecks) },
-  { id: "metrics", label: "Metrics", icon: markRaw(BarChart3) },
-  { id: "plan", label: "Plan", icon: markRaw(GitBranch) },
-  { id: "runs", label: "Runs", icon: markRaw(Layers3) },
-];
+const tabs = computed(() => [
+  { id: "evidence", label: t("Evidence"), icon: markRaw(ListChecks) },
+  { id: "metrics", label: t("Metrics"), icon: markRaw(BarChart3) },
+  { id: "plan", label: t("Plan"), icon: markRaw(GitBranch) },
+  { id: "runs", label: t("Runs"), icon: markRaw(Layers3) },
+]);
 
 const selectedPlan = computed(() => plans.value.find((plan) => plan.planId === selectedPlanId.value));
 const selectedStory = computed(() => stories.value.find((story) => story.investigationId === selectedPlan.value?.spec.investigationId));
@@ -412,7 +417,10 @@ async function approveTrigger(triggerId: string) {
   const trigger = triggers.value.find((item) => item.triggerId === triggerId);
   if (!trigger) return;
   const condition = trigger.condition.kind === "manual" ? "manual" : trigger.condition.kind === "interval" ? `every ${trigger.condition.everyMinutes} minutes` : trigger.condition.eventName;
-  if (!window.confirm(`Authorize ${trigger.name}?\n\nWorkflow: ${trigger.workflowId}\nScope: dry-run replay only\nCondition: ${condition}\nMaximum runs: ${trigger.limits.maxRuns}\nExpires: ${trigger.limits.expiresAt}`)) return;
+  const confirmation = isChinese.value
+    ? `授权 ${trigger.name}？\n\n工作流：${trigger.workflowId}\n范围：仅试运行复放\n条件：${condition}\n最大运行次数：${trigger.limits.maxRuns}\n过期时间：${trigger.limits.expiresAt}`
+    : `Authorize ${trigger.name}?\n\nWorkflow: ${trigger.workflowId}\nScope: dry-run replay only\nCondition: ${condition}\nMaximum runs: ${trigger.limits.maxRuns}\nExpires: ${trigger.limits.expiresAt}`;
+  if (!window.confirm(confirmation)) return;
   savingRegistry.value = true; error.value = "";
   try {
     await api.approveTrigger(triggerId);
@@ -458,14 +466,14 @@ async function refreshSelectedJob() {
   finally { refreshingJob.value = false; }
 }
 async function retrySelectedJob() {
-  if (!selectedJob.value || !window.confirm("Retry this persisted local export as a new job?")) return;
+  if (!selectedJob.value || !window.confirm(t("Retry this persisted local export as a new job?"))) return;
   retryingJob.value = true; error.value = "";
   try { const job = await api.retryJob(selectedJob.value.jobId); replaceJob(job); await selectJob(job); }
   catch (value) { error.value = value instanceof Error ? value.message : String(value); }
   finally { retryingJob.value = false; }
 }
 async function cancelSelectedJob() {
-  if (!selectedJob.value || !window.confirm("Cancel this Earth Engine job?")) return;
+  if (!selectedJob.value || !window.confirm(t("Cancel this Earth Engine job?"))) return;
   cancelling.value = true; error.value = "";
   try { const job = await api.cancelJob(selectedJob.value.jobId); replaceJob(job); await selectJob(job); }
   catch (value) { error.value = value instanceof Error ? value.message : String(value); }
