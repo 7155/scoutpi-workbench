@@ -4,6 +4,7 @@ import { URL } from "node:url";
 import { EarthWorkspace, type EarthStoryArtifact, type InvestigationSpec } from "../../earth-workspace/src/index.ts";
 import { AgentCheckpointStore } from "../../runtime-checkpoint/src/index.ts";
 import { ContextPackStore } from "../../runtime-context/src/index.ts";
+import { TriggerRuntime } from "../../runtime-trigger/src/index.ts";
 import { SCOUTPI_MCP_PROFILE } from "../../scoutpi-mcp-server/src/profile.ts";
 
 export interface EarthWorkspaceServerOptions {
@@ -12,6 +13,7 @@ export interface EarthWorkspaceServerOptions {
   workspace?: EarthWorkspace;
   checkpointStore?: AgentCheckpointStore;
   contextStore?: ContextPackStore;
+  triggerRuntime?: TriggerRuntime;
 }
 
 function sendJson(response: ServerResponse, status: number, value: unknown): void {
@@ -46,9 +48,11 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
   const workspace = options.workspace ?? new EarthWorkspace();
   const checkpointStore = options.checkpointStore ?? new AgentCheckpointStore(process.env.SCOUTPI_CHECKPOINT_ROOT ?? join(dirname(workspace.root), "checkpoints"));
   const contextStore = options.contextStore ?? new ContextPackStore(process.env.SCOUTPI_CONTEXT_ROOT ?? join(dirname(workspace.root), "context"));
+  const triggerRuntime = options.triggerRuntime ?? new TriggerRuntime(workspace, process.env.SCOUTPI_TRIGGER_ROOT ?? join(dirname(workspace.root), "triggers"));
   await workspace.init();
   await checkpointStore.init();
   await contextStore.init();
+  await triggerRuntime.init();
   await workspace.recoverInterruptedJobs();
 
   const server = http.createServer(async (request, response) => {
@@ -64,6 +68,44 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
       }
       if (request.method === "GET" && url.pathname === "/api/mcp") {
         sendJson(response, 200, SCOUTPI_MCP_PROFILE);
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/triggers") {
+        sendJson(response, 200, { triggers: await triggerRuntime.listTriggers() });
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/triggers") {
+        sendJson(response, 201, await triggerRuntime.createDraft(await readBody(request)));
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/trigger-runs") {
+        sendJson(response, 200, { runs: await triggerRuntime.listRuns(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/delegations") {
+        const grants = (await triggerRuntime.listGrants(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined)).map(({ signature: _signature, ...grant }) => grant);
+        sendJson(response, 200, { grants });
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/trigger-events") {
+        sendJson(response, 202, await triggerRuntime.dispatchEvent(await readBody(request)));
+        return;
+      }
+      const approveTriggerId = routeId(url.pathname, "/api/triggers/", "/approve");
+      if (request.method === "POST" && approveTriggerId) {
+        sendJson(response, 200, await triggerRuntime.approve(approveTriggerId, { principalId: "workbench:operator", kind: "human", displayName: "Workbench operator" }));
+        return;
+      }
+      const stateTriggerId = routeId(url.pathname, "/api/triggers/", "/state");
+      if (request.method === "POST" && stateTriggerId) {
+        const body = await readBody(request);
+        sendJson(response, 200, await triggerRuntime.setState(stateTriggerId, body.state));
+        return;
+      }
+      const invokeTriggerId = routeId(url.pathname, "/api/triggers/", "/invoke");
+      if (request.method === "POST" && invokeTriggerId) {
+        const body = await readBody(request);
+        sendJson(response, 202, await triggerRuntime.invoke(invokeTriggerId, String(body.idempotencyKey || "")));
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/contracts") {
@@ -334,19 +376,39 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
       sendJson(response, 404, { ok: false, error: { code: "NOT_FOUND", message: `${request.method} ${url.pathname}` } });
     } catch (error) {
       const value = error as Error & { code?: string; statusCode?: number };
-      const status = value.statusCode ?? (value.code === "ENOENT" ? 404 : value.code?.includes("REQUIRED") ? 409 : value.code?.includes("INVALID") || value.code?.includes("BLOCKED") ? 400 : 500);
+      const status = value.statusCode ?? (value.code === "ENOENT" ? 404 : value.code?.startsWith("TRIGGER_") || value.code?.includes("REQUIRED") ? 409 : value.code?.includes("INVALID") || value.code?.includes("BLOCKED") ? 400 : 500);
       sendJson(response, status, { ok: false, error: { code: value.code || "EARTH_SERVER_ERROR", message: value.message } });
     }
   });
 
+  let supervisorTimer: ReturnType<typeof setInterval> | undefined;
+  let supervisorRun: Promise<void> | undefined;
+  const supervisorIntervalMs = Math.max(5_000, Math.min(60_000, Number(process.env.SCOUTPI_TRIGGER_POLL_MS || 15_000) || 15_000));
+  const supervise = () => {
+    if (supervisorRun) return;
+    const current = triggerRuntime.tick().then(() => undefined).catch(() => undefined).finally(() => {
+      if (supervisorRun === current) supervisorRun = undefined;
+    });
+    supervisorRun = current;
+  };
   return {
     host,
     port,
     workspace,
     checkpointStore,
     contextStore,
+    triggerRuntime,
     server,
-    listen: () => new Promise<void>((resolve) => server.listen(port, host, resolve)),
-    close: () => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())),
+    listen: () => new Promise<void>((resolve) => server.listen(port, host, () => {
+      supervise();
+      supervisorTimer = setInterval(supervise, supervisorIntervalMs);
+      supervisorTimer.unref();
+      resolve();
+    })),
+    close: async () => {
+      if (supervisorTimer) clearInterval(supervisorTimer);
+      await supervisorRun;
+      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    },
   };
 }

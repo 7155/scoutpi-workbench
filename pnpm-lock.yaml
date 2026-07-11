@@ -101,6 +101,9 @@ importers:
       '@scoutpi/runtime-context':
         specifier: workspace:*
         version: link:../runtime-context
+      '@scoutpi/runtime-trigger':
+        specifier: workspace:*
+        version: link:../runtime-trigger
 
   packages/pi-ecosystem: {}
 
@@ -126,6 +129,12 @@ importers:
         version: link:../runtime-evidence
 
   packages/runtime-telemetry: {}
+
+  packages/runtime-trigger:
+    dependencies:
+      '@scoutpi/earth-workspace':
+        specifier: workspace:*
+        version: link:../earth-workspace
 
   packages/scoutpi-mcp-server:
     dependencies:

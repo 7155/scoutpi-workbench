@@ -92,3 +92,15 @@
 - Visual QA: 1440x1000 and 390x844 Runtime Center screenshots show all seven runtime layers without horizontal overflow; browser console reports zero errors and warnings.
 - Git snapshot: `main...origin/main`; 11 tracked paths plus the MCP package, harness, test, and documentation are pending this milestone commit. The official SDK adds the expected stable-v1 lockfile graph.
 - Verification: `pnpm check` passes 48 tests, Earth and MCP harnesses, Python compile, and production build; `pnpm audit --prod` reports no known vulnerabilities; Evidence milestone CI is green.
+
+## 2026-07-11 08:05 - Durable triggers, delegation and Automation UI
+
+- Added a zero-tool Trigger extension and durable runtime for manual, interval, and named-event replay of reviewed dry-run workflows.
+- Added service principals, HMAC-SHA256 delegation grants, complete trigger fingerprints, expiry/cooldown/run limits, grant revocation, and signature-free API summaries.
+- Added durable idempotency, cross-process trigger leases, interval supervisor leases, event content collision checks, and replay-on-redelivery so a crash after receipt creation cannot lose an event.
+- Browser Evidence imports can emit `browser.evidence.imported`; receipts retain only payload hash/byte count and the originally matched trigger IDs.
+- Added the Runtime Center Automation view with delegation posture, operator review queue, run-budget progress, condition/identity state, direct authorization, and an idempotent execution ledger.
+- Visual QA passed at 1440x1000 and 390x844 after fixing the mobile posture-row overlap; browser console reports zero errors and warnings.
+- Pi package discovery research confirmed the official `pi.dev/packages` catalog and native `pi install/list/update/remove` flow. Future generic memory, MCP, subagent, web, and extension-management capability should be brokered from the market rather than reimplemented.
+- The user's `wisdom-weasel-rag-ime` Core remains the preferred memory provider. Next implementation should add a typed provider contract, provenance-aware query adapter, health probe, and approved writeback delivery rather than installing a second memory surface.
+- Verification: `pnpm check` passes 54 tests, Python compile, Earth and MCP harnesses, and production build. Real Pi RPC starts `gpt-5.6`, `xhigh`, all seven public extensions, and reports no extension errors.

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -124,7 +124,9 @@ test("Agent observability can attach the exact investigation Evidence Graph", as
 test("Pi Evidence Bridge consumes canonical browser tool details without registering another model tool", async () => {
   const root = await mkdtemp(join(tmpdir(), "scoutpi-evidence-extension-"));
   const previousEvidence = process.env.SCOUTPI_EVIDENCE_ROOT;
+  const previousTrigger = process.env.SCOUTPI_TRIGGER_ROOT;
   process.env.SCOUTPI_EVIDENCE_ROOT = root;
+  process.env.SCOUTPI_TRIGGER_ROOT = join(root, "triggers");
   try {
     const handlers = new Map<string, Function>();
     const entries: Array<{ type: string; data: any }> = [];
@@ -163,9 +165,13 @@ test("Pi Evidence Bridge consumes canonical browser tool details without registe
     assert.equal(records.length, 1);
     assert.equal(records[0].evidenceId, "canonical-ev-001");
     assert.equal(entries.some((entry) => entry.type === "scoutpi:evidence-import"), true);
+    const triggerEvents = await readdir(join(root, "triggers", "events"));
+    assert.equal(triggerEvents.length, 1);
+    assert.equal((await readFile(join(root, "triggers", "events", triggerEvents[0]), "utf8")).includes("browser.evidence.imported"), true);
     assert.deepEqual(commands, ["earth-evidence"]);
   } finally {
     if (previousEvidence === undefined) delete process.env.SCOUTPI_EVIDENCE_ROOT; else process.env.SCOUTPI_EVIDENCE_ROOT = previousEvidence;
+    if (previousTrigger === undefined) delete process.env.SCOUTPI_TRIGGER_ROOT; else process.env.SCOUTPI_TRIGGER_ROOT = previousTrigger;
     await rm(root, { recursive: true, force: true });
   }
 });

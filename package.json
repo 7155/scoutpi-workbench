@@ -28,6 +28,7 @@
     "extensions": [
       "./.pi/extensions/scoutpi-context/index.ts",
       "./.pi/extensions/scoutpi-evidence/index.ts",
+      "./.pi/extensions/scoutpi-triggers/index.ts",
       "./.pi/extensions/scoutpi-governance/index.ts",
       "./.pi/extensions/scoutpi-observability/index.ts",
       "./.pi/extensions/scoutpi-checkpoint/index.ts",

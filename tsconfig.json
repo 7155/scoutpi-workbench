@@ -23,6 +23,7 @@
     "packages/runtime-governance/**/*.ts",
     "packages/runtime-observability/**/*.ts",
     "packages/runtime-telemetry/**/*.ts",
+    "packages/runtime-trigger/**/*.ts",
     "packages/scoutpi-mcp-server/**/*.ts",
     "harness/earth/**/*.ts",
     "harness/mcp/**/*.ts",

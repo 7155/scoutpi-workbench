@@ -109,6 +109,33 @@ export interface ScoutPiMcpProfile {
   blockedOperations: string[];
   modelSurface: "external_only";
 }
+export interface WorkflowTrigger {
+  schemaVersion: "scoutpi.runtime.trigger.v1";
+  triggerId: string;
+  name: string;
+  workflowId: string;
+  state: "draft" | "active" | "paused" | "revoked";
+  condition: { kind: "manual" } | { kind: "interval"; everyMinutes: number } | { kind: "event"; eventName: string };
+  subject: { principalId: string; kind: "human" | "pi" | "service"; displayName: string };
+  limits: { maxRuns: number; cooldownSeconds: number; expiresAt: string };
+  grantId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface TriggerRun {
+  schemaVersion: "scoutpi.runtime.trigger-run.v1";
+  runId: string; triggerId: string; workflowId: string; grantId: string; eventKey: string;
+  state: "running" | "completed" | "failed" | "blocked";
+  startedAt: string; updatedAt: string; replayId?: string; planId?: string; jobId?: string; error?: string;
+}
+export interface DelegationGrantSummary {
+  schemaVersion: "scoutpi.runtime.delegation.v1";
+  grantId: string; triggerId: string; workflowId: string; triggerFingerprint: string;
+  issuer: { principalId: string; kind: string; displayName: string };
+  subject: { principalId: string; kind: string; displayName: string };
+  scopes: ["workflow:replay:dry_run"];
+  issuedAt: string; expiresAt: string; maxRuns: number; usedRuns: number; state: "active" | "exhausted" | "expired" | "revoked";
+}
 export interface EarthWorkflowSummary {
   workflowId: string; name: string; description: string; stage: "candidate" | "ready"; revision: number; fingerprint: string; savedAt: string;
   replayCount: number; successCount: number; failureCount: number; executionKind: "run" | "local_export";

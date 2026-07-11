@@ -7,6 +7,7 @@
   "dependencies": {
     "@scoutpi/earth-workspace": "workspace:*",
     "@scoutpi/runtime-checkpoint": "workspace:*",
-    "@scoutpi/runtime-context": "workspace:*"
+    "@scoutpi/runtime-context": "workspace:*",
+    "@scoutpi/runtime-trigger": "workspace:*"
   }
 }

@@ -22,7 +22,8 @@ Use progressive disclosure and existing Pi plugins before adding new capabilitie
 11. Call `earth_workspace(evidence_graph)` before `earth_story` so browser sources, claims, hypotheses, computed runs, and findings have an auditable graph. Use `earth_story` last; every finding must point to computed evidence, uncertainty, and provenance.
 12. A successful job with verified adapter bindings and no blocking critic check creates a workflow candidate automatically. Review or promote it with `workflow_compile`; use `workflow_replay` only while fingerprints, roles, and cost assertions still pass. Never work around `WORKFLOW_ADAPTER_DRIFT`.
 13. Query `telemetry` when diagnosing cost, retries, context pressure, or cache behavior. Do not pull telemetry into every ordinary turn.
-14. After a workflow remains useful, save a declarative Earth skill. Publishing into `.pi/skills` requires a direct user approval receipt and a Pi reload.
+14. A `ready` dry-run workflow may be attached to a manual, interval, or named-event trigger only after direct operator authorization. Trigger delegation is identity-bound, signed, expiring, run-limited, and never authorizes live compute or export.
+15. After a workflow remains useful, save a declarative Earth skill. Publishing into `.pi/skills` requires a direct user approval receipt and a Pi reload.
 
 ## Investigation Contract
 

@@ -214,6 +214,7 @@ async function createIsolatedRuntime(): Promise<{ agentDir: string; childEnv: No
       SCOUTPI_CHECKPOINT_ROOT: join(agentDir, "checkpoints"),
       SCOUTPI_CONTEXT_ROOT: join(agentDir, "context"),
       SCOUTPI_EVIDENCE_ROOT: join(agentDir, "evidence"),
+      SCOUTPI_TRIGGER_ROOT: join(agentDir, "triggers"),
       SCOUTPI_SKILL_PUBLISH_ROOT: join(agentDir, "published_skills"),
     },
   };
@@ -262,7 +263,7 @@ async function main(): Promise<void> {
     const runtime = await createIsolatedRuntime();
     await writeHarnessModel(runtime.agentDir);
     const cli = process.env.SCOUTPI_PI_CLI || resolve(root, "node_modules/@earendil-works/pi-coding-agent/dist/cli.js");
-    const extensions = ["scoutpi-context", "scoutpi-evidence", "scoutpi-governance", "scoutpi-observability", "scoutpi-checkpoint", "scoutpi-earth"].flatMap((name) => ["--extension", join(root, `.pi/extensions/${name}/index.ts`)]);
+    const extensions = ["scoutpi-context", "scoutpi-evidence", "scoutpi-triggers", "scoutpi-governance", "scoutpi-observability", "scoutpi-checkpoint", "scoutpi-earth"].flatMap((name) => ["--extension", join(root, `.pi/extensions/${name}/index.ts`)]);
     const client = new JsonlRpcClient(process.execPath, [cli, "--mode", "rpc", "--provider", "scoutpi-harness", "--model", model, "--thinking", "xhigh", "--approve", "--no-session", "--no-builtin-tools", "--no-extensions", ...extensions], root, { ...runtime.childEnv, SCOUTPI_HARNESS_API_KEY: key }, false, defaultBudget);
     try {
       await client.start();
@@ -289,7 +290,7 @@ async function main(): Promise<void> {
   const inputCost = Number(process.env.SCOUTPI_MODEL_INPUT_USD_PER_M || 0);
   const outputCost = Number(process.env.SCOUTPI_MODEL_OUTPUT_USD_PER_M || 0);
   const cli = process.env.SCOUTPI_PI_CLI || resolve(root, "node_modules/@earendil-works/pi-coding-agent/dist/cli.js");
-  const extensions = ["scoutpi-context", "scoutpi-evidence", "scoutpi-governance", "scoutpi-observability", "scoutpi-checkpoint", "scoutpi-earth"].flatMap((name) => ["--extension", join(root, `.pi/extensions/${name}/index.ts`)]);
+  const extensions = ["scoutpi-context", "scoutpi-evidence", "scoutpi-triggers", "scoutpi-governance", "scoutpi-observability", "scoutpi-checkpoint", "scoutpi-earth"].flatMap((name) => ["--extension", join(root, `.pi/extensions/${name}/index.ts`)]);
   const requestedCase = selectedCase || cases[0]?.caseId;
   const selected = runAllCases ? cases : cases.filter((item) => item.caseId === requestedCase);
   if (!selected.length) throw new Error(`Unknown case ${selectedCase}`);

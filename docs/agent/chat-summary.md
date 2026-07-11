@@ -65,3 +65,12 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Artifact and Evidence Graph payloads use resource links and bounded reads instead of entering every tool result.
 - The official MCP client passes both in-memory and real stdio harnesses. Runtime Center desktop/mobile QA clearly separates the Pi and MCP surfaces.
 - Next: durable event triggers with idempotency, execution leases, identity/delegation, and an operator-facing trigger ledger.
+
+### 2026-07-11 - Durable automation and ecosystem direction
+
+- Reviewed dry-run workflows can now be delegated to identity-bound manual, interval, or named-event triggers without adding a fourth Pi tool.
+- Signed grants, durable leases, immutable event receipts, content-collision detection, restart-safe idempotency, and bounded run/cooldown/expiry limits keep unattended replay narrow and auditable.
+- Runtime Center now has a polished Automation view and operator queue; desktop/mobile visual QA and all 54 tests pass.
+- Pi's official package catalog will be treated as the generic capability supply layer. ScoutPi should broker compatible research, MCP, subagent, security, and context packages instead of cloning them.
+- Cross-application memory should come from the existing `wisdom-weasel-rag-ime` Core through a typed Context Provider and reviewed writeback protocol, while ScoutPi owns task ranking, token budgets, provenance, and runtime attachment.
+- Next: commit this Trigger milestone, then upgrade the capability broker and implement the IME Core provider integration.

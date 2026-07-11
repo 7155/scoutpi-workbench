@@ -27,6 +27,9 @@ Use GitHub private vulnerability reporting from the repository Security tab. Do 
 - Context candidates are size-limited, provenance-bound, expired before use, checked for common secret patterns, and injected as lower-trust memory rather than policy. Writeback remains pending until direct UI approval and does not silently mutate a provider database.
 - Browser evidence imports are restricted to real paths under configured roots, so symlinks cannot escape the allowlist. Inputs are size-limited, checked again for secret material, copied into the runtime artifact store, and bound by SHA-256. Stored payload integrity is rechecked on read, existing evidence IDs cannot be replaced with different content, and claim relations are always explicit.
 - The MCP compatibility server is local stdio only. It exposes no live run, export, registry mutation, workflow publication, or approval-issuance operation; artifacts remain job-scoped and resource reads are size-bounded.
+- Durable triggers can replay only reviewed `ready` workflows whose execution kind is dry-run `run`. Delegation grants are HMAC-signed, bind the complete trigger fingerprint and service identity, expire, enforce a maximum run count and cooldown, and fail closed after tampering or revocation.
+- Trigger events are exact-name, size-bounded inputs. Receipts persist only the event ID, payload hash and byte count; raw payloads cannot modify a workflow or become executable parameters. Exclusive run creation and supervisor leases provide restart-safe idempotency.
+- The Workbench trigger approval endpoint trusts only the loopback operator boundary and never returns grant signatures. Use Pi's `/earth-trigger-approve` direct `ctx.ui.confirm()` flow when stronger per-action human evidence is required.
 
 ## Secrets
 

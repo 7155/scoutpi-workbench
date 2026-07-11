@@ -134,6 +134,8 @@
         </section>
       </div>
 
+      <AutomationPanel v-else-if="active === 'automation'" :triggers="triggers" :runs="triggerRuns" :grants="delegations" :workflows="workflows" :saving="saving" @create="$emit('createTrigger', $event)" @approve="$emit('approveTrigger', $event)" @state="(id, state) => $emit('triggerState', id, state)" @invoke="$emit('invokeTrigger', $event)" />
+
       <div v-else class="telemetry-view">
         <section class="telemetry-metrics">
           <div><Activity :size="17" /><span>Events</span><strong>{{ telemetry?.eventCount || 0 }}</strong></div>
@@ -167,15 +169,16 @@
 
 <script setup lang="ts">
 import { computed, markRaw, onBeforeUnmount, onMounted, ref } from "vue";
-import { Activity, ArrowUpRight, Blocks, BookOpen, Boxes, Braces, BrainCircuit, CircleCheck, CircleX, Clock3, Coins, Database, Gauge, HardDriveDownload, History, Hourglass, LoaderCircle, Network, Power, Radar, Radio, RefreshCw, Rocket, Save, ServerCog, ShieldCheck, Upload, Waypoints, X } from "lucide-vue-next";
+import { Activity, ArrowUpRight, Blocks, BookOpen, Boxes, Braces, BrainCircuit, CircleCheck, CircleX, Clock3, Coins, Database, Gauge, HardDriveDownload, History, Hourglass, LoaderCircle, Network, Power, Radar, Radio, RefreshCw, Rocket, Save, ServerCog, ShieldCheck, TimerReset, Upload, Waypoints, X } from "lucide-vue-next";
 import { api } from "../api";
-import type { AgentCheckpointSummary, AgentRunSummary, ContextPackSummary, ContextWritebackSummary, EarthBackendManifest, EarthBackendProbe, EarthSkillSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile } from "../types";
+import AutomationPanel from "./AutomationPanel.vue";
+import type { AgentCheckpointSummary, AgentRunSummary, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthSkillSummary, EarthWorkflowSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "../types";
 
-type RuntimeTab = "overview" | "adapters" | "skills" | "backends" | "context" | "telemetry";
+type RuntimeTab = "overview" | "adapters" | "skills" | "backends" | "context" | "automation" | "telemetry";
 type RuntimeTone = "ready" | "active" | "idle" | "attention" | "blocked";
 
-const props = defineProps<{ open: boolean; saving: boolean; adapters: RegisteredAdapter[]; skills: EarthSkillSummary[]; backendManifests: EarthBackendManifest[]; backendProbes: Record<string, EarthBackendProbe>; telemetry?: RuntimeTelemetrySummary; agentRuns: AgentRunSummary[]; checkpoints: AgentCheckpointSummary[]; contextPacks: ContextPackSummary[]; contextWritebacks: ContextWritebackSummary[]; evidenceCount: number; mcpProfile?: ScoutPiMcpProfile; approvals: RuntimeApproval[] }>();
-const emit = defineEmits<{ close: []; refresh: []; import: [payload: Record<string, unknown>]; probe: [datasetId: string]; probeBackend: [backendId: string]; state: [datasetId: string, enabled: boolean]; saveSkill: [payload: Record<string, unknown>]; publish: [skillId: string]; invalid: [message: string] }>();
+const props = defineProps<{ open: boolean; saving: boolean; adapters: RegisteredAdapter[]; skills: EarthSkillSummary[]; backendManifests: EarthBackendManifest[]; backendProbes: Record<string, EarthBackendProbe>; telemetry?: RuntimeTelemetrySummary; agentRuns: AgentRunSummary[]; checkpoints: AgentCheckpointSummary[]; contextPacks: ContextPackSummary[]; contextWritebacks: ContextWritebackSummary[]; evidenceCount: number; mcpProfile?: ScoutPiMcpProfile; triggers: WorkflowTrigger[]; triggerRuns: TriggerRun[]; delegations: DelegationGrantSummary[]; workflows: EarthWorkflowSummary[]; approvals: RuntimeApproval[] }>();
+const emit = defineEmits<{ close: []; refresh: []; import: [payload: Record<string, unknown>]; probe: [datasetId: string]; probeBackend: [backendId: string]; state: [datasetId: string, enabled: boolean]; saveSkill: [payload: Record<string, unknown>]; publish: [skillId: string]; createTrigger: [payload: Record<string, unknown>]; approveTrigger: [triggerId: string]; triggerState: [triggerId: string, state: "paused" | "active" | "revoked"]; invokeTrigger: [triggerId: string]; invalid: [message: string] }>();
 const active = ref<RuntimeTab>("overview");
 const registryJson = ref("");
 const skillJson = ref("");
@@ -185,7 +188,8 @@ const pendingWritebacks = computed(() => props.contextWritebacks.filter((item) =
 const recoverableCheckpoints = computed(() => props.checkpoints.filter((item) => item.recovery.recoverable));
 const pendingApprovals = computed(() => props.approvals.filter((item) => item.state === "pending"));
 const interruptedRuns = computed(() => props.agentRuns.filter((item) => item.state === "interrupted"));
-const runtimeAttention = computed(() => pendingWritebacks.value.length + recoverableCheckpoints.value.length + pendingApprovals.value.length + interruptedRuns.value.length);
+const pendingTriggers = computed(() => props.triggers.filter((item) => item.state === "draft"));
+const runtimeAttention = computed(() => pendingWritebacks.value.length + recoverableCheckpoints.value.length + pendingApprovals.value.length + interruptedRuns.value.length + pendingTriggers.value.length);
 const runtimeTone = computed<RuntimeTone>(() => runtimeAttention.value ? "attention" : props.agentRuns.some((item) => item.state === "running") ? "active" : "ready");
 const runtimeStatusLabel = computed(() => runtimeAttention.value ? `${runtimeAttention.value} to review` : runtimeTone.value === "active" ? "Agent running" : "Operational");
 const latestContext = computed(() => [...props.contextPacks].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]);
@@ -198,6 +202,7 @@ const tabs = computed(() => [
   { id: "skills" as const, label: "Skills", icon: markRaw(BookOpen), count: props.skills.length },
   { id: "backends" as const, label: "Backends", icon: markRaw(ServerCog), count: props.backendManifests.length },
   { id: "context" as const, label: "Context", icon: markRaw(BrainCircuit), count: props.contextPacks.length + props.contextWritebacks.length },
+  { id: "automation" as const, label: "Automation", icon: markRaw(TimerReset), count: props.triggers.length },
   { id: "telemetry" as const, label: "Telemetry", icon: markRaw(Activity), count: props.agentRuns.length },
 ]);
 const runtimeLayers = computed(() => [
@@ -207,10 +212,12 @@ const runtimeLayers = computed(() => [
   { id: "continuity", title: "Durable continuity", detail: `${props.checkpoints.length} session checkpoints with integrity journals`, value: recoverableCheckpoints.value.length ? `${recoverableCheckpoints.value.length} recover` : "Settled", state: recoverableCheckpoints.value.length ? "attention" : "ready", tone: recoverableCheckpoints.value.length ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(History) },
   { id: "evidence", title: "Evidence bridge", detail: "Browser sources normalized into provenance-bound investigation records", value: `${props.evidenceCount} sources`, state: props.evidenceCount ? "connected" : "idle", tone: props.evidenceCount ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Radio) },
   { id: "mcp", title: "MCP compatibility", detail: props.mcpProfile ? `${props.mcpProfile.transport} · external clients · state-changing operations blocked` : "Compatibility profile unavailable", value: props.mcpProfile ? `${props.mcpProfile.tools.length} gateways` : "Offline", state: props.mcpProfile ? "available" : "idle", tone: props.mcpProfile ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Network) },
+  { id: "automation", title: "Event automation", detail: `${props.delegations.filter((item) => item.state === "active").length} signed delegations · ${props.triggerRuns.length} durable runs`, value: `${props.triggers.filter((item) => item.state === "active").length} active`, state: pendingTriggers.value.length ? `${pendingTriggers.value.length} review` : "bounded", tone: pendingTriggers.value.length ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(TimerReset) },
   { id: "backends", title: "Backend providers", detail: `${props.backendManifests.length} reviewed manifests, executable code kept outside the model`, value: `${availableBackends.value}/${props.backendManifests.length}`, state: Object.keys(props.backendProbes).length ? "probed" : "not probed", tone: availableBackends.value ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(ServerCog) },
 ]);
 const operatorQueue = computed(() => [
   ...pendingWritebacks.value.slice(0, 3).map((item) => ({ id: item.writebackId, title: "Memory writeback awaiting decision", detail: `${item.candidates.length} candidates · ${item.providerTargets.join(" · ") || "provider outbox"}`, tone: "attention" as RuntimeTone, icon: markRaw(BrainCircuit), tab: "context" as RuntimeTab })),
+  ...pendingTriggers.value.slice(0, 3).map((item) => ({ id: item.triggerId, title: "Trigger delegation awaiting review", detail: `${item.name} · ${item.workflowId}`, tone: "attention" as RuntimeTone, icon: markRaw(TimerReset), tab: "automation" as RuntimeTab })),
   ...recoverableCheckpoints.value.slice(0, 2).map((item) => ({ id: item.checkpointId, title: "Interrupted session can recover", detail: `${item.sessionId} · ${item.references.length} durable references`, tone: "active" as RuntimeTone, icon: markRaw(History), tab: "context" as RuntimeTab })),
   ...pendingApprovals.value.slice(0, 2).map((item) => ({ id: item.approvalId, title: `${item.operation} receipt not consumed`, detail: `${item.risk} risk · expires ${formatTime(item.expiresAt)}`, tone: "attention" as RuntimeTone, icon: markRaw(ShieldCheck), tab: "telemetry" as RuntimeTab })),
   ...interruptedRuns.value.slice(0, 1).map((item) => ({ id: item.runId, title: "Agent run interrupted", detail: `${item.model || "model unknown"} · ${item.toolCalls} tool calls`, tone: "blocked" as RuntimeTone, icon: markRaw(Radio), tab: "telemetry" as RuntimeTab })),
@@ -297,7 +304,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 .runtime-summary strong { overflow: hidden; color: #243129; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .runtime-summary small { grid-column: 2; overflow: hidden; color: #7b8780; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 
-.runtime-tabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border-bottom: 1px solid #dfe4e1; }
+.runtime-tabs { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid #dfe4e1; }
 .runtime-tabs button { display: flex; min-width: 0; align-items: center; justify-content: center; gap: 6px; border: 0; border-right: 1px solid #e3e7e4; border-radius: 0; padding: 10px 8px; background: #fbfcfb; color: #69776f; font-size: 11px; }
 .runtime-tabs button:last-child { border-right: 0; }
 .runtime-tabs button:hover { background: #f5f8f6; color: #34423a; }
@@ -460,7 +467,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
   .posture-badge { display: none; }
   .runtime-summary > div { padding: 9px 10px; }
   .runtime-summary strong { font-size: 11px; }
-  .runtime-tabs button { flex-basis: 58px; padding: 10px 7px; }
+  .runtime-tabs button { flex-basis: 52px; padding: 10px 5px; }
   .runtime-tabs .tab-label { display: none; }
   .overview-column, .context-column, .operation-ledger, .agent-ledger, .registry-list, .backend-view { padding: 14px 16px 18px; }
   .layer-row { grid-template-columns: 32px minmax(0, 1fr); }

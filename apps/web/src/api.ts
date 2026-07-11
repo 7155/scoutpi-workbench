@@ -1,4 +1,4 @@
-import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph, InvestigationPlan, InvestigationSpec, JobArtifact, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile } from "./types";
+import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph, InvestigationPlan, InvestigationSpec, JobArtifact, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...init, headers: { "content-type": "application/json", ...(init?.headers || {}) } });
@@ -10,6 +10,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   environment: () => request<EnvironmentStatus>("/api/environment"),
   mcp: () => request<ScoutPiMcpProfile>("/api/mcp"),
+  triggers: async () => (await request<{ triggers: WorkflowTrigger[] }>("/api/triggers")).triggers,
+  triggerRuns: async () => (await request<{ runs: TriggerRun[] }>("/api/trigger-runs?limit=100")).runs,
+  delegations: async () => (await request<{ grants: DelegationGrantSummary[] }>("/api/delegations?limit=100")).grants,
+  createTrigger: (input: Record<string, unknown>) => request<WorkflowTrigger>("/api/triggers", { method: "POST", body: JSON.stringify(input) }),
+  approveTrigger: (triggerId: string) => request<{ trigger: WorkflowTrigger; grant: DelegationGrantSummary }>(`/api/triggers/${encodeURIComponent(triggerId)}/approve`, { method: "POST", body: "{}" }),
+  setTriggerState: (triggerId: string, state: "paused" | "active" | "revoked") => request<WorkflowTrigger>(`/api/triggers/${encodeURIComponent(triggerId)}/state`, { method: "POST", body: JSON.stringify({ state }) }),
+  invokeTrigger: (triggerId: string, idempotencyKey: string) => request<{ run: TriggerRun; deduplicated: boolean }>(`/api/triggers/${encodeURIComponent(triggerId)}/invoke`, { method: "POST", body: JSON.stringify({ idempotencyKey }) }),
   backends: async () => (await request<{ backends: EarthBackendManifest[] }>("/api/backends")).backends,
   probeBackend: (backendId: string) => request<EarthBackendProbe>(`/api/backends/${encodeURIComponent(backendId)}/probe`, { method: "POST", body: "{}" }),
   telemetry: () => request<RuntimeTelemetrySummary>("/api/telemetry"),
