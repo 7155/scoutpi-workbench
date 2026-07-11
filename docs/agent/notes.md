@@ -141,7 +141,7 @@
 
 - Problem: Pi has an official extension market, but ScoutPi only printed ephemeral capability detection inside Pi and gave Workbench operators no installed/missing readiness view.
 - Decision: keep Pi's package manager authoritative; persist a read-only capability scan and expose guidance, never implement auto-install or another market client.
-- Changes: added the atomic `PiEcosystemStore`, `GET /api/pi-ecosystem`, session-start persistence, fixed official catalog links/commands, strict stored-profile validation, and a responsive Runtime Center Extensions ledger.
+- Changes: added the atomic `PiEcosystemStore`, `GET /api/pi-ecosystem`, session-start persistence, an explicit `/earth-ecosystem` rescan, fixed official catalog links/commands, strict stored-profile validation, and a responsive Runtime Center Extensions ledger.
 - Security: source metadata removes credentials, secret-like query material, control characters, and absolute path prefixes; tampered catalog links fail closed before UI rendering.
 - UI finding: adding the eighth Runtime Center tab initially left a seven-column desktop grid. Updated it to eight columns and verified the full tab bar.
 - Visual QA: 1440x1000 and 390x844 screenshots render the populated Extensions view; mobile reports `documentScroll=390`, `dialogScroll=dialogClient=368`, with zero console errors and warnings.

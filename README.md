@@ -139,7 +139,7 @@ workflow_compile / workflow_list / workflow_replay / workflow_status
 
 Pi starts with only `earth_workspace` active, then activates `python_analysis` and `earth_story` when the task reaches analysis or reporting. High-risk operations are intercepted by `scoutpi-governance` and require a real `ctx.ui.confirm()` receipt; model-authored `confirmed: true` is not trusted.
 
-Use `/earth-ecosystem` in Pi to inspect reusable peer capabilities. The same sanitized scan is persisted for the Workbench Runtime Center. ScoutPi does not fetch, install, update, enable, or remove packages; those decisions remain in Pi's official package manager:
+Use `/earth-ecosystem` in Pi to refresh and inspect reusable peer capabilities after package configuration changes. The same sanitized scan is persisted for the Workbench Runtime Center. ScoutPi does not fetch, install, update, enable, or remove packages; those decisions remain in Pi's official package manager:
 
 ```bash
 pi list

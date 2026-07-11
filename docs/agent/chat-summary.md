@@ -101,7 +101,7 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 
 ### 2026-07-11 - Operator-facing Pi extension ecosystem
 
-- The last Pi session now writes a sanitized capability profile for installed tools, slash commands, source provenance, routing boundaries, and 11 reusable capability groups.
+- Pi session start and the explicit `/earth-ecosystem` rescan now write a sanitized capability profile for installed tools, slash commands, source provenance, routing boundaries, and 11 reusable capability groups.
 - Runtime Center adds an Extensions view with detected readiness, missing capabilities, official catalog links, and native `pi list/config/install/update/remove` guidance.
 - ScoutPi remains read-only toward the package market: it neither fetches the catalog in the background nor installs, activates, updates, or removes packages.
 - Stored profile links, command hints, metadata shape, credentials, and local path exposure are validated before the Workbench can render them.

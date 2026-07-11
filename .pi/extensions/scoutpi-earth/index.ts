@@ -337,10 +337,14 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
   });
 
   let ecosystem = inspectPiEcosystem([]);
-  pi.on("session_start", async (_event, ctx) => {
+  const refreshEcosystem = async () => {
     const commands = typeof pi.getCommands === "function" ? pi.getCommands() : [];
     ecosystem = inspectPiEcosystem(pi.getAllTools(), commands.map((command) => ({ name: command.name, description: command.description, sourceInfo: command.sourceInfo })));
     await ecosystemStore.save(ecosystem);
+    return ecosystem;
+  };
+  pi.on("session_start", async (_event, ctx) => {
+    await refreshEcosystem();
     setEarthProfile(["earth_workspace"]);
     ctx.ui.setStatus("scoutpi-earth", `Earth | core profile | ${ecosystem.detectedCount} peers`);
   });
@@ -358,5 +362,5 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
 
   pi.registerCommand("earth-status", { description: "Show the ScoutPi Earth workspace root.", handler: async (_args, ctx) => ctx.ui.notify(`Earth workspace: ${workspace.root}`, "info") });
   pi.registerCommand("earth-tools", { description: "Show the current low-token Earth tool profile.", handler: async (_args, ctx) => ctx.ui.notify(`Active Earth tools: ${pi.getActiveTools().filter((name) => ["earth_workspace", "python_analysis", "earth_story"].includes(name)).join(", ")}`, "info") });
-  pi.registerCommand("earth-ecosystem", { description: "Show detected Pi plugins and ScoutPi reuse boundaries.", handler: async (_args, ctx) => ctx.ui.notify(formatPiEcosystemProfile(ecosystem), "info") });
+  pi.registerCommand("earth-ecosystem", { description: "Refresh detected Pi packages and show ScoutPi reuse boundaries.", handler: async (_args, ctx) => ctx.ui.notify(formatPiEcosystemProfile(await refreshEcosystem()), "info") });
 }

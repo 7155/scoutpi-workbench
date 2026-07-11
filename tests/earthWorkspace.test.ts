@@ -286,10 +286,14 @@ test("workspace rejects invalid regions, empty registries and analysis path esca
 test("Pi extension exposes exactly three compact Earth gateway tools", async () => {
   const root = await mkdtemp(join(tmpdir(), "scoutpi-earth-pi-"));
   const previousRoot = process.env.SCOUTPI_EARTH_ROOT;
+  const previousEcosystemRoot = process.env.SCOUTPI_ECOSYSTEM_ROOT;
   process.env.SCOUTPI_EARTH_ROOT = root;
+  process.env.SCOUTPI_ECOSYSTEM_ROOT = join(root, "pi-ecosystem");
   try {
     const tools: any[] = [];
     const handlers = new Map<string, Function>();
+    const commands = new Map<string, any>();
+    let peerCommands: any[] = [];
     let active: string[] = ["memory_search", "browser_session"];
     await seedWorkspace(new EarthWorkspace(root, process.env.PYTHON ?? ".venv/bin/python"));
     await setupEarthPi({
@@ -297,12 +301,17 @@ test("Pi extension exposes exactly three compact Earth gateway tools", async () 
       getActiveTools() { return active; },
       setActiveTools(names: string[]) { active = names; },
       getAllTools() { return tools; },
+      getCommands() { return peerCommands; },
       on(name: string, handler: Function) { handlers.set(name, handler); },
-      registerCommand() {},
+      registerCommand(name: string, command: any) { commands.set(name, command); },
     } as any);
     assert.deepEqual(tools.map((tool) => tool.name), ["earth_workspace", "python_analysis", "earth_story"]);
     await handlers.get("session_start")?.({}, { ui: { setStatus() {} } });
     assert.equal(active.includes("earth_workspace"), true);
+    peerCommands = [{ name: "goal", sourceInfo: { source: "npm:pi-goal", scope: "global" } }];
+    let ecosystemNotice = "";
+    await commands.get("earth-ecosystem").handler("", { ui: { notify(message: string) { ecosystemNotice = message; } } });
+    assert.match(ecosystemNotice, /ready Autonomous goals: \/goal/);
     let call = 0;
     const executeEarth = async (input: Record<string, unknown>) => {
       const params = tools[0].prepareArguments ? tools[0].prepareArguments(input) : input;
@@ -322,6 +331,8 @@ test("Pi extension exposes exactly three compact Earth gateway tools", async () 
   } finally {
     if (previousRoot === undefined) delete process.env.SCOUTPI_EARTH_ROOT;
     else process.env.SCOUTPI_EARTH_ROOT = previousRoot;
+    if (previousEcosystemRoot === undefined) delete process.env.SCOUTPI_ECOSYSTEM_ROOT;
+    else process.env.SCOUTPI_ECOSYSTEM_ROOT = previousEcosystemRoot;
     await rm(root, { recursive: true, force: true });
   }
 });

@@ -117,7 +117,7 @@ Pi task
    └─ evidence-bound narrative ───> earth_story
 ```
 
-The `scoutpi-earth-investigation` skill applies this routing at task time. `/earth-ecosystem` reports which peer capability groups Pi currently exposes without adding their schemas to ScoutPi.
+The `scoutpi-earth-investigation` skill applies this routing at task time. `/earth-ecosystem` performs an explicit fresh scan and reports which peer capability groups Pi currently exposes without adding their schemas to ScoutPi.
 
 ## Enforced Boundaries
 
