@@ -8,6 +8,7 @@
     "@scoutpi/earth-workspace": "workspace:*",
     "@scoutpi/runtime-checkpoint": "workspace:*",
     "@scoutpi/runtime-context": "workspace:*",
+    "@scoutpi/runtime-evaluation": "workspace:*",
     "@scoutpi/runtime-trigger": "workspace:*"
   }
 }

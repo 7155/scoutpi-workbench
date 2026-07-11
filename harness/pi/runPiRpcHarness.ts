@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { EarthWorkspace, type EarthAdapterPack, type InvestigationSpec } from "../../packages/earth-workspace/src/index.ts";
+import { EvaluationStore, evaluationFromPiHarness } from "../../packages/runtime-evaluation/src/index.ts";
 import {
   emptyPiHarnessWorkspaceOutcome,
   compactPiHarnessError,
@@ -393,10 +394,16 @@ async function main(): Promise<void> {
     },
     results: [],
   };
+  const evaluationStore = new EvaluationStore(process.env.SCOUTPI_EVALUATION_ROOT || join(root, ".scoutpi/evaluations"));
+  const persistReport = async (): Promise<void> => {
+    const body = `${JSON.stringify(report, null, 2)}\n`;
+    await writeFile(join(outputDir, "report.json"), body);
+    await evaluationStore.save(evaluationFromPiHarness(report, digest(body)));
+  };
 
   if (!live && !rpcSmoke) {
     report.state = preflight.available ? "ready" : modelReady ? "ready_unlisted_model_override" : "blocked_model_unavailable";
-    await writeFile(join(outputDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
+    await persistReport();
     const ok = modelReady;
     console.log(JSON.stringify({ ok, mode: "preflight", state: report.state, model, requestedModelListed: preflight.listedModels.includes(model), acceptedByExplicitOverride: modelReady && !preflight.available, listedModelCount: preflight.listedModels.length, cases: cases.length, report: join(outputDir, "report.json") }, null, 2));
     if (!ok) process.exitCode = 2;
@@ -417,7 +424,7 @@ async function main(): Promise<void> {
       if (!skillLoaded) throw new Error("PI_SKILL_NOT_LOADED");
       report.state = "rpc_ready";
       report.rpc = { model: state.data?.model?.id, thinkingLevel: state.data?.thinkingLevel, sessionId: state.data?.sessionId, skillLoaded, extensionErrors: /extension.*error/i.test(client.stderr) };
-      await writeFile(join(outputDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
+      await persistReport();
       console.log(JSON.stringify({ ok: true, mode: "rpc-smoke", state: report.state, rpc: report.rpc, report: join(outputDir, "report.json") }, null, 2));
     } finally {
       await client.stop();
@@ -427,7 +434,7 @@ async function main(): Promise<void> {
   }
   if (!modelReady || !key) {
     report.state = "blocked_model_unavailable";
-    await writeFile(join(outputDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
+    await persistReport();
     console.error(JSON.stringify({ ok: false, reason: report.state, model, requestedModelListed: preflight.listedModels.includes(model), listedModelCount: preflight.listedModels.length, error: preflight.error ? privacyFailure(preflight.error) : undefined, report: join(outputDir, "report.json") }, null, 2));
     process.exitCode = 2;
     return;
@@ -507,7 +514,7 @@ async function main(): Promise<void> {
     runUsage,
     evaluation: summarizePiHarnessScores(scored),
   };
-  await writeFile(join(outputDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
+  await persistReport();
   console.log(JSON.stringify({ ok: report.state === "passed", state: report.state, summary: report.summary, report: join(outputDir, "report.json") }, null, 2));
   if (report.state !== "passed") process.exitCode = 1;
 }

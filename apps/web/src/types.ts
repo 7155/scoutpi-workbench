@@ -59,6 +59,20 @@ export interface RuntimeTelemetrySummary {
   cost: { nominalPixels: number; pixelYears: number; estimatedRasterBytes: number; remoteTasks: number };
   byOperation: Array<{ operation: string; calls: number; failures: number; elapsedMs: number; outputEstimatedTokens: number }>;
 }
+export type EvaluationKind = "pi_rpc" | "benchmark" | "end_to_end" | "recovery";
+export type EvaluationState = "passed" | "failed" | "blocked";
+export interface EvaluationMetric {
+  metricId: string; label: string; value: number; unit: "percent" | "tokens" | "calls" | "turns" | "count" | "ms" | "bytes" | "usd";
+  baseline?: number; current?: number; improvementPercent?: number; direction?: "lower_is_better" | "higher_is_better" | "neutral"; detail?: string;
+}
+export interface EvaluationCheck { checkId: string; label: string; status: "passed" | "failed" | "blocked" | "not_applicable"; detail?: string }
+export interface EvaluationReport {
+  schemaVersion: "scoutpi.evaluation.v1"; evaluationId: string; kind: EvaluationKind; title: string; state: EvaluationState; createdAt: string; model?: string; summary: string;
+  metrics: EvaluationMetric[]; checks: EvaluationCheck[];
+  privacy: { rawPromptStored: false; rawToolPayloadStored: false; credentialsStored: false; providerUrlStored: false };
+  provenance: { source: string; command: string; sourceSha256?: string };
+  integrity?: { algorithm: "sha256-canonical-json-v1"; sha256: string };
+}
 export interface RuntimeApproval { approvalId: string; toolCallId: string; operation: string; risk: "medium" | "high"; approvedAt: string; expiresAt: string; state: "pending" | "consumed"; summary: string; adapterFingerprints: string[] }
 export interface AgentRunSummary {
   runId: string; sessionId: string; state: "running" | "completed" | "interrupted"; startedAt: string; completedAt?: string; durationMs?: number; model?: string;

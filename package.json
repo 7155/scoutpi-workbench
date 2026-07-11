@@ -70,6 +70,9 @@
     "harness:pi-rpc": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts --rpc-smoke",
     "harness:pi-live": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts --live",
     "harness:pi-live-all": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts --live --all",
+    "harness:interview": "node --experimental-strip-types harness/interview/runInterviewBenchmark.ts",
+    "harness:interview-demo": "node --experimental-strip-types harness/interview/runEndToEndDemo.ts",
+    "harness:recovery": "node --experimental-strip-types harness/recovery/runDurableRecoveryDemo.ts",
     "web:dev": "pnpm --filter @scoutpi/earth-workbench dev",
     "web:build": "pnpm --filter @scoutpi/earth-workbench build",
     "workbench:dev": "node scripts/runEarthWorkbench.mjs",
@@ -78,7 +81,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "python:check": "uv run python -m py_compile packages/earth-workspace/python/worker.py packages/runtime-context/python/ime_core_context_provider.py",
-    "check": "pnpm typecheck && pnpm test && pnpm python:check && pnpm harness:earth && pnpm harness:mcp && pnpm package:verify && pnpm web:build"
+    "check": "pnpm typecheck && pnpm test && pnpm python:check && pnpm harness:earth && pnpm harness:mcp && pnpm harness:interview && pnpm harness:interview-demo && pnpm harness:recovery && pnpm package:verify && pnpm web:build"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",

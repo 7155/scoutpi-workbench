@@ -163,6 +163,8 @@
 
       <AutomationPanel v-else-if="active === 'automation'" :triggers="triggers" :runs="triggerRuns" :grants="delegations" :workflows="workflows" :saving="saving" @create="$emit('createTrigger', $event)" @approve="$emit('approveTrigger', $event)" @state="(id, state) => $emit('triggerState', id, state)" @invoke="$emit('invokeTrigger', $event)" />
 
+      <EvaluationPanel v-else-if="active === 'evaluation'" :evaluations="evaluations" />
+
       <div v-else class="telemetry-view">
         <section class="telemetry-metrics">
           <div><Activity :size="17" /><span>{{ t('Events') }}</span><strong>{{ telemetry?.eventCount || 0 }}</strong></div>
@@ -196,16 +198,17 @@
 
 <script setup lang="ts">
 import { computed, markRaw, onBeforeUnmount, onMounted, ref } from "vue";
-import { Activity, ArrowUpRight, Blocks, BookOpen, Boxes, Braces, BrainCircuit, CircleCheck, CircleX, Clock3, Coins, Database, Gauge, HardDriveDownload, History, Hourglass, LoaderCircle, Network, Power, Radar, Radio, RefreshCw, Rocket, Save, ServerCog, ShieldCheck, TimerReset, Upload, Waypoints, X } from "lucide-vue-next";
+import { Activity, ArrowUpRight, Blocks, BookOpen, Boxes, Braces, BrainCircuit, CircleCheck, CircleX, ClipboardCheck, Clock3, Coins, Database, Gauge, HardDriveDownload, History, Hourglass, LoaderCircle, Network, Power, Radar, Radio, RefreshCw, Rocket, Save, ServerCog, ShieldCheck, TimerReset, Upload, Waypoints, X } from "lucide-vue-next";
 import { api } from "../api";
 import { useI18n } from "../i18n";
 import AutomationPanel from "./AutomationPanel.vue";
-import type { AgentCheckpointSummary, AgentRunSummary, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthSkillSummary, EarthWorkflowSummary, PiEcosystemProfile, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "../types";
+import EvaluationPanel from "./EvaluationPanel.vue";
+import type { AgentCheckpointSummary, AgentRunSummary, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthSkillSummary, EarthWorkflowSummary, EvaluationReport, PiEcosystemProfile, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "../types";
 
-type RuntimeTab = "overview" | "adapters" | "skills" | "backends" | "ecosystem" | "context" | "automation" | "telemetry";
+type RuntimeTab = "overview" | "adapters" | "skills" | "backends" | "ecosystem" | "context" | "automation" | "evaluation" | "telemetry";
 type RuntimeTone = "ready" | "active" | "idle" | "attention" | "blocked";
 
-const props = defineProps<{ open: boolean; saving: boolean; adapters: RegisteredAdapter[]; skills: EarthSkillSummary[]; backendManifests: EarthBackendManifest[]; backendProbes: Record<string, EarthBackendProbe>; telemetry?: RuntimeTelemetrySummary; agentRuns: AgentRunSummary[]; checkpoints: AgentCheckpointSummary[]; contextPacks: ContextPackSummary[]; contextWritebacks: ContextWritebackSummary[]; evidenceCount: number; mcpProfile?: ScoutPiMcpProfile; piEcosystem?: PiEcosystemProfile; triggers: WorkflowTrigger[]; triggerRuns: TriggerRun[]; delegations: DelegationGrantSummary[]; workflows: EarthWorkflowSummary[]; approvals: RuntimeApproval[] }>();
+const props = defineProps<{ open: boolean; saving: boolean; adapters: RegisteredAdapter[]; skills: EarthSkillSummary[]; backendManifests: EarthBackendManifest[]; backendProbes: Record<string, EarthBackendProbe>; telemetry?: RuntimeTelemetrySummary; evaluations: EvaluationReport[]; agentRuns: AgentRunSummary[]; checkpoints: AgentCheckpointSummary[]; contextPacks: ContextPackSummary[]; contextWritebacks: ContextWritebackSummary[]; evidenceCount: number; mcpProfile?: ScoutPiMcpProfile; piEcosystem?: PiEcosystemProfile; triggers: WorkflowTrigger[]; triggerRuns: TriggerRun[]; delegations: DelegationGrantSummary[]; workflows: EarthWorkflowSummary[]; approvals: RuntimeApproval[] }>();
 const emit = defineEmits<{ close: []; refresh: []; import: [payload: Record<string, unknown>]; probe: [datasetId: string]; probeBackend: [backendId: string]; state: [datasetId: string, enabled: boolean]; saveSkill: [payload: Record<string, unknown>]; publish: [skillId: string]; createTrigger: [payload: Record<string, unknown>]; approveTrigger: [triggerId: string]; triggerState: [triggerId: string, state: "paused" | "active" | "revoked"]; invokeTrigger: [triggerId: string]; invalid: [message: string] }>();
 const { locale, t, statusLabel, roleLabel } = useI18n();
 const active = ref<RuntimeTab>("overview");
@@ -235,6 +238,7 @@ const tabs = computed(() => [
   { id: "ecosystem" as const, label: t("Extensions"), icon: markRaw(Boxes), count: props.piEcosystem?.detectedCount },
   { id: "context" as const, label: t("Context"), icon: markRaw(BrainCircuit), count: props.contextPacks.length + props.contextWritebacks.length },
   { id: "automation" as const, label: t("Automation"), icon: markRaw(TimerReset), count: props.triggers.length },
+  { id: "evaluation" as const, label: t("Evaluation"), icon: markRaw(ClipboardCheck), count: props.evaluations.length },
   { id: "telemetry" as const, label: t("Telemetry"), icon: markRaw(Activity), count: props.agentRuns.length },
 ]);
 const runtimeLayers = computed(() => [
@@ -341,7 +345,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 .runtime-summary strong { overflow: hidden; color: #243129; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .runtime-summary small { grid-column: 2; overflow: hidden; color: #7b8780; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 
-.runtime-tabs { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); border-bottom: 1px solid #dfe4e1; }
+.runtime-tabs { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); border-bottom: 1px solid #dfe4e1; }
 .runtime-tabs button { display: flex; min-width: 0; align-items: center; justify-content: center; gap: 6px; border: 0; border-right: 1px solid #e3e7e4; border-radius: 0; padding: 10px 8px; background: #fbfcfb; color: #69776f; font-size: 11px; }
 .runtime-tabs button:last-child { border-right: 0; }
 .runtime-tabs button:hover { background: #f5f8f6; color: #34423a; }

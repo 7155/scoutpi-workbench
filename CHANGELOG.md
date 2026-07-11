@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added a typed, privacy-safe Evaluation Store with canonical SHA-256 integrity, list/detail APIs, Pi harness conversion, and a bilingual Workbench Evaluation view for benchmark/current comparisons and acceptance checks.
+- Added reproducible interview harnesses for three-gateway schema disclosure, token-bounded Context Packs, deterministic workflow replay, generic Browser Evidence-to-EarthStory flow, and kill/restart recovery. Current fixed fixtures measure 71.66% lower tool-schema tokens, 72.45% lower delivered context tokens, and 66.67% fewer external workflow control calls.
+- Added interview-first documentation: project story, architecture tradeoffs, an 8-10 minute live demo script, explicit model/live-compute boundaries, learning order, and evidence-backed Chinese/English resume bullets.
 - Rebuilt the real Pi RPC harness around an isolated, read-only tool profile and explicit investigation Skill; added report schema v2, sanitized traces, provider error classification, outcome-based workspace scoring, Skill-use scoring, approval-bypass checks, and cumulative tool/turn/token/cost budgets that include failed runs.
 - Normalized provider-specific tool-call IDs before persisting Pi spatial focus, preventing unsupported punctuation or oversized IDs from converting a successful domain operation into a failed tool result.
 - Clarified the Pi-first Workbench hierarchy: the left rail is read-only task history from Pi, the center is the Pi-controlled spatial focus, and the right rail is Pi's current structured spatial understanding; technical IDs now stay behind progressive disclosure.

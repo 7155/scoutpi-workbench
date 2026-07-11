@@ -72,6 +72,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Persistent English/Simplified Chinese Workbench localization for navigation, controls, dialogs, charts, runtime states, and observable roles while preserving user-authored evidence text verbatim
 - Pi Capability Broker over tools and commands, with a durable path-safe capability profile and operator-facing Extensions view, so market-provided research, MCP, memory, browser, context, goals, security, interoperability, evaluation, and subagent capabilities are reused rather than copied
 - Privacy-safe real Pi RPC evaluation with an isolated Skill/runtime surface, outcome-based workspace scoring, approval-bypass detection, model error classification, compact traces, and explicit token/turn/tool budgets
+- Integrity-bound Evaluation Store and Workbench Evaluation view for Pi RPC, token/context benchmarks, generic end-to-end evidence flow, and restart recovery proof
 
 The core does not silently ship an active domain catalog. `examples/adapter-packs/earth-engine-starter.json` is an explicit demo pack and remains separate from runtime code.
 
@@ -215,6 +216,7 @@ Complete plans and results are written below `.scoutpi/earth_workspace`; Pi rece
 .scoutpi/evidence/        # normalized browser evidence, copied artifacts and graphs
 .scoutpi/triggers/        # signed delegations, durable triggers, event receipts and replay ledger
 .scoutpi/pi-ecosystem/    # sanitized Pi tool/command capability profile for operators
+.scoutpi/evaluations/     # privacy-safe benchmark, Agent, demo and recovery reports
 ```
 
 Temporary Earth Engine tile URLs are for visualization. Download/export is used only when a durable local artifact, offline computation, evidence package, or downstream delivery is required.
@@ -229,6 +231,7 @@ Temporary Earth Engine tile URLs are for visualization. Download/export is used 
 | `GET /api/backends` | Reviewed backend manifests and operation contracts |
 | `POST /api/backends/:id/probe` | Probe one reviewed backend |
 | `GET /api/telemetry` | Aggregate operation token, latency, cache and compute proxies |
+| `GET /api/evaluations` | Integrity-checked Pi, benchmark, end-to-end and recovery reports |
 | `GET /api/agent-runs` | Pi lifecycle run summaries and provider-reported model usage |
 | `GET /api/checkpoints` | Durable Agent session and interrupted-operation summaries |
 | `GET /api/context/packs` | Token-bounded context, provenance and provider summaries |
@@ -273,9 +276,14 @@ pnpm test
 pnpm python:check
 pnpm harness:earth
 pnpm harness:mcp
+pnpm harness:interview
+pnpm harness:interview-demo
+pnpm harness:recovery
 pnpm package:verify
 pnpm web:build
 ```
+
+The three interview harnesses are deterministic and do not call a paid model or live Earth Engine. On the fixed fixtures used by the current revision, `harness:interview` measured 1,341 -> 380 estimated schema tokens against eagerly disclosing seven runtime contracts (71.66%), 1,394 -> 384 delivered context tokens (72.45%), and 3 exploration control calls -> 1 workflow replay call (66.67%). Re-run the command after code changes; these are measured snapshot results, not permanent product claims.
 
 The local Context Provider benchmark never invokes a model or writes candidate text into its report:
 
@@ -299,6 +307,9 @@ The current live smoke path also verifies a real Dynamic World tile and a small 
 
 ## Documentation
 
+- [Interview entry and architecture story](docs/interview/README.md)
+- [Interview demo script](docs/interview/DEMO_SCRIPT.md)
+- [Resume bullets](docs/interview/RESUME_BULLETS.md)
 - [Runtime architecture](docs/scoutpi/SCOUTPI_PI_EARTH_INVESTIGATION_RUNTIME.md)
 - [Agent-built adapters and skills](docs/scoutpi/AGENT_TOOL_SKILL_BUILDER.md)
 - [Backend Plugin SDK](docs/scoutpi/BACKEND_PLUGIN_SDK.md)

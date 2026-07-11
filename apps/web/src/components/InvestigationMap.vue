@@ -215,7 +215,7 @@ async function ensureCesium() {
       animation: false,
       timeline: false,
       baseLayerPicker: false,
-      baseLayer: new module.ImageryLayer(new module.OpenStreetMapImageryProvider({ url: "https://tile.openstreetmap.org/" })),
+      baseLayer: new module.ImageryLayer(new module.OpenStreetMapImageryProvider({ url: "https://tile.openstreetmap.org/", maximumLevel: 19 })),
       terrainProvider: new module.EllipsoidTerrainProvider(),
       geocoder: false,
       homeButton: false,
@@ -286,7 +286,7 @@ onMounted(() => {
     style: {
       version: 8,
       sources: {
-        osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, attribution: "OpenStreetMap" },
+        osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 19, attribution: "OpenStreetMap" },
       },
       layers: [
         { id: "base", type: "raster", source: "osm", paint: { "raster-saturation": -0.55, "raster-contrast": 0.08, "raster-brightness-max": 0.94 } },

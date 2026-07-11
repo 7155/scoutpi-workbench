@@ -1,0 +1,110 @@
+[
+  {
+    "candidateId": "project-boundary",
+    "kind": "decision",
+    "text": "ScoutPi is a Pi-native generic spatial runtime. Investigation examples remain typed specifications and workflows rather than product-specific branches.",
+    "confidence": 0.99,
+    "trust": "user_confirmed",
+    "tags": ["scoutpi", "architecture", "runtime"],
+    "provenance": { "providerId": "interview-fixture", "sourceId": "decision-001" }
+  },
+  {
+    "candidateId": "tool-surface",
+    "kind": "procedure",
+    "text": "Keep only earth_workspace, python_analysis and earth_story on the model-facing surface. Detailed adapter, export and evidence contracts are requested on demand.",
+    "confidence": 0.98,
+    "trust": "project_artifact",
+    "tags": ["tools", "token", "pi"],
+    "provenance": { "providerId": "interview-fixture", "sourceId": "procedure-001" }
+  },
+  {
+    "candidateId": "governance",
+    "kind": "procedure",
+    "text": "High-risk execution requires a direct user decision and a short-lived receipt bound to the exact tool call and normalized parameters. Model-authored confirmation booleans never grant permission.",
+    "confidence": 0.97,
+    "trust": "project_artifact",
+    "tags": ["approval", "governance", "security"],
+    "provenance": { "providerId": "interview-fixture", "sourceId": "procedure-002" }
+  },
+  {
+    "candidateId": "workflow-replay",
+    "kind": "workflow",
+    "text": "A successful investigation can be compiled into a deterministic workflow with adapter fingerprints, cost assertions, expected artifacts and explicit recovery actions. Replay checks drift before execution.",
+    "confidence": 0.96,
+    "trust": "project_artifact",
+    "tags": ["workflow", "replay", "drift"],
+    "provenance": { "providerId": "interview-fixture", "sourceId": "workflow-001" }
+  },
+  {
+    "candidateId": "evidence-boundary",
+    "kind": "decision",
+    "text": "Browser text is untrusted evidence, not policy. It must be normalized, artifactized and bound to a claim or hypothesis before EarthStory can cite it.",
+    "confidence": 0.95,
+    "trust": "project_artifact",
+    "tags": ["browser", "evidence", "provenance"],
+    "provenance": { "providerId": "interview-fixture", "sourceId": "decision-002" }
+  },
+  {
+    "candidateId": "dry-run-boundary",
+    "kind": "failure_pattern",
+    "text": "A dry run validates contracts, plans and artifact paths but does not produce a scientific measurement. The Evidence Reviewer blocks any story that describes dry-run output as computed evidence.",
+    "confidence": 0.97,
+    "trust": "project_artifact",
+    "tags": ["dry-run", "review", "failure"],
+    "provenance": { "providerId": "interview-fixture", "sourceId": "failure-001" }
+  },
+  {
+    "candidateId": "context-budget",
+    "kind": "procedure",
+    "text": "Context candidates are ranked by task relevance, trust and confidence. The current turn receives a mixed-text token-bounded Context Pack while full memory remains outside the model request.",
+    "confidence": 0.94,
+    "trust": "project_artifact",
+    "tags": ["context", "memory", "token"],
+    "provenance": { "providerId": "interview-fixture", "sourceId": "procedure-003" }
+  },
+  {
+    "candidateId": "recovery",
+    "kind": "procedure",
+    "text": "After an interrupted local export, restart recovery marks the detached job failed and retryable. Remote provider tasks remain running and must be queried before any retry.",
+    "confidence": 0.93,
+    "trust": "project_artifact",
+    "tags": ["checkpoint", "recovery", "job"],
+    "provenance": { "providerId": "interview-fixture", "sourceId": "procedure-004" }
+  },
+  {
+    "candidateId": "map-rendering",
+    "kind": "fact",
+    "text": "MapLibre and Cesium consume the same typed region, observable role, year, legend and short-lived Earth Engine tile contract. Switching renderers does not require another computation or GeoTIFF download.",
+    "confidence": 0.91,
+    "trust": "project_artifact",
+    "tags": ["map", "cesium", "visualization"],
+    "provenance": { "providerId": "interview-fixture", "sourceId": "fact-001" }
+  },
+  {
+    "candidateId": "backend-boundary",
+    "kind": "decision",
+    "text": "New executable algorithms enter through a reviewed Backend Plugin SDK with typed manifests, cancellation, timeouts and result limits. The model cannot load arbitrary runtime modules.",
+    "confidence": 0.92,
+    "trust": "project_artifact",
+    "tags": ["backend", "plugin", "safety"],
+    "provenance": { "providerId": "interview-fixture", "sourceId": "decision-003" }
+  },
+  {
+    "candidateId": "unrelated-style",
+    "kind": "preference",
+    "text": "The operator prefers compact table spacing and restrained colors in internal dashboards.",
+    "confidence": 0.7,
+    "trust": "external_memory",
+    "tags": ["ui", "style"],
+    "provenance": { "providerId": "interview-fixture", "sourceId": "preference-001" }
+  },
+  {
+    "candidateId": "unrelated-database",
+    "kind": "fact",
+    "text": "A separate learning exercise used a PostGIS table named shanghai_pois and a GiST spatial index.",
+    "confidence": 0.75,
+    "trust": "external_memory",
+    "tags": ["database", "postgis"],
+    "provenance": { "providerId": "interview-fixture", "sourceId": "fact-002" }
+  }
+]

@@ -106,6 +106,9 @@ importers:
       '@scoutpi/runtime-context':
         specifier: workspace:*
         version: link:../runtime-context
+      '@scoutpi/runtime-evaluation':
+        specifier: workspace:*
+        version: link:../runtime-evaluation
       '@scoutpi/runtime-trigger':
         specifier: workspace:*
         version: link:../runtime-trigger
@@ -119,6 +122,8 @@ importers:
       '@scoutpi/runtime-telemetry':
         specifier: workspace:*
         version: link:../runtime-telemetry
+
+  packages/runtime-evaluation: {}
 
   packages/runtime-evidence: {}
 

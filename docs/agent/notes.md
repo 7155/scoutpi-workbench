@@ -219,3 +219,15 @@
 - Commands: targeted TypeScript tests; two controlled fallback single-case runs; requested-model RPC boot and failure-path probes; `jq` outcome/trace inspection; bounded privacy scans; `pnpm check`; `pnpm audit --prod`; `git diff --check`.
 - Final verification: all 76 tests pass; Python compile, Earth/MCP harnesses, extracted package boot, production Workbench build and audit pass. The package contains 51 entries, 7 extensions and 1 loaded Skill at 147,983 packed bytes. Run-wide telemetry now includes failed pre-score usage and caps each next case by the remaining cumulative token budget.
 - Next: commit and push this evaluation milestone separately, then confirm GitHub CI.
+
+## 2026-07-11 15:50 - Interview evidence and runtime evaluation
+
+- Problem: interview evidence was spread across tests, traces and README claims even though the runtime already had strong domain execution and Pi lifecycle integration.
+- Decision: add one typed Evaluation Store and Workbench view instead of another model-facing tool. Measure fixed local fixtures and label live/model boundaries explicitly.
+- Added integrity-bound evaluation reports and list/detail API, Pi harness conversion, a bilingual Evaluation view, deterministic schema/context/workflow benchmark, generic claim-to-evidence demo, and fresh-runtime recovery harness.
+- Added an interview entry, demo script and Chinese/English resume bullets. Limited Cesium OpenStreetMap requests to level 19 to prevent invalid high-zoom tile requests.
+- Fixed fixture: tool schema 1,341 -> 380 tokens (71.66%); Context Pack 1,394 -> 384 tokens (72.45%); workflow controls 3 -> 1 call (66.67%).
+- Generic demo passed with one typed dataset, eight DAG nodes, one Browser Evidence source, one source artifact, one replay artifact, Evidence Reviewer pass, and zero live jobs.
+- Restart harness recovered one detached local export as retryable, preserved one remote task, and restored two checkpoint references.
+- `pnpm typecheck && pnpm test` passes 79/79; all three new harnesses pass; Playwright desktop/mobile Evaluation views are legible without overlap.
+- Pitfall: `process.execPath` is Node, not the Earth Python worker. Deterministic interview fixtures now override the reviewed worker boundary instead of accidentally invoking Node as Python.

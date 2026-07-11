@@ -7,6 +7,7 @@ import { ContextPackStore } from "../../runtime-context/src/index.ts";
 import { TriggerRuntime } from "../../runtime-trigger/src/index.ts";
 import { SCOUTPI_MCP_PROFILE } from "../../scoutpi-mcp-server/src/profile.ts";
 import { PiEcosystemStore } from "../../pi-ecosystem/src/index.ts";
+import { EvaluationStore } from "../../runtime-evaluation/src/index.ts";
 
 export interface EarthWorkspaceServerOptions {
   host?: string;
@@ -16,6 +17,7 @@ export interface EarthWorkspaceServerOptions {
   contextStore?: ContextPackStore;
   ecosystemStore?: PiEcosystemStore;
   triggerRuntime?: TriggerRuntime;
+  evaluationStore?: EvaluationStore;
 }
 
 function sendJson(response: ServerResponse, status: number, value: unknown): void {
@@ -52,11 +54,13 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
   const contextStore = options.contextStore ?? new ContextPackStore(process.env.SCOUTPI_CONTEXT_ROOT ?? join(dirname(workspace.root), "context"));
   const ecosystemStore = options.ecosystemStore ?? new PiEcosystemStore(process.env.SCOUTPI_ECOSYSTEM_ROOT ?? join(dirname(workspace.root), "pi-ecosystem"));
   const triggerRuntime = options.triggerRuntime ?? new TriggerRuntime(workspace, process.env.SCOUTPI_TRIGGER_ROOT ?? join(dirname(workspace.root), "triggers"));
+  const evaluationStore = options.evaluationStore ?? new EvaluationStore(process.env.SCOUTPI_EVALUATION_ROOT ?? join(dirname(workspace.root), "evaluations"));
   await workspace.init();
   await checkpointStore.init();
   await contextStore.init();
   await ecosystemStore.init();
   await triggerRuntime.init();
+  await evaluationStore.init();
   await workspace.recoverInterruptedJobs();
 
   const server = http.createServer(async (request, response) => {
@@ -140,6 +144,10 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
         sendJson(response, 200, { runs: await workspace.listAgentRuns(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
         return;
       }
+      if (request.method === "GET" && url.pathname === "/api/evaluations") {
+        sendJson(response, 200, { evaluations: await evaluationStore.list(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
+        return;
+      }
       if (request.method === "GET" && url.pathname === "/api/spatial-view") {
         sendJson(response, 200, await workspace.getSpatialView());
         return;
@@ -193,6 +201,11 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
       const agentRunId = routeId(url.pathname, "/api/agent-runs/");
       if (request.method === "GET" && agentRunId) {
         sendJson(response, 200, await workspace.getAgentRun(agentRunId));
+        return;
+      }
+      const evaluationId = routeId(url.pathname, "/api/evaluations/");
+      if (request.method === "GET" && evaluationId) {
+        sendJson(response, 200, await evaluationStore.get(evaluationId));
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/workflows") {
