@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "scoutpi.investigation.v1",
+  "investigationId": "guangxi-hengzhou-flood-vegetation-2026",
+  "question": "2026 年 7 月广西横州市洪灾代理范围与基准期植被覆盖重叠了多少面积？",
+  "phenomenon": "flood_vegetation_impact",
+  "region": {
+    "kind": "bbox",
+    "bbox": [109.2, 22.79, 109.29, 22.98],
+    "name": "横州市六蓝水库及下游重点复核区"
+  },
+  "period": {
+    "startYear": 2026,
+    "endYear": 2026,
+    "startMonth": 6,
+    "endMonth": 7
+  },
+  "hypotheses": [
+    {
+      "id": "h_flood",
+      "statement": "2026 年 7 月洪灾期间出现了相对灾前窗口明显降低的 Sentinel-1 VV 后向散射区域。",
+      "observableRoles": ["flood_extent"],
+      "falsification": "同轨道和同期影像未出现超过阈值的连片负变化，或变化可由观测几何解释。"
+    },
+    {
+      "id": "h_vegetation",
+      "statement": "洪水代理区域与灾前窗口具有 NDVI 植被信号的区域发生空间重叠。",
+      "observableRoles": ["vegetation"],
+      "falsification": "代理洪水区域与基准期 NDVI >= 0.3 的区域没有显著重叠。"
+    }
+  ],
+  "claims": [
+    {
+      "claimId": "mem-hengzhou-flood-20260708",
+      "claim": "应急管理部称受台风美莎克影响，广西南宁横州暴雨强度大、洪水来势迅猛、水库出险多且影响范围广。",
+      "sourceUrl": "https://www.mem.gov.cn/xw/yjglbgzdt/202607/t20260708_675403.shtml",
+      "time": "2026-07-08",
+      "location": "广西南宁横州市",
+      "trust": "primary"
+    },
+    {
+      "claimId": "mee-guangxi-environment-20260710",
+      "claim": "生态环境部报道广西多地受台风和持续强降雨影响，并部署洪涝次生环境风险防范。",
+      "sourceUrl": "https://www.mee.gov.cn/ywdt/dfnews/202607/t20260710_1161341.shtml",
+      "time": "2026-07-10",
+      "location": "广西壮族自治区",
+      "trust": "primary"
+    }
+  ],
+  "confounders": [
+    "Sentinel-1 VV 负变化是积水或表面变化代理，不能直接等同于经现场确认的洪水边界。",
+    "2026 年 7 月尚未结束，目标期影像覆盖不完整；结果必须注明计算时间和可用影像窗口。",
+    "不同轨道、入射角、地形和植被结构会改变 SAR 后向散射，需要在正式发布前做同轨道复核。",
+    "NDVI >= 0.3 仅表示基准期植被信号，不能直接等同于农作物或经济损失。",
+    "面积结果依赖 AOI、-2 dB 洪水变化阈值、0.3 NDVI 阈值和 20 米计算尺度。"
+  ],
+  "preferredOutputs": ["yearly_csv", "metrics_json", "impact_assessment", "story"],
+  "constraints": {
+    "maxScaleMeters": 30,
+    "maxYears": 2,
+    "comparisonSeason": "same July window",
+    "preferredAdapterIds": ["sentinel1-vv", "sentinel2-sr"],
+    "impactAssessment": {
+      "hazardRole": "flood_extent",
+      "exposureRole": "vegetation",
+      "hazardChangeThreshold": -2,
+      "hazardComparison": "lte",
+      "exposureThreshold": 0.3,
+      "exposureComparison": "gte",
+      "scaleMeters": 20,
+      "unit": "hectares",
+      "baselineWindow": { "start": "2026-06-15", "end": "2026-07-04" },
+      "targetWindow": { "start": "2026-07-04", "end": "2026-07-11" }
+    }
+  }
+}

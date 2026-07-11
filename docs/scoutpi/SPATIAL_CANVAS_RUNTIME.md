@@ -65,7 +65,7 @@ The shared geometry normalizer derives bounds for generic GeoJSON, including geo
 
 Cesium's `Workers`, `ThirdParty`, `Assets`, and `Widgets` directories are served from `/cesium-static/` in development and copied into the production build. The initial application bundle does not execute the 3D runtime until requested.
 
-The default 3D base layer uses OpenStreetMap and ellipsoid terrain, so this path requires no Cesium ion token. Terrain providers, 3D Tiles, point clouds, and model layers should later enter through reviewed typed layer contracts rather than arbitrary page JavaScript.
+The default 3D base layer uses OpenStreetMap and loads ArcGIS WorldElevation3D as a real elevation terrain provider without a Cesium ion token. `VITE_CESIUM_TERRAIN_URL` may point to a reviewed Cesium terrain service. A failed terrain request degrades explicitly to the ellipsoid provider; the canvas exposes `data-terrain-state` and `data-terrain-provider`, and the operator sees the fallback rather than a false “3D terrain ready” state. 3D Tiles, point clouds, and model layers must still enter through reviewed typed layer contracts rather than arbitrary page JavaScript.
 
 ## Runtime Safety
 

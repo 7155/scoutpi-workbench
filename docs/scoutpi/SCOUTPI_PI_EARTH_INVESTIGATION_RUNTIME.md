@@ -126,6 +126,10 @@ list_recipes
 
 Regions may be a bbox, GeoJSON geometry, or Earth Engine asset. Observable roles, not project names, route datasets.
 
+An investigation may also request a generic `impactAssessment`. It binds one hazard-change role to one baseline exposure role, compiles an `impact_overlap` DAG node, applies reviewed thresholds inside Earth Engine, and returns hectares plus an affected share as a compact artifact. Flood-and-vegetation is one example; the core contains no Guangxi, flood, crop, or project-name branch. The result remains a proxy overlap until field or authoritative damage evidence validates it.
+
+The reproducible sample `examples/investigations/guangxi-hengzhou-flood-vegetation-2026.json` demonstrates this contract with Sentinel-1 VV change and Sentinel-2 baseline NDVI. Run the planning-only path with `pnpm harness:guangxi-flood`; run the bounded authenticated computation with `pnpm harness:guangxi-flood-live`. Add `-- --persist` to place the resulting plan and job in the Workbench's normal `.scoutpi/earth_workspace` state.
+
 ### python_analysis
 
 Reads an allowlisted local CSV, JSON row list, or GeoJSON FeatureCollection and writes deterministic count, mean, range, standard deviation, OLS slope, and R-squared artifacts. It never treats LLM-written numbers as computed evidence.

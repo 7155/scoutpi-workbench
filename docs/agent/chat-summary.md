@@ -172,3 +172,10 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Added a Chinese interview architecture guide, 8-10 minute demo script, model/live-compute boundaries, learning order and evidence-backed Chinese/English resume bullets.
 - 79 tests and the new harnesses pass. Desktop/mobile Evaluation views show current/baseline metrics, acceptance checks, provenance and integrity state.
 - Next: run the full package/check/audit gate, commit and push the scoped public-repo milestone, then learn through `docs/interview/README.md` one module at a time.
+
+### 2026-07-11 - Real 3D terrain and flood-exposure assessment
+
+- Cesium now loads ArcGIS WorldElevation3D, reports the active terrain provider, and falls back visibly to an ellipsoid if elevation cannot load; both desktop and mobile real-browser checks pass.
+- The investigation runtime gained one on-demand generic impact contract, not another Pi tool: `hazard change × baseline exposure -> affected hectares/share + artifact`.
+- The authenticated Hengzhou sample computed a provisional 1,491.1 ha vegetation overlap (12.7%) from bounded Sentinel-1/Sentinel-2 windows. This is a thresholded satellite proxy, not a confirmed damage statistic.
+- Full verification passes 80 tests, all deterministic harnesses, package verification, production build, live GEE execution and zero-error UI checks.

@@ -56,10 +56,33 @@ test("investigation validation rejects ambiguous time and hypothesis contracts",
   assert.equal((planned.estimatedCost.nominalPixels || 0) > 0, true);
 });
 
+test("generic impact assessment compiles hazard and exposure overlap without scenario-specific code", () => {
+  const impactSpec = spec({
+    investigationId: "generic-impact-overlap",
+    hypotheses: [
+      { id: "hazard", statement: "A hazard proxy changed", observableRoles: ["flood_extent"] },
+      { id: "exposure", statement: "Vegetation was exposed", observableRoles: ["vegetation"] },
+    ],
+    constraints: {
+      preferredAdapterIds: ["sentinel1-vv", "sentinel2-sr"],
+      impactAssessment: {
+        hazardRole: "flood_extent", exposureRole: "vegetation",
+        hazardChangeThreshold: -2, hazardComparison: "lte",
+        exposureThreshold: 0.3, exposureComparison: "gte", scaleMeters: 20, unit: "hectares",
+      },
+    },
+  });
+  const plan = compileInvestigation(impactSpec, starterAdapters);
+  const node = plan.dag.find((row) => row.op === "impact_overlap");
+  assert.deepEqual(node?.dependsOn, ["flood_extent_annual", "vegetation_annual"]);
+  assert.equal(plan.criticChecks.some((row) => row.checkId === "impact_proxy_boundary"), true);
+  assert.throws(() => compileInvestigation({ ...impactSpec, constraints: { impactAssessment: { ...impactSpec.constraints!.impactAssessment!, exposureRole: "cropland" } } }, starterAdapters), /exposureRole must be present/);
+});
+
 test("runtime contracts are disclosed on demand instead of inflating the permanent Pi schema", () => {
   const workspace = new EarthWorkspace(".scoutpi/contract-test", process.execPath);
   const index = workspace.contract() as { contracts: string[] };
-  assert.deepEqual(index.contracts, ["investigation", "adapter", "adapter_pack", "skill", "local_export", "browser_evidence", "spatial_view"]);
+  assert.deepEqual(index.contracts, ["investigation", "impact_assessment", "adapter", "adapter_pack", "skill", "local_export", "browser_evidence", "spatial_view"]);
   const adapter = workspace.contract("adapter") as any;
   assert.equal(adapter.template.schemaVersion, "scoutpi.earth.adapter.v1");
   assert.throws(() => workspace.contract("arbitrary_code"), /CONTRACT_INVALID/);

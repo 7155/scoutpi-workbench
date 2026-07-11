@@ -12,6 +12,13 @@ export interface InvestigationSpec {
   confounders: string[];
   claims?: EvidenceClaim[];
   preferredOutputs?: string[];
+  constraints?: {
+    maxScaleMeters?: number;
+    maxYears?: number;
+    comparisonSeason?: string;
+    preferredAdapterIds?: string[];
+    impactAssessment?: { hazardRole: string; exposureRole: string; hazardChangeThreshold: number; hazardComparison: "lte" | "gte"; exposureThreshold: number; exposureComparison: "lte" | "gte"; scaleMeters?: number; unit?: "hectares"; baselineWindow?: { start: string; end: string }; targetWindow?: { start: string; end: string } };
+  };
 }
 export interface DatasetPlanItem {
   role: string;

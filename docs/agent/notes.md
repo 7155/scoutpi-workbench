@@ -231,3 +231,10 @@
 - Restart harness recovered one detached local export as retryable, preserved one remote task, and restored two checkpoint references.
 - `pnpm typecheck && pnpm test` passes 79/79; all three new harnesses pass; Playwright desktop/mobile Evaluation views are legible without overlap.
 - Pitfall: `process.execPath` is Node, not the Earth Python worker. Deterministic interview fixtures now override the reviewed worker boundary instead of accidentally invoking Node as Python.
+
+## 2026-07-11 16:30 - Real terrain and generic impact overlap
+
+- Replaced the Cesium ellipsoid-only path with ArcGIS WorldElevation3D terrain, an optional `VITE_CESIUM_TERRAIN_URL`, visible provider state, and explicit ellipsoid fallback. Desktop and 390x844 browser checks report `terrainState=ready`, provider `arcgis-world-elevation-3d`, a non-zero canvas, no overflow and zero console errors.
+- Added a generic typed `impactAssessment` contract and `impact_overlap` DAG node. The Earth Engine worker checks source coverage, compares bounded baseline/target windows, thresholds hazard change and baseline exposure, computes hectare overlap, and writes `impact_assessment.json`; no Guangxi or flood branch exists in core.
+- Added the Hengzhou flood/vegetation sample and dry/live harness. The authenticated bounded run used 2 baseline/1 target Sentinel-1 scenes and 10 baseline/4 target Sentinel-2 scenes. Its provisional proxy overlap was 1,491.1 ha, or 12.7% of 11,701.6 ha baseline vegetation, and is explicitly not field-confirmed damage.
+- Verification: 80 tests, complete `pnpm check`, dry and live Guangxi harnesses, package verification, production build, desktop/mobile 3D rendering and impact-card checks pass. Adding the eighth on-demand contract changed the measured eager-schema baseline to 1,478 -> 380 tokens (74.29%).

@@ -34,6 +34,26 @@ export function validateInvestigationSpec(spec: InvestigationSpec): Investigatio
     hypothesisIds.add(hypothesis.id);
     if (hypothesis.observableRoles.some((role) => !/^[a-z][a-z0-9_]{1,63}$/.test(role))) fail(`hypothesis ${hypothesis.id} has an invalid observable role`);
   }
+  const impact = spec.constraints?.impactAssessment;
+  if (impact) {
+    const observableRoles = new Set(spec.hypotheses.flatMap((hypothesis) => hypothesis.observableRoles));
+    for (const [label, role] of [["hazardRole", impact.hazardRole], ["exposureRole", impact.exposureRole]] as const) {
+      if (!/^[a-z][a-z0-9_]{1,63}$/.test(role || "")) fail(`impactAssessment ${label} is invalid`);
+      if (!observableRoles.has(role)) fail(`impactAssessment ${label} must be present in hypothesis observableRoles`);
+    }
+    if (impact.hazardRole === impact.exposureRole) fail("impactAssessment hazardRole and exposureRole must be different");
+    if (!Number.isFinite(impact.hazardChangeThreshold) || !Number.isFinite(impact.exposureThreshold)) fail("impactAssessment thresholds must be finite numbers");
+    if (!["lte", "gte"].includes(impact.hazardComparison) || !["lte", "gte"].includes(impact.exposureComparison)) fail("impactAssessment comparisons must be lte or gte");
+    if (impact.scaleMeters !== undefined && (!Number.isFinite(impact.scaleMeters) || impact.scaleMeters < 10 || impact.scaleMeters > 10_000)) fail("impactAssessment scaleMeters must be between 10 and 10000");
+    if (impact.unit !== undefined && impact.unit !== "hectares") fail("impactAssessment unit must be hectares");
+    if (Boolean(impact.baselineWindow) !== Boolean(impact.targetWindow)) fail("impactAssessment baselineWindow and targetWindow must be supplied together");
+    for (const [label, window] of [["baselineWindow", impact.baselineWindow], ["targetWindow", impact.targetWindow]] as const) {
+      if (!window) continue;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(window.start) || !/^\d{4}-\d{2}-\d{2}$/.test(window.end)) fail(`impactAssessment ${label} must use YYYY-MM-DD dates`);
+      const start = Date.parse(`${window.start}T00:00:00Z`); const end = Date.parse(`${window.end}T00:00:00Z`);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end || end - start > 366 * 86_400_000) fail(`impactAssessment ${label} is invalid or longer than 366 days`);
+    }
+  }
   if ((spec.claims || []).length > 100) fail("claims exceed the 100-item limit");
   for (const claim of spec.claims || []) {
     if (!/^[a-z0-9][a-z0-9._-]{0,79}$/i.test(claim.claimId || "") || !claim.claim?.trim() || claim.claim.length > 2000) fail("each claim needs a safe id and concise text");
@@ -88,7 +108,16 @@ function compileDag(spec: InvestigationSpec, datasets: DatasetPlanItem[]): Analy
     nodes.push({ nodeId: `${prefix}_compare`, op: "compare", dependsOn: [`${prefix}_annual`], params: { baseline: spec.period.startYear, target: spec.period.endYear } });
     nodes.push({ nodeId: `${prefix}_trend`, op: "trend", dependsOn: [`${prefix}_annual`], params: { method: "ols", uncertainty: true } });
   }
-  nodes.push({ nodeId: "critic", op: "critic", dependsOn: datasets.flatMap((item) => [`${item.role}_compare`, `${item.role}_trend`]), params: {} });
+  const impact = spec.constraints?.impactAssessment;
+  if (impact) {
+    nodes.push({
+      nodeId: "impact_overlap",
+      op: "impact_overlap",
+      dependsOn: [`${impact.hazardRole}_annual`, `${impact.exposureRole}_annual`],
+      params: { ...impact, baselineYear: spec.period.startYear, targetYear: spec.period.endYear, unit: impact.unit ?? "hectares" },
+    });
+  }
+  nodes.push({ nodeId: "critic", op: "critic", dependsOn: [...datasets.flatMap((item) => [`${item.role}_compare`, `${item.role}_trend`]), ...(impact ? ["impact_overlap"] : [])], params: {} });
   nodes.push({ nodeId: "export", op: "export", dependsOn: ["critic"], params: { outputs: spec.preferredOutputs || ["metrics_json", "yearly_csv", "story"] } });
   return nodes;
 }
@@ -96,6 +125,12 @@ function compileDag(spec: InvestigationSpec, datasets: DatasetPlanItem[]): Analy
 function criticChecks(spec: InvestigationSpec, datasets: DatasetPlanItem[]): CriticCheck[] {
   const checks: CriticCheck[] = spec.confounders.map((message, index) => ({ checkId: `confounder_${index + 1}`, severity: "warning", message, resolution: "Address this confounder in the analysis or final uncertainty section." }));
   if ((spec.period.startMonth || 1) !== 1 || (spec.period.endMonth || 12) !== 12) checks.push({ checkId: "season_alignment", severity: "warning", message: "Use the same month window in every comparison year." });
+  if (spec.constraints?.impactAssessment) checks.push({
+    checkId: "impact_proxy_boundary",
+    severity: "warning",
+    message: "The impact result is a thresholded spatial overlap of reviewed proxies, not a field-confirmed loss estimate.",
+    resolution: "Report thresholds, date window, data coverage and validation limits with the affected-area estimate.",
+  });
   for (const item of datasets) {
     for (const guardrail of item.dataset.guardrails || []) checks.push({ checkId: `${item.dataset.datasetId}_${guardrail.id}`, severity: guardrail.severity, message: guardrail.message, resolution: guardrail.resolution });
     if (item.dataset.startYear > spec.period.startYear || (item.dataset.endYear !== undefined && item.dataset.endYear < spec.period.endYear)) {

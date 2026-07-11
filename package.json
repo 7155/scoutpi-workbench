@@ -22,6 +22,7 @@
   "files": [
     ".pi/extensions",
     ".pi/skills",
+    "examples",
     "packages/earth-backend-sdk",
     "packages/earth-investigation-core",
     "packages/earth-workflow-compiler",
@@ -64,6 +65,8 @@
     "mcp:stdio": "node --experimental-strip-types packages/scoutpi-mcp-server/src/index.ts",
     "examples:seed": "node --experimental-strip-types scripts/seedExampleAdapters.ts",
     "harness:earth": "node --experimental-strip-types harness/earth/runEarthWorkspaceDemo.ts",
+    "harness:guangxi-flood": "node --experimental-strip-types harness/earth/runGuangxiFloodVegetationDemo.ts",
+    "harness:guangxi-flood-live": "node --experimental-strip-types harness/earth/runGuangxiFloodVegetationDemo.ts --live",
     "harness:mcp": "node --experimental-strip-types harness/mcp/runMcpSmoke.ts",
     "harness:context-provider": "node --experimental-strip-types harness/context/runImeProviderBenchmark.ts",
     "harness:pi": "node --experimental-strip-types harness/pi/runPiRpcHarness.ts",

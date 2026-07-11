@@ -48,7 +48,7 @@ Context、Browser Evidence、Governance、Observability、Checkpoint 和 Trigger
 
 | 项目 | 基线 | 当前 | 下降 |
 | --- | ---: | ---: | ---: |
-| eager tool contracts | 1,341 tokens | 380 tokens | 71.66% |
+| eager tool contracts | 1,478 tokens | 380 tokens | 74.29% |
 | all context candidates | 1,394 tokens | 384 tokens | 72.45% |
 | exploration control calls | 3 calls | 1 replay call | 66.67% |
 

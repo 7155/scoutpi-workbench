@@ -1,4 +1,4 @@
-export type EarthRuntimeContractName = "investigation" | "adapter" | "adapter_pack" | "skill" | "local_export" | "browser_evidence" | "spatial_view";
+export type EarthRuntimeContractName = "investigation" | "impact_assessment" | "adapter" | "adapter_pack" | "skill" | "local_export" | "browser_evidence" | "spatial_view";
 
 const contracts: Record<EarthRuntimeContractName, Record<string, unknown>> = {
   investigation: {
@@ -10,6 +10,19 @@ const contracts: Record<EarthRuntimeContractName, Record<string, unknown>> = {
     hypotheses: [{ id: "h1", statement: "A falsifiable statement", observableRoles: ["observable_role"], falsification: "Evidence that would contradict it" }],
     confounders: ["A competing explanation or comparability risk"],
     preferredOutputs: ["yearly_csv", "story"],
+  },
+  impact_assessment: {
+    placement: "investigation.constraints.impactAssessment",
+    hazardRole: "flood_extent",
+    exposureRole: "vegetation",
+    hazardChangeThreshold: -2,
+    hazardComparison: "lte",
+    exposureThreshold: 0.3,
+    exposureComparison: "gte",
+    scaleMeters: 30,
+    unit: "hectares",
+    baselineWindow: { start: "2026-06-15", end: "2026-07-04" },
+    targetWindow: { start: "2026-07-04", end: "2026-07-11" },
   },
   adapter: {
     schemaVersion: "scoutpi.earth.adapter.v1",

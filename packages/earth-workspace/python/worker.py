@@ -143,12 +143,124 @@ def annual_features(ee: Any, plan: dict[str, Any], dataset_item: dict[str, Any],
     return ee.FeatureCollection(features)
 
 
+def prepared_collection(ee: Any, dataset: dict[str, Any], geometry: Any, start: Any, end: Any) -> Any:
+    collection = ee.ImageCollection(dataset["collectionId"]).filterBounds(geometry).filterDate(start, end)
+    collection = mask_collection(ee, collection, dataset["analysis"].get("qualityMask"))
+    return collection
+
+
+def metric_for_window(ee: Any, dataset: dict[str, Any], geometry: Any, start: Any, end: Any) -> Any:
+    collection = prepared_collection(ee, dataset, geometry, start, end)
+    return metric_image(ee, collection, dataset["analysis"])
+
+
 def metric_for_year(ee: Any, dataset: dict[str, Any], geometry: Any, year: int, start_month: int, end_month: int) -> Any:
     start = ee.Date.fromYMD(year, start_month, 1)
     end = ee.Date.fromYMD(year + (1 if end_month < start_month else 0), end_month, 1).advance(1, "month")
-    collection = ee.ImageCollection(dataset["collectionId"]).filterBounds(geometry).filterDate(start, end)
-    collection = mask_collection(ee, collection, dataset["analysis"].get("qualityMask"))
-    return metric_image(ee, collection, dataset["analysis"])
+    return metric_for_window(ee, dataset, geometry, start, end)
+
+
+def compare_threshold(image: Any, comparison: str, threshold: float) -> Any:
+    if comparison == "lte":
+        return image.lte(threshold)
+    if comparison == "gte":
+        return image.gte(threshold)
+    raise ValueError(f"Unsupported impact comparison: {comparison}")
+
+
+def compute_impact_assessment(ee: Any, plan: dict[str, Any], geometry: Any) -> dict[str, Any] | None:
+    config = (plan["spec"].get("constraints") or {}).get("impactAssessment")
+    if not config:
+        return None
+
+    by_role = {row["role"]: row for row in plan["datasets"]}
+    hazard_row = by_role[config["hazardRole"]]
+    exposure_row = by_role[config["exposureRole"]]
+    period = plan["spec"]["period"]
+    baseline_year = int(period["startYear"])
+    target_year = int(period["endYear"])
+    start_month = int(period.get("startMonth", 1))
+    end_month = int(period.get("endMonth", 12))
+
+    baseline_window = config.get("baselineWindow")
+    target_window = config.get("targetWindow")
+    if baseline_window and target_window:
+        baseline_start, baseline_end = baseline_window["start"], baseline_window["end"]
+        target_start, target_end = target_window["start"], target_window["end"]
+    else:
+        baseline_start = ee.Date.fromYMD(baseline_year, start_month, 1)
+        baseline_end = ee.Date.fromYMD(baseline_year + (1 if end_month < start_month else 0), end_month, 1).advance(1, "month")
+        target_start = ee.Date.fromYMD(target_year, start_month, 1)
+        target_end = ee.Date.fromYMD(target_year + (1 if end_month < start_month else 0), end_month, 1).advance(1, "month")
+
+    collections = {
+        "hazardBaseline": prepared_collection(ee, hazard_row["dataset"], geometry, baseline_start, baseline_end),
+        "hazardTarget": prepared_collection(ee, hazard_row["dataset"], geometry, target_start, target_end),
+        "exposureBaseline": prepared_collection(ee, exposure_row["dataset"], geometry, baseline_start, baseline_end),
+        "exposureTarget": prepared_collection(ee, exposure_row["dataset"], geometry, target_start, target_end),
+    }
+    source_counts = ee.Dictionary({key: collection.size() for key, collection in collections.items()}).getInfo()
+    missing = [key for key, count in source_counts.items() if int(count or 0) == 0]
+    if missing:
+        raise ValueError(f"IMPACT_DATA_COVERAGE: no source images for {', '.join(missing)}")
+    hazard_baseline = metric_image(ee, collections["hazardBaseline"], hazard_row["dataset"]["analysis"])
+    hazard_target = metric_image(ee, collections["hazardTarget"], hazard_row["dataset"]["analysis"])
+    exposure_baseline = metric_image(ee, collections["exposureBaseline"], exposure_row["dataset"]["analysis"])
+    exposure_target = metric_image(ee, collections["exposureTarget"], exposure_row["dataset"]["analysis"])
+    hazard_change = hazard_target.subtract(hazard_baseline)
+    hazard_mask = compare_threshold(hazard_change, config["hazardComparison"], float(config["hazardChangeThreshold"]))
+    exposure_mask = compare_threshold(exposure_baseline, config["exposureComparison"], float(config["exposureThreshold"]))
+    affected_mask = hazard_mask.And(exposure_mask)
+    hectares = ee.Image.pixelArea().divide(10_000)
+    area_image = ee.Image.cat([
+        hectares.updateMask(hazard_mask).rename("hazard_area_ha"),
+        hectares.updateMask(exposure_mask).rename("exposure_area_ha"),
+        hectares.updateMask(affected_mask).rename("affected_exposure_area_ha"),
+    ])
+    scale = max(float(config.get("scaleMeters") or max(hazard_row["dataset"]["scaleMeters"], exposure_row["dataset"]["scaleMeters"])), 10.0)
+    area_stats = area_image.reduceRegion(
+        reducer=ee.Reducer.sum(), geometry=geometry, scale=scale, bestEffort=True, maxPixels=10_000_000_000,
+    )
+    exposure_change_stats = exposure_target.subtract(exposure_baseline).updateMask(affected_mask).rename(
+        "mean_exposure_change"
+    ).reduceRegion(
+        reducer=ee.Reducer.mean(), geometry=geometry, scale=scale, bestEffort=True, maxPixels=10_000_000_000,
+    )
+    values = ee.Dictionary(area_stats).combine(exposure_change_stats).getInfo()
+    hazard_area = float(values.get("hazard_area_ha") or 0)
+    exposure_area = float(values.get("exposure_area_ha") or 0)
+    affected_area = float(values.get("affected_exposure_area_ha") or 0)
+    return {
+        "schemaVersion": "scoutpi.earth.impact-assessment.v1",
+        "planId": plan["planId"],
+        "hazardRole": config["hazardRole"],
+        "exposureRole": config["exposureRole"],
+        "period": {
+            "baselineYear": baseline_year,
+            "targetYear": target_year,
+            "startMonth": start_month,
+            "endMonth": end_month,
+            "baselineWindow": baseline_window,
+            "targetWindow": target_window,
+        },
+        "sourceImageCounts": source_counts,
+        "thresholds": {
+            "hazardChange": {"comparison": config["hazardComparison"], "value": float(config["hazardChangeThreshold"])},
+            "exposure": {"comparison": config["exposureComparison"], "value": float(config["exposureThreshold"])},
+        },
+        "datasets": {
+            "hazard": hazard_row["dataset"]["datasetId"],
+            "exposure": exposure_row["dataset"]["datasetId"],
+        },
+        "scaleMeters": scale,
+        "hazardAreaHa": hazard_area,
+        "baselineExposureAreaHa": exposure_area,
+        "affectedExposureAreaHa": affected_area,
+        "affectedExposurePercent": affected_area / exposure_area * 100 if exposure_area > 0 else None,
+        "meanExposureMetricChangeInAffectedArea": values.get("mean_exposure_change"),
+        "interpretation": "Thresholded proxy overlap; field validation is required before reporting confirmed damage.",
+        "computedAt": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 def initialize_ee(project: str | None) -> tuple[Any | None, dict[str, Any] | None]:
@@ -282,7 +394,21 @@ def run_plan(payload: dict[str, Any]) -> dict[str, Any]:
     info = merged.getInfo()
     result_path = artifact_dir / "yearly_metrics.json"
     result_path.write_text(json.dumps(info, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return {"ok": True, "mode": "live", "execution": "inline", "taskIds": [], "metricsPath": str(result_path), "artifact": str(artifact_dir / "execution_manifest.json")}
+    impact = compute_impact_assessment(ee, plan, geometry)
+    impact_path = None
+    if impact:
+        impact_path = artifact_dir / "impact_assessment.json"
+        impact_path.write_text(json.dumps(impact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return {
+        "ok": True,
+        "mode": "live",
+        "execution": "inline",
+        "taskIds": [],
+        "metricsPath": str(result_path),
+        "impactAssessmentPath": str(impact_path) if impact_path else None,
+        "impactAssessment": impact,
+        "artifact": str(artifact_dir / "execution_manifest.json"),
+    }
 
 
 def task_status(payload: dict[str, Any]) -> dict[str, Any]:

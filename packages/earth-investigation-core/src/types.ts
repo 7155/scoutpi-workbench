@@ -14,7 +14,27 @@ export interface InvestigationSpec {
   confounders: string[];
   claims?: EvidenceClaim[];
   preferredOutputs?: string[];
-  constraints?: { maxScaleMeters?: number; maxYears?: number; comparisonSeason?: string; controlRegion?: RegionSpec; preferredAdapterIds?: string[] };
+  constraints?: {
+    maxScaleMeters?: number;
+    maxYears?: number;
+    comparisonSeason?: string;
+    controlRegion?: RegionSpec;
+    preferredAdapterIds?: string[];
+    impactAssessment?: ImpactAssessmentSpec;
+  };
+}
+
+export interface ImpactAssessmentSpec {
+  hazardRole: string;
+  exposureRole: string;
+  hazardChangeThreshold: number;
+  hazardComparison: "lte" | "gte";
+  exposureThreshold: number;
+  exposureComparison: "lte" | "gte";
+  scaleMeters?: number;
+  unit?: "hectares";
+  baselineWindow?: { start: string; end: string };
+  targetWindow?: { start: string; end: string };
 }
 
 export interface EvidenceClaim {
@@ -128,7 +148,7 @@ export interface DatasetPlanItem {
 
 export interface AnalysisNode {
   nodeId: string;
-  op: "source" | "filter_region" | "filter_time" | "quality_mask" | "annual_metric" | "compare" | "trend" | "export" | "critic";
+  op: "source" | "filter_region" | "filter_time" | "quality_mask" | "annual_metric" | "compare" | "trend" | "impact_overlap" | "export" | "critic";
   dependsOn: string[];
   params: Record<string, unknown>;
 }

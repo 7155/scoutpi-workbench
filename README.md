@@ -11,6 +11,8 @@ ScoutPi Workbench gives Pi a small, typed spatial runtime instead of a permanent
 
 Forest, flood, agriculture, urban change, water, climate, and disaster tasks are possible inputs. They are not hard-coded product branches.
 
+The spatial canvas switches between MapLibre 2D and CesiumJS 3D with real elevation terrain and an explicit ellipsoid fallback. A generic hazard-exposure overlap contract can answer questions such as “how much baseline vegetation intersects a flood proxy,” while preserving thresholds, data provenance, artifacts, and the distinction between a satellite proxy and confirmed damage.
+
 ![ScoutPi Spatial Runtime with a live Earth Engine layer in Cesium](docs/assets/workbench-spatial-runtime-3d.png)
 
 The interface is deliberately not a manual GIS editor:
@@ -62,7 +64,8 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Live adapter probes that check collection availability, sample time, required bands, and quality-mask bands
 - Typed `InvestigationSpec -> DatasetPlan -> AnalysisDAG` compiler with cost and evidence checks
 - Dry run, inline Earth Engine metrics, Drive export, task polling, cancellation, and retryable local export jobs
-- Direct Earth Engine raster tiles in MapLibre 2D and CesiumJS 3D, without first downloading a GeoTIFF
+- Direct Earth Engine raster tiles in MapLibre 2D and CesiumJS 3D with real elevation terrain, without first downloading a GeoTIFF
+- Generic hazard-change × baseline-exposure overlap assessment with bounded thresholds, hectare metrics, compact artifacts, and explicit proxy caveats
 - Durable `scoutpi.spatial-view.v1` state so Pi can focus a plan, observable, year, and 2D/3D renderer while the Workbench follows without browser automation
 - Bounded geedim GeoTIFF export with scale/pixel review, manifest, byte count, and SHA-256
 - Safe CSV/JSON/GeoJSON statistics without arbitrary code execution
@@ -275,6 +278,7 @@ pnpm typecheck
 pnpm test
 pnpm python:check
 pnpm harness:earth
+pnpm harness:guangxi-flood
 pnpm harness:mcp
 pnpm harness:interview
 pnpm harness:interview-demo
@@ -283,7 +287,9 @@ pnpm package:verify
 pnpm web:build
 ```
 
-The three interview harnesses are deterministic and do not call a paid model or live Earth Engine. On the fixed fixtures used by the current revision, `harness:interview` measured 1,341 -> 380 estimated schema tokens against eagerly disclosing seven runtime contracts (71.66%), 1,394 -> 384 delivered context tokens (72.45%), and 3 exploration control calls -> 1 workflow replay call (66.67%). Re-run the command after code changes; these are measured snapshot results, not permanent product claims.
+The Guangxi harness proves only the typed planning and artifact path by default. After Earth Engine authentication, `pnpm harness:guangxi-flood-live` performs the bounded Sentinel-1/Sentinel-2 proxy overlap computation. Its hectare output remains an investigation estimate, not a confirmed damage statistic.
+
+The three interview harnesses are deterministic and do not call a paid model or live Earth Engine. On the fixed fixtures used by the current revision, `harness:interview` measured 1,478 -> 380 estimated schema tokens against eagerly disclosing eight runtime contracts (74.29%), 1,394 -> 384 delivered context tokens (72.45%), and 3 exploration control calls -> 1 workflow replay call (66.67%). Re-run the command after code changes; these are measured snapshot results, not permanent product claims.
 
 The local Context Provider benchmark never invokes a model or writes candidate text into its report:
 

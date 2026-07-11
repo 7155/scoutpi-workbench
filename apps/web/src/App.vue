@@ -138,6 +138,15 @@
               </div>
               <dl><dt>{{ t('State') }}</dt><dd>{{ statusLabel(selectedJob.state) }}</dd><dt>{{ t('Mode') }}</dt><dd>{{ statusLabel(selectedJob.mode) }}</dd><dt>{{ t('Tasks') }}</dt><dd>{{ selectedJob.taskIds.length }}</dd><dt>{{ t('Artifact') }}</dt><dd>{{ selectedJob.artifactDir }}</dd></dl>
               <p v-if="selectedJob.error" class="job-error">{{ selectedJob.error }}</p>
+              <section v-if="selectedImpact" class="impact-summary">
+                <div class="section-heading"><h2>{{ t('Impact assessment') }}</h2><span>{{ t('Proxy overlap') }}</span></div>
+                <div class="impact-metrics">
+                  <div><span>{{ t('Affected vegetation') }}</span><strong>{{ selectedImpact.affectedExposureAreaHa.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</strong></div>
+                  <div><span>{{ t('Baseline vegetation') }}</span><strong>{{ selectedImpact.baselineExposureAreaHa.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</strong></div>
+                  <div><span>{{ t('Affected share') }}</span><strong>{{ selectedImpact.affectedExposurePercent == null ? '-' : `${selectedImpact.affectedExposurePercent.toFixed(1)}%` }}</strong></div>
+                </div>
+                <p>{{ t('Thresholded proxy result; field validation is required.') }}</p>
+              </section>
               <div class="artifact-list">
                 <div class="section-heading"><h2>{{ t('Artifacts') }}</h2><span>{{ artifacts.length }}</span></div>
                 <a v-for="artifact in artifacts" :key="artifact.name" :href="api.artifactUrl(selectedJob.jobId, artifact.name)" target="_blank">
@@ -208,6 +217,15 @@ const triggerRuns = ref<TriggerRun[]>([]);
 const delegations = ref<DelegationGrantSummary[]>([]);
 const selectedPlanId = ref("");
 const selectedJob = ref<EarthJob>();
+const selectedImpact = computed(() => {
+  const value = selectedJob.value?.result?.impactAssessment as Record<string, unknown> | undefined;
+  if (!value || typeof value !== "object") return undefined;
+  const affectedExposureAreaHa = Number(value.affectedExposureAreaHa);
+  const baselineExposureAreaHa = Number(value.baselineExposureAreaHa);
+  const affectedExposurePercent = value.affectedExposurePercent == null ? null : Number(value.affectedExposurePercent);
+  if (![affectedExposureAreaHa, baselineExposureAreaHa].every(Number.isFinite) || (affectedExposurePercent !== null && !Number.isFinite(affectedExposurePercent))) return undefined;
+  return { affectedExposureAreaHa, baselineExposureAreaHa, affectedExposurePercent };
+});
 const artifacts = ref<JobArtifact[]>([]);
 const selectedYear = ref(new Date().getUTCFullYear());
 const selectedRole = ref("");
