@@ -129,10 +129,10 @@
           <div v-if="!checkpoints.length" class="empty-state compact"><History :size="24" /><strong>No checkpoint</strong><span>No interrupted session needs recovery.</span></div>
           <div class="section-title writeback-heading"><div><strong>Writeback review</strong><span>Provider outbox, never silent mutation</span></div><span>{{ contextWritebacks.length }}</span></div>
           <article v-for="writeback in contextWritebacks.slice(0, 8)" :key="writeback.writebackId" class="context-state-row">
-            <CircleCheck v-if="writeback.state === 'approved'" :size="15" />
-            <CircleX v-else-if="writeback.state === 'rejected'" :size="15" />
+            <CircleCheck v-if="writebackState(writeback) === 'delivered'" :size="15" />
+            <CircleX v-else-if="writebackState(writeback) === 'rejected' || writebackState(writeback) === 'failed'" :size="15" />
             <Hourglass v-else :size="15" />
-            <div><code>{{ writeback.writebackId }}</code><small>{{ writeback.candidates.length }} candidates · {{ writeback.providerTargets.join(' · ') || 'provider outbox' }}</small></div><span :class="['state-label', writeback.state === 'approved' ? 'ready' : writeback.state === 'rejected' ? 'blocked' : 'attention']">{{ writeback.state }}</span>
+            <div><code>{{ writeback.writebackId }}</code><small>{{ writeback.candidates.length }} candidates · {{ writebackDeliveryDetail(writeback) }}</small></div><span :class="['state-label', writebackStateTone(writeback)]">{{ writebackState(writeback) }}</span>
           </article>
           <div v-if="!contextWritebacks.length" class="empty-state compact"><Hourglass :size="24" /><strong>No writeback</strong><span>Runtime learning candidates will wait here for review.</span></div>
         </section>
@@ -189,11 +189,12 @@ const skillJson = ref("");
 
 const availableBackends = computed(() => Object.values(props.backendProbes).filter((probe) => probe.available).length);
 const pendingWritebacks = computed(() => props.contextWritebacks.filter((item) => item.state === "pending"));
+const undeliveredWritebacks = computed(() => props.contextWritebacks.filter((item) => item.state === "approved" && !item.deliveries?.some((delivery) => delivery.state === "delivered")));
 const recoverableCheckpoints = computed(() => props.checkpoints.filter((item) => item.recovery.recoverable));
 const pendingApprovals = computed(() => props.approvals.filter((item) => item.state === "pending"));
 const interruptedRuns = computed(() => props.agentRuns.filter((item) => item.state === "interrupted"));
 const pendingTriggers = computed(() => props.triggers.filter((item) => item.state === "draft"));
-const runtimeAttention = computed(() => pendingWritebacks.value.length + recoverableCheckpoints.value.length + pendingApprovals.value.length + interruptedRuns.value.length + pendingTriggers.value.length);
+const runtimeAttention = computed(() => pendingWritebacks.value.length + undeliveredWritebacks.value.length + recoverableCheckpoints.value.length + pendingApprovals.value.length + interruptedRuns.value.length + pendingTriggers.value.length);
 const runtimeTone = computed<RuntimeTone>(() => runtimeAttention.value ? "attention" : props.agentRuns.some((item) => item.state === "running") ? "active" : "ready");
 const runtimeStatusLabel = computed(() => runtimeAttention.value ? `${runtimeAttention.value} to review` : runtimeTone.value === "active" ? "Agent running" : "Operational");
 const latestContext = computed(() => [...props.contextPacks].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]);
@@ -212,7 +213,7 @@ const tabs = computed(() => [
 const runtimeLayers = computed(() => [
   { id: "surface", title: "Pi tool surface", detail: `${props.adapters.length} dataset contracts behind a compact gateway`, value: "3 gateways", state: "bounded", tone: "ready" as RuntimeTone, icon: markRaw(Boxes) },
   { id: "context", title: "Context engineering", detail: latestContext.value ? `${latestContext.value.sourceProviders.length} providers · ${latestContext.value.budget.deliveredTokens}/${latestContext.value.budget.maxTokens} tokens` : "Waiting for the next task-ranked pack", value: latestContext.value ? `${latestContext.value.budget.selectedCount} items` : "No pack", state: latestContext.value ? "ready" : "idle", tone: latestContext.value ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(BrainCircuit) },
-  { id: "governance", title: "Execution governance", detail: `${props.approvals.length} receipts · ${pendingWritebacks.value.length} memory decisions`, value: runtimeAttention.value ? `${runtimeAttention.value} review` : "Clear", state: runtimeAttention.value ? "attention" : "ready", tone: runtimeAttention.value ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(ShieldCheck) },
+  { id: "governance", title: "Execution governance", detail: `${props.approvals.length} receipts · ${pendingWritebacks.value.length} decisions · ${undeliveredWritebacks.value.length} deliveries`, value: runtimeAttention.value ? `${runtimeAttention.value} review` : "Clear", state: runtimeAttention.value ? "attention" : "ready", tone: runtimeAttention.value ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(ShieldCheck) },
   { id: "continuity", title: "Durable continuity", detail: `${props.checkpoints.length} session checkpoints with integrity journals`, value: recoverableCheckpoints.value.length ? `${recoverableCheckpoints.value.length} recover` : "Settled", state: recoverableCheckpoints.value.length ? "attention" : "ready", tone: recoverableCheckpoints.value.length ? "attention" as RuntimeTone : "ready" as RuntimeTone, icon: markRaw(History) },
   { id: "evidence", title: "Evidence bridge", detail: "Browser sources normalized into provenance-bound investigation records", value: `${props.evidenceCount} sources`, state: props.evidenceCount ? "connected" : "idle", tone: props.evidenceCount ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Radio) },
   { id: "mcp", title: "MCP compatibility", detail: props.mcpProfile ? `${props.mcpProfile.transport} · external clients · state-changing operations blocked` : "Compatibility profile unavailable", value: props.mcpProfile ? `${props.mcpProfile.tools.length} gateways` : "Offline", state: props.mcpProfile ? "available" : "idle", tone: props.mcpProfile ? "ready" as RuntimeTone : "idle" as RuntimeTone, icon: markRaw(Network) },
@@ -221,6 +222,7 @@ const runtimeLayers = computed(() => [
 ]);
 const operatorQueue = computed(() => [
   ...pendingWritebacks.value.slice(0, 3).map((item) => ({ id: item.writebackId, title: "Memory writeback awaiting decision", detail: `${item.candidates.length} candidates · ${item.providerTargets.join(" · ") || "provider outbox"}`, tone: "attention" as RuntimeTone, icon: markRaw(BrainCircuit), tab: "context" as RuntimeTab })),
+  ...undeliveredWritebacks.value.slice(0, 2).map((item) => ({ id: `delivery:${item.writebackId}`, title: item.deliveries?.some((delivery) => delivery.state === "failed") ? "Memory provider delivery failed" : "Approved memory awaiting provider", detail: writebackDeliveryDetail(item), tone: item.deliveries?.some((delivery) => delivery.state === "failed") ? "blocked" as RuntimeTone : "attention" as RuntimeTone, icon: markRaw(BrainCircuit), tab: "context" as RuntimeTab })),
   ...pendingTriggers.value.slice(0, 3).map((item) => ({ id: item.triggerId, title: "Trigger delegation awaiting review", detail: `${item.name} · ${item.workflowId}`, tone: "attention" as RuntimeTone, icon: markRaw(TimerReset), tab: "automation" as RuntimeTab })),
   ...recoverableCheckpoints.value.slice(0, 2).map((item) => ({ id: item.checkpointId, title: "Interrupted session can recover", detail: `${item.sessionId} · ${item.references.length} durable references`, tone: "active" as RuntimeTone, icon: markRaw(History), tab: "context" as RuntimeTab })),
   ...pendingApprovals.value.slice(0, 2).map((item) => ({ id: item.approvalId, title: `${item.operation} receipt not consumed`, detail: `${item.risk} risk · expires ${formatTime(item.expiresAt)}`, tone: "attention" as RuntimeTone, icon: markRaw(ShieldCheck), tab: "telemetry" as RuntimeTab })),
@@ -241,6 +243,9 @@ async function loadTemplate(name: "adapter" | "skill") {
   } catch (error) { emit("invalid", error instanceof Error ? error.message : String(error)); }
 }
 function probeLabel(backendId: string) { const probe = props.backendProbes[backendId]; return !probe ? "not probed" : probe.available ? probe.version || "available" : probe.reason || "unavailable"; }
+function writebackState(writeback: ContextWritebackSummary) { if (writeback.state !== "approved") return writeback.state; if (writeback.deliveries?.some((delivery) => delivery.state === "delivered")) return "delivered"; if (writeback.deliveries?.some((delivery) => delivery.state === "failed")) return "failed"; return writeback.deliveries?.length ? "staged" : "approved"; }
+function writebackStateTone(writeback: ContextWritebackSummary): RuntimeTone { const state = writebackState(writeback); return state === "delivered" ? "ready" : state === "rejected" || state === "failed" ? "blocked" : "attention"; }
+function writebackDeliveryDetail(writeback: ContextWritebackSummary) { const delivery = writeback.deliveries?.[0]; if (!delivery) return writeback.providerTargets.join(" · ") || "provider outbox"; if (delivery.state === "delivered") return `${delivery.providerId} · ${delivery.receipt?.itemCount || writeback.candidates.length} delivered${delivery.receipt?.duplicateCount ? ` · ${delivery.receipt.duplicateCount} deduped` : ""}`; if (delivery.state === "failed") return `${delivery.providerId} · ${delivery.errorCode || "delivery failed"}`; return `${delivery.providerId} · staged`; }
 function budgetPercent(pack: ContextPackSummary) { return Math.min(100, pack.budget.maxTokens ? pack.budget.deliveredTokens / pack.budget.maxTokens * 100 : 0); }
 function operationPercent(tokens: number) { return Math.max(tokens ? 5 : 0, Math.min(100, tokens / maxOperationTokens.value * 100)); }
 function formatNumber(value: number) { return new Intl.NumberFormat(undefined, { notation: value >= 100_000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value); }

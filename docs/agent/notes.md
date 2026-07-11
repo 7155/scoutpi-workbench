@@ -114,3 +114,14 @@
 - Real local smoke reached the existing Core database and returned five bounded candidates without printing candidate text. Pi RPC initialized `gpt-5.6`, `xhigh`, all seven extensions, and no extension errors; no paid model turn containing private memory was sent.
 - Commands: `git status --short --branch` confirmed only this milestone's tracked/new files; `git diff --stat` was reviewed before verification.
 - Verification: `pnpm check` passes 58 tests, both harnesses, Python compile, and production build; `pnpm audit --prod` reports no known vulnerabilities.
+
+## 2026-07-11 09:02 - Approved input-method Core writeback
+
+- Added a second opt-in gate for Wisdom Weasel writeback; query remains read-only by default and `SCOUTPI_IME_CONTEXT_WRITEBACK=1` does not bypass direct Pi UI approval.
+- Bound approval to a canonical payload hash and user-issued approval ID, then staged a durable provider delivery before any Core mutation.
+- Delivered through the Core's own privacy-aware `InputMethodAdapter` rather than SQL. Deterministic event tags, cross-process leases, and content-minimal receipts support safe retry and partial-crash recovery.
+- Added runtime validation for provider receipts, payload tamper rejection, failed/staged/delivered states, API enrichment, and Runtime Center operator visibility.
+- Real Pi RPC smoke started `gpt-5.6`, `xhigh`, all seven extensions, and no extension errors with the real Core configured; no model turn and no personal-memory writeback were performed.
+- Visual QA: 1440x1000 and 390x844 Context views show provider health and a delivered writeback with no horizontal overflow, console errors, or warnings.
+- Git snapshot before commit: `main...origin/main`; 14 scoped paths, 553 insertions and 37 deletions. Generated Context state, Pi reports, builds, and Playwright screenshots remain ignored.
+- Verification: `pnpm check` passes 60 tests, Python compile, Earth/MCP harnesses, and production build; targeted Context tests cover direct approval, integrity, receipt validation, cross-process serialization, and idempotent retry.

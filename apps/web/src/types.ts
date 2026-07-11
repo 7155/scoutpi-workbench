@@ -79,8 +79,9 @@ export interface ContextPackSummary {
   items: Array<{ candidateId: string; kind: string; text: string; confidence: number; trust: string; provenance: { providerId: string; sourceId: string }; estimatedTokens: number; truncated: boolean }>;
 }
 export interface ContextWritebackSummary {
-  writebackId: string; sessionId: string; state: "pending" | "approved" | "rejected"; createdAt: string; decidedAt?: string; providerTargets: string[]; payloadSha256: string;
+  writebackId: string; sessionId: string; state: "pending" | "approved" | "rejected"; createdAt: string; decidedAt?: string; approvalId?: string; approvedBy?: "user"; providerTargets: string[]; payloadSha256: string;
   candidates: Array<{ candidateId: string; kind: string; text: string; confidence: number; tags: string[] }>;
+  deliveries?: Array<{ deliveryId: string; providerId: string; state: "staged" | "delivered" | "failed"; stagedAt: string; updatedAt: string; attemptCount: number; errorCode?: string; receipt?: { itemCount: number; duplicateCount: number; latencyMs: number } }>;
 }
 export interface BrowserEvidenceRecord {
   schemaVersion: "scoutpi.browser.evidence.v1";

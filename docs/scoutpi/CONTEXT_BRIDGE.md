@@ -45,9 +45,33 @@ export SCOUTPI_IME_CORE_DB="$HOME/Library/Application Support/RagIme/rag-ime.sql
 
 When the Core has `.venv/bin/python`, the provider uses it directly. Otherwise it falls back to `uv run --project <core-root> python`. `SCOUTPI_IME_CONTEXT_USE_UV=0` and `SCOUTPI_IME_CONTEXT_PYTHON=/path/to/python` provide an explicit launcher override.
 
-The adapter allows query only. It rejects secret-looking queries and candidates, caps request/output size, limits results to 16, enforces a timeout, disables raw-event candidates, and returns stable memory IDs as provenance. Provider health, latency, candidate count, transport, and error code are stored in the Context Pack without storing the full user prompt.
+The adapter is query-only by default. It rejects secret-looking queries and candidates, caps request/output size, limits results to 16, enforces a timeout, disables raw-event candidates, and returns stable memory IDs as provenance. Provider health, latency, candidate count, transport, and error code are stored in the Context Pack without storing the full user prompt.
 
-An unavailable provider fails closed and does not block Pi. Approved ScoutPi writebacks remain in the provider outbox; this release does not directly mutate the IME Core database.
+An unavailable provider fails closed and does not block Pi. Approved ScoutPi writebacks remain in the durable provider outbox unless the operator explicitly enables the reviewed Core writeback adapter.
+
+### Optional approved writeback
+
+Writeback is a second, independent opt-in:
+
+```bash
+export SCOUTPI_IME_CONTEXT_WRITEBACK=1
+```
+
+With that flag, direct `ctx.ui.confirm()` approval produces an immutable payload hash and approval ID, then stages `scoutpi.context.writeback-delivery.v1`. The fixed provider process calls the Core's own `InputMethodAdapter.commit_text()` API with `privacy_disposition=allowed`; ScoutPi never issues SQL or imports a provider database module that bypasses the Core's privacy checks.
+
+Each delivery is serialized by a cross-process lease, and each candidate carries a deterministic `scoutpi-writeback:<sha256>` event tag. A retry checks `LocalSqliteCoreClient.has_event_tag()` before writing, so a crash after one item cannot duplicate that item. The provider returns a content-minimal receipt with candidate IDs, event IDs, counts, latency, and dedupe state, while the approved text remains in the local writeback artifact.
+
+```text
+structured runtime fact
+  -> pending writeback artifact
+  -> direct user approval
+  -> canonical payload hash + approval ID
+  -> durable provider delivery staging
+  -> reviewed Core adapter API
+  -> content-minimal delivery receipt
+```
+
+If the flag is absent, the approval creates an outbox record only. If delivery fails, the approved record and failed delivery remain visible for operator recovery; ScoutPi does not silently retry through a different memory surface.
 
 Local integration evidence on 2026-07-11: the real Core returned five bounded candidates through the versioned provider contract. Direct Core retrieval was about 67 ms; the cold Python process path was about 0.5 s. These are local measurements, not product guarantees.
 
@@ -101,9 +125,11 @@ structured tool result
   -> scoutpi.context.writeback.v1 pending artifact
   -> ctx.ui.confirm
   -> approved or rejected provider outbox record
+  -> optional staged provider delivery
+  -> idempotent Core import receipt
 ```
 
-An approved record is not a silent database mutation. It is an auditable outbox item for an installed memory provider to consume. Provider targets are discovered from Pi's current tools, while ScoutPi keeps its own model-visible tool count unchanged.
+An approved record is not a silent database mutation. It is an auditable outbox item for an installed memory provider to consume. The Wisdom Weasel delivery path is available only under the explicit writeback flag and uses the Core's reviewed API. Provider targets are discovered from Pi's current tools and configured providers, while ScoutPi keeps its own model-visible tool count unchanged.
 
 Use `/earth-context` to inspect the current pack. The Workbench Context view and these loopback endpoints expose operator summaries:
 

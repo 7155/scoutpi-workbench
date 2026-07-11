@@ -18,6 +18,10 @@ function writeTargets(tools: string[]): string[] {
   return tools.filter((name) => /(?:remember|write|store|commit|learn)/i.test(name));
 }
 
+function writebackProviders(providers: ReturnType<typeof configuredContextProviders>) {
+  return providers.filter((provider) => provider.capabilities.includes("writeback") && provider.deliverWriteback);
+}
+
 function candidate(event: { toolCallId: string; toolName: string; input: Record<string, unknown>; details: unknown; isError: boolean }): ContextWritebackCandidate | undefined {
   const input = objectOf(event.input);
   const details = objectOf(event.details);
@@ -116,15 +120,43 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
   pi.on("agent_end", async (_event, ctx) => {
     if (!sessionId || !pending.size) return;
     const tools = memoryTools(pi);
-    const writeback = await store.createWriteback({ sessionId, providerTargets: writeTargets(tools), candidates: [...pending.values()] });
+    const writableProviders = writebackProviders(providers);
+    const writeback = await store.createWriteback({ sessionId, providerTargets: [...writeTargets(tools), ...writableProviders.map((provider) => provider.providerId)], candidates: [...pending.values()] });
     let approved = false;
+    let deliveryState = "not configured";
     if (ctx.hasUI) {
       const preview = writeback.candidates.slice(0, 6).map((item) => `- [${item.kind}] ${item.text}`).join("\n");
-      approved = await ctx.ui.confirm("ScoutPi context writeback", `Approve ${writeback.candidates.length} runtime-derived memory candidate(s)?\n\n${preview}\n\nThis creates an approved provider outbox record. It does not silently modify a memory database.`);
-      await store.decideWriteback(writeback.writebackId, approved);
+      approved = await ctx.ui.confirm("ScoutPi context writeback", `Approve ${writeback.candidates.length} runtime-derived memory candidate(s)?\n\n${preview}\n\nApproval creates a durable outbox. Opt-in providers receive it through a reviewed, idempotent import adapter; ScoutPi never writes provider tables directly.`);
+      const decided = await store.decideWriteback(writeback.writebackId, approved, approved ? writeback.payloadSha256 : undefined);
+      if (approved && writableProviders.length) {
+        const outcomes: string[] = [];
+        for (const provider of writableProviders) {
+          const staged = await store.stageWritebackDelivery(decided, provider.providerId);
+          try {
+            await store.withWritebackDeliveryLease(staged.deliveryId, async () => {
+              const current = await store.getWritebackDelivery(staged.deliveryId);
+              if (current.state === "delivered") { outcomes.push(`${provider.providerId}:delivered`); return; }
+              const result = await provider.deliverWriteback!({ writeback: decided, delivery: current, project: process.env.SCOUTPI_CONTEXT_PROJECT?.trim() || basename(process.cwd()), timeoutMs: Math.max(500, Math.min(10_000, Number(process.env.SCOUTPI_CONTEXT_WRITEBACK_TIMEOUT_MS || 4_000) || 4_000)) });
+              if (result.receipt) {
+                await store.completeWritebackDelivery(current.deliveryId, result.receipt);
+                outcomes.push(`${provider.providerId}:delivered`);
+              } else {
+                await store.failWritebackDelivery(current.deliveryId, result.errorCode || "CONTEXT_PROVIDER_WRITEBACK_FAILED");
+                outcomes.push(`${provider.providerId}:failed`);
+              }
+            });
+          } catch (error) {
+            const code = String((error as { code?: string }).code || "CONTEXT_PROVIDER_WRITEBACK_FAILED");
+            if (code !== "CONTEXT_DELIVERY_BUSY") await store.failWritebackDelivery(staged.deliveryId, code).catch(() => undefined);
+            outcomes.push(`${provider.providerId}:${code === "CONTEXT_DELIVERY_BUSY" ? "busy" : "failed"}`);
+          }
+        }
+        deliveryState = outcomes.join(", ");
+      } else if (approved) deliveryState = "approved outbox";
+      else deliveryState = "rejected";
     }
-    pi.appendEntry("scoutpi:context-writeback", { writebackId: writeback.writebackId, state: ctx.hasUI ? approved ? "approved" : "rejected" : "pending", candidateIds: writeback.candidates.map((item) => item.candidateId), providerTargets: writeback.providerTargets, payloadSha256: writeback.payloadSha256 });
-    ctx.ui.setStatus("scoutpi-context", `Context | pack ${currentPackId?.slice(-8) || "none"} · writeback ${ctx.hasUI ? approved ? "approved" : "rejected" : "pending"}`);
+    pi.appendEntry("scoutpi:context-writeback", { writebackId: writeback.writebackId, state: ctx.hasUI ? approved ? "approved" : "rejected" : "pending", deliveryState, candidateIds: writeback.candidates.map((item) => item.candidateId), providerTargets: writeback.providerTargets, payloadSha256: writeback.payloadSha256 });
+    ctx.ui.setStatus("scoutpi-context", `Context | pack ${currentPackId?.slice(-8) || "none"} · writeback ${ctx.hasUI ? approved ? deliveryState : "rejected" : "pending"}`);
     pending.clear();
   });
 

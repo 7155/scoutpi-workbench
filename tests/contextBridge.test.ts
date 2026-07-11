@@ -119,7 +119,7 @@ test("Workbench API lists Context Packs and reviewed writebacks", async () => {
   const pack = buildContextPack({ sessionId: "session-api", query: "same season", candidates: envelope().items, maxTokens: 300 });
   await contextStore.savePack(pack);
   const writeback = await contextStore.createWriteback({ sessionId: "session-api", candidates: [{ candidateId: "workflow-api", kind: "workflow", text: "Workflow workflow-api completed a verified replay.", confidence: 0.99, tags: ["workflow"], provenance: { source: "runtime_trace", toolCallId: "call-api", operation: "workflow_replay", targetId: "workflow-api" } }] });
-  await contextStore.decideWriteback(writeback.writebackId, true);
+  await contextStore.decideWriteback(writeback.writebackId, true, writeback.payloadSha256);
   const runtime = await createEarthWorkspaceServer({ host: "127.0.0.1", port: 0, workspace: new EarthWorkspace(join(root, "earth"), process.execPath), contextStore });
   await runtime.listen();
   try {

@@ -41,7 +41,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Event-only governance extension with parameter-bound, single-use user approval receipts
 - Event-only observability extension with privacy-preserving Agent run traces and provider-reported token/cost usage
 - Event-only durable checkpoint extension with atomic revisions, integrity checks, compaction hints, and one-time recovery context
-- Event-only Context Bridge with provider-neutral candidates, mixed-text token budgets, provenance, user-reviewed writeback outbox, and a query-only Wisdom Weasel RAG Core adapter
+- Event-only Context Bridge with provider-neutral candidates, mixed-text token budgets, provenance, user-reviewed writeback staging, and an opt-in idempotent Wisdom Weasel RAG Core adapter
 - Event-only Browser Evidence Bridge with allowed-root import, artifact hashes, explicit claim/hypothesis relations, and Agent-trace attachment
 - Event-only durable trigger extension with identity-bound HMAC grants, manual/interval/event conditions, idempotent replay, cooldown/expiry/run limits, and no additional model tool
 - Local stdio MCP compatibility server with four compact gateways, resource links, and no live/admin operations
@@ -148,7 +148,13 @@ export SCOUTPI_IME_CORE_ROOT=/absolute/path/to/wisdom-weasel-rag-ime
 export SCOUTPI_IME_CORE_DB="$HOME/Library/Application Support/RagIme/rag-ime.sqlite"
 ```
 
-The adapter queries the existing Core through a fixed, versioned subprocess contract. It does not enable raw debug output or mutate the IME database.
+The adapter queries the existing Core through a fixed, versioned subprocess contract. It does not enable raw debug output. Writeback remains disabled unless the operator also sets:
+
+```bash
+export SCOUTPI_IME_CONTEXT_WRITEBACK=1
+```
+
+That path still requires direct Pi UI approval. It stages an integrity-bound delivery and writes only through the Core's own privacy-aware `InputMethodAdapter`, with deterministic event tags for retry deduplication; ScoutPi never issues SQL against the IME database.
 
 Use `/earth-triggers` to inspect durable workflow automation and `/earth-trigger-approve <trigger-id>` to issue an identity-bound dry-run delegation after direct review. Trigger automation never expands the three-tool model surface.
 

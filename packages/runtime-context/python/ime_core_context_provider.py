@@ -12,6 +12,7 @@ from typing import Any
 
 MAX_REQUEST_BYTES = 256 * 1024
 MAX_TEXT_CHARS = 2_000
+MAX_WRITEBACK_ITEMS = 24
 SECRET_PATTERN = re.compile(
     r"(?:\bsk-[A-Za-z0-9_-]{10,}|\bAKIA[0-9A-Z]{16}\b|\bBearer\s+[A-Za-z0-9._~-]{12,}|(?:password|secret|token)\s*[:=]\s*\S{6,})",
     re.IGNORECASE,
@@ -83,6 +84,104 @@ def _candidate(provider_id: str, raw: dict[str, Any]) -> dict[str, object] | Non
     }
 
 
+def _canonical_sha256(value: object) -> str:
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _writeback_candidate(raw: object) -> dict[str, object]:
+    if not isinstance(raw, dict):
+        raise ValueError("writeback candidate must be an object")
+    candidate_id = _text(raw.get("candidateId"), 240)
+    kind = _text(raw.get("kind"), 80)
+    text = _text(raw.get("text"), 1_000)
+    if not candidate_id or kind not in {"procedure", "project_state", "failure_pattern", "workflow"}:
+        raise ValueError("writeback candidate identity is invalid")
+    if not text or SECRET_PATTERN.search(text):
+        raise ValueError("writeback candidate text is empty or sensitive")
+    tags = []
+    for item in raw.get("tags", []):
+        tag = _text(item, 80).lower()
+        if tag and tag not in tags:
+            tags.append(tag)
+        if len(tags) >= 24:
+            break
+    return {"candidateId": candidate_id, "kind": kind, "text": text, "tags": tags}
+
+
+def _writeback(request: dict[str, Any]) -> dict[str, object]:
+    core_root = _safe_path(request.get("coreRoot"), directory=True)
+    db_path = _safe_path(request.get("dbPath"), directory=False)
+    writeback = request.get("writeback")
+    delivery = request.get("delivery")
+    if not isinstance(writeback, dict) or not isinstance(delivery, dict):
+        return _fail("IME_CORE_WRITEBACK_INVALID", "writeback and delivery are required")
+    if writeback.get("schemaVersion") != "scoutpi.context.writeback.v1" or delivery.get("schemaVersion") != "scoutpi.context.writeback-delivery.v1":
+        return _fail("IME_CORE_WRITEBACK_INVALID", "writeback contract is invalid")
+    if writeback.get("state") != "approved" or writeback.get("approvedBy") != "user":
+        return _fail("IME_CORE_WRITEBACK_NOT_APPROVED", "direct user approval is required")
+    approval_id = _text(writeback.get("approvalId"), 240)
+    writeback_id = _text(writeback.get("writebackId"), 240)
+    delivery_id = _text(delivery.get("deliveryId"), 240)
+    provider_id = _text(delivery.get("providerId"), 120)
+    if not approval_id or not writeback_id or not delivery_id or provider_id != "wisdom-weasel-rag-ime":
+        return _fail("IME_CORE_WRITEBACK_INVALID", "writeback identity is invalid")
+    if delivery.get("writebackId") != writeback_id or delivery.get("approvalId") != approval_id:
+        return _fail("IME_CORE_WRITEBACK_MISMATCH", "delivery is not bound to the approved writeback")
+    raw_candidates = writeback.get("candidates")
+    if not isinstance(raw_candidates, list) or not 1 <= len(raw_candidates) <= MAX_WRITEBACK_ITEMS:
+        return _fail("IME_CORE_WRITEBACK_INVALID", "writeback candidate count is invalid")
+    payload_sha256 = _text(writeback.get("payloadSha256"), 64)
+    if writeback.get("payloadHashAlgorithm") != "sha256-canonical-json-v1" or _canonical_sha256(raw_candidates) != payload_sha256 or delivery.get("payloadSha256") != payload_sha256:
+        return _fail("IME_CORE_WRITEBACK_INTEGRITY_FAILED", "writeback payload integrity check failed")
+    candidates = [_writeback_candidate(item) for item in raw_candidates]
+    if not (core_root / "rag_ime" / "adapter.py").is_file():
+        return _fail("IME_CORE_WRITEBACK_API_MISSING", "RAG Core adapter is missing")
+    sys.path.insert(0, str(core_root))
+    from rag_ime.adapter import InputMethodAdapter
+    from rag_ime.local_sqlite_core import LocalSqliteCoreClient
+
+    started = time.perf_counter()
+    core = LocalSqliteCoreClient(db_path)
+    adapter = InputMethodAdapter(core, project=_text(request.get("project"), 200) or "scoutpi-workbench")
+    receipts = []
+    duplicate_count = 0
+    for candidate in candidates:
+        candidate_id = str(candidate["candidateId"])
+        idempotency_tag = "scoutpi-writeback:" + hashlib.sha256(f"{writeback_id}:{candidate_id}".encode("utf-8")).hexdigest()
+        if core.has_event_tag(idempotency_tag):
+            duplicate_count += 1
+            receipts.append({"candidateId": candidate_id, "state": "duplicate", "eventId": "existing"})
+            continue
+        event_id = adapter.commit_text(
+            str(candidate["text"]),
+            recent_context=f"ScoutPi approved context writeback {writeback_id}",
+            project=_text(request.get("project"), 200) or "scoutpi-workbench",
+            app="ScoutPi",
+            privacy_disposition="allowed",
+            field_is_sensitive=False,
+            source="scoutpi_context_writeback",
+            provider_name="scoutpi-context",
+            tags=tuple(dict.fromkeys(("scoutpi", "context-writeback", str(candidate["kind"]), idempotency_tag, *candidate["tags"]))),
+        )
+        if not isinstance(event_id, str) or not event_id or event_id.startswith("skipped:"):
+            raise RuntimeError("RAG Core rejected an approved writeback item")
+        receipts.append({"candidateId": candidate_id, "state": "delivered", "eventId": event_id})
+    return {
+        "ok": True,
+        "receipt": {
+            "schemaVersion": "scoutpi.context-provider.receipt.v1",
+            "providerId": provider_id,
+            "deliveryId": delivery_id,
+            "deliveredAt": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "itemCount": len(receipts),
+            "duplicateCount": duplicate_count,
+            "items": receipts,
+            "latencyMs": round((time.perf_counter() - started) * 1_000, 2),
+        },
+    }
+
+
 def _query(request: dict[str, Any]) -> dict[str, object]:
     core_root = _safe_path(request.get("coreRoot"), directory=True)
     db_path = _safe_path(request.get("dbPath"), directory=False)
@@ -145,10 +244,12 @@ def main() -> int:
             request = json.loads(raw.decode("utf-8") or "{}")
             if not isinstance(request, dict) or request.get("schemaVersion") != "scoutpi.context-provider.request.v1":
                 response = _fail("IME_CORE_REQUEST_INVALID", "request contract is invalid")
-            elif request.get("op") != "query":
-                response = _fail("IME_CORE_OPERATION_BLOCKED", "only query is supported")
-            else:
+            elif request.get("op") == "query":
                 response = _query(request)
+            elif request.get("op") == "writeback":
+                response = _writeback(request)
+            else:
+                response = _fail("IME_CORE_OPERATION_BLOCKED", "operation is not supported")
         except Exception:
             response = _fail("IME_CORE_PROVIDER_FAILED", "provider query failed")
     sys.stdout.write(json.dumps(response, ensure_ascii=False, separators=(",", ":")))

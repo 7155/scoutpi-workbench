@@ -82,3 +82,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - The provider fails closed, rejects sensitive-looking material, caps process I/O and latency, and never enables raw-event retrieval or mutates the Core SQLite database.
 - Runtime Center shows provider readiness, latency, and selected candidate count. All 58 tests, Earth/MCP harnesses, Python compile, production build, and production dependency audit pass.
 - Next: deliver user-approved writebacks through a reviewed staging/import protocol rather than writing the Core database directly, then optimize cold-start latency only if measured runtime data justifies it.
+
+### 2026-07-11 - Approved Wisdom Weasel writeback loop
+
+- Wisdom Weasel remains query-only by default. Enabling writeback adds capability but still requires the current user to approve the exact reviewed payload in Pi.
+- Approval now creates a canonical payload hash, approval ID, durable delivery record, cross-process lease, and content-minimal provider receipt.
+- The provider imports through the Core's privacy-aware `InputMethodAdapter`; ScoutPi does not issue SQL. Deterministic Core event tags make process retries deduplicate already committed items.
+- Runtime Center distinguishes pending review, approved outbox, failed/staged delivery, and delivered memory. Desktop/mobile QA and all 60 tests pass.
+- Next: measure Context Provider cold-start cost across repeated turns and add a bounded persistent worker only if it materially reduces latency without expanding the privacy boundary.

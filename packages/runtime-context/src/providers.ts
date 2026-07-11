@@ -3,7 +3,7 @@ import { access, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ContextCandidateEnvelope } from "./index.ts";
+import type { ContextCandidateEnvelope, ContextWriteback, ContextWritebackDelivery, ContextWritebackProviderReceipt } from "./index.ts";
 
 export type ContextProviderCapability = "query" | "writeback";
 export type ContextProviderState = "ready" | "unavailable" | "failed";
@@ -33,11 +33,24 @@ export interface ContextProviderResult {
   status: ContextProviderStatus;
 }
 
+export interface ContextProviderWritebackRequest {
+  writeback: ContextWriteback;
+  delivery: ContextWritebackDelivery;
+  project: string;
+  timeoutMs: number;
+}
+
+export interface ContextProviderWritebackResult {
+  receipt?: ContextWritebackProviderReceipt;
+  errorCode?: string;
+}
+
 export interface ContextProvider {
   readonly providerId: string;
   readonly displayName: string;
   readonly capabilities: ContextProviderCapability[];
   query(input: ContextProviderQuery, signal?: AbortSignal): Promise<ContextProviderResult>;
+  deliverWriteback?(input: ContextProviderWritebackRequest, signal?: AbortSignal): Promise<ContextProviderWritebackResult>;
 }
 
 export interface ImeCoreContextProviderConfig {
@@ -47,12 +60,14 @@ export interface ImeCoreContextProviderConfig {
   pythonCommand?: string;
   useUv?: boolean;
   scriptPath?: string;
+  writebackEnabled?: boolean;
 }
 
 type ProcessResponse = {
   ok?: boolean;
   error?: { code?: string; message?: string };
   envelope?: ContextCandidateEnvelope;
+  receipt?: ContextWritebackProviderReceipt;
   diagnostics?: { latencyMs?: number; candidateCount?: number };
 };
 
@@ -99,9 +114,13 @@ async function runJsonProcess(command: string, args: string[], cwd: string, inpu
     child.on("error", (error) => finish(Object.assign(error, { code: "CONTEXT_PROVIDER_SPAWN_FAILED" })));
     child.on("close", (code) => {
       if (settled) return;
-      if (code !== 0) return finish(Object.assign(new Error("context provider process failed"), { code: "CONTEXT_PROVIDER_PROCESS_FAILED", cause: stderr.slice(0, 500) }));
-      try { finish(undefined, JSON.parse(stdout) as ProcessResponse); }
-      catch { finish(Object.assign(new Error("context provider returned invalid JSON"), { code: "CONTEXT_PROVIDER_RESPONSE_INVALID" })); }
+      try {
+        const response = JSON.parse(stdout) as ProcessResponse;
+        if (code !== 0 && response.ok === undefined) throw new Error("missing provider status");
+        finish(undefined, response);
+      } catch {
+        finish(Object.assign(new Error("context provider returned invalid JSON"), { code: code === 0 ? "CONTEXT_PROVIDER_RESPONSE_INVALID" : "CONTEXT_PROVIDER_PROCESS_FAILED", cause: stderr.slice(0, 500) }));
+      }
     });
     child.stdin.end(`${JSON.stringify(input)}\n`);
   });
@@ -110,13 +129,14 @@ async function runJsonProcess(command: string, args: string[], cwd: string, inpu
 export class ImeCoreContextProvider implements ContextProvider {
   readonly providerId = "wisdom-weasel-rag-ime";
   readonly displayName = "Wisdom Weasel RAG Core";
-  readonly capabilities = ["query"] as ContextProviderCapability[];
+  readonly capabilities: ContextProviderCapability[];
   readonly coreRoot: string;
   readonly dbPath: string;
   readonly project: string;
   readonly pythonCommand: string;
   readonly useUv: boolean;
   readonly scriptPath: string;
+  readonly writebackEnabled: boolean;
 
   constructor(config: ImeCoreContextProviderConfig) {
     this.coreRoot = resolve(config.coreRoot);
@@ -125,6 +145,8 @@ export class ImeCoreContextProvider implements ContextProvider {
     this.pythonCommand = config.pythonCommand || "python3";
     this.useUv = config.useUv ?? true;
     this.scriptPath = resolve(config.scriptPath || defaultScript);
+    this.writebackEnabled = config.writebackEnabled === true;
+    this.capabilities = this.writebackEnabled ? ["query", "writeback"] : ["query"];
   }
 
   async query(input: ContextProviderQuery, signal?: AbortSignal): Promise<ContextProviderResult> {
@@ -156,13 +178,36 @@ export class ImeCoreContextProvider implements ContextProvider {
     }
   }
 
-  private async assertConfigured(): Promise<void> {
+  async deliverWriteback(input: ContextProviderWritebackRequest, signal?: AbortSignal): Promise<ContextProviderWritebackResult> {
+    if (!this.writebackEnabled) return { errorCode: "CONTEXT_PROVIDER_WRITEBACK_DISABLED" };
+    try {
+      await this.assertConfigured(true);
+      const { command, args } = await this.launcher();
+      const response = await runJsonProcess(command, args, this.coreRoot, {
+        schemaVersion: "scoutpi.context-provider.request.v1",
+        op: "writeback",
+        coreRoot: this.coreRoot,
+        dbPath: this.dbPath,
+        project: input.project || this.project,
+        delivery: input.delivery,
+        writeback: input.writeback,
+      }, Math.max(300, Math.min(10_000, input.timeoutMs)), signal);
+      if (!response.ok || !response.receipt) return { errorCode: safeErrorCode(response.error || { code: "CONTEXT_PROVIDER_WRITEBACK_REJECTED" }) };
+      if (response.receipt.providerId !== this.providerId || response.receipt.deliveryId !== input.delivery.deliveryId) return { errorCode: "CONTEXT_PROVIDER_RECEIPT_MISMATCH" };
+      return { receipt: response.receipt };
+    } catch (error) {
+      return { errorCode: safeErrorCode(error) };
+    }
+  }
+
+  private async assertConfigured(requireWriteback = false): Promise<void> {
     try {
       const [rootInfo, dbInfo] = await Promise.all([stat(this.coreRoot), stat(this.dbPath)]);
       if (!rootInfo.isDirectory() || !dbInfo.isFile()) throw new Error("invalid provider path");
       await Promise.all([
         access(join(this.coreRoot, "rag_ime", "local_sqlite_core.py")),
         access(join(this.coreRoot, "rag_ime", "memory_models.py")),
+        ...(requireWriteback ? [access(join(this.coreRoot, "rag_ime", "adapter.py"))] : []),
         access(this.scriptPath),
       ]);
     } catch (error) {
@@ -193,5 +238,6 @@ export function configuredContextProviders(): ContextProvider[] {
     project: process.env.SCOUTPI_IME_CONTEXT_PROJECT?.trim(),
     pythonCommand: process.env.SCOUTPI_IME_CONTEXT_PYTHON?.trim(),
     useUv: process.env.SCOUTPI_IME_CONTEXT_USE_UV !== "0",
+    writebackEnabled: process.env.SCOUTPI_IME_CONTEXT_WRITEBACK === "1",
   })];
 }

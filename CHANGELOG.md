@@ -10,7 +10,8 @@
 - Added a local stdio MCP compatibility server with four bounded gateways, artifact/evidence resources, an official-client harness, and Runtime Center visibility.
 - Added zero-tool durable workflow triggers with service identities, signed dry-run delegation grants, manual/interval/event conditions, idempotent replay, supervisor leases, event receipts, API access, and a responsive Automation view.
 - Added Browser Evidence Bridge event dispatch so canonical evidence imports can activate an explicitly authorized workflow without persisting raw event payloads.
-- Added a query-only Wisdom Weasel RAG Core Context Provider with a bounded JSON subprocess contract, stable provenance, secret rejection, timeout/output limits, live provider status, and no duplicate memory database.
+- Added a default query-only Wisdom Weasel RAG Core Context Provider with a bounded JSON subprocess contract, stable provenance, secret rejection, timeout/output limits, and live provider status.
+- Added optional approved Core writeback with canonical payload integrity, durable delivery staging, privacy-aware Core API use, deterministic retry deduplication, content-minimal receipts, and Runtime Center delivery state.
 - Upgraded Pi ecosystem reuse into a Capability Broker that detects both tools and command-only market extensions across research, MCP, browser, memory, context, subagents, goals, interop, security, package management, and evaluation.
 - Isolated every paid Pi RPC harness case in a fresh temporary workspace and made full-suite execution explicit.
 - Fixed an asynchronous local-export test cleanup race observed on GitHub Actions.
