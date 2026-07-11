@@ -1,17 +1,17 @@
 # ScoutPi Workbench
 
-**A Pi-native runtime for building and running evidence-backed Earth investigations.**
+**A Pi-native spatial runtime for understanding and operating geospatial data, imagery, and evidence.**
 
 [![CI](https://github.com/7155/scoutpi-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/7155/scoutpi-workbench/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white)](#quick-start)
 [![Pi native](https://img.shields.io/badge/Pi-native-111827)](#pi-integration)
 
-ScoutPi Workbench gives Pi a small, typed Earth runtime instead of a permanent collection of scenario tools. At task time, Pi can research a dataset, create a declarative adapter, verify it against Earth Engine, compile an investigation, supervise compute and exports, and preserve a successful workflow as a skill.
+ScoutPi Workbench gives Pi a small, typed spatial runtime instead of a permanent collection of scenario tools. Pi is the primary operator: it can research a dataset, create a declarative adapter, verify it, compile an investigation, supervise compute and exports, control the spatial canvas, and preserve a successful workflow as a skill. The Workbench is an operator console for observing that state, reviewing evidence, and intervening when needed.
 
 Forest, flood, agriculture, urban change, water, climate, and disaster tasks are possible inputs. They are not hard-coded product branches.
 
-![ScoutPi Workbench with a live Earth Engine layer](docs/assets/workbench-live-gee.png)
+![ScoutPi Spatial Runtime with a live Earth Engine layer in Cesium](docs/assets/workbench-spatial-runtime-3d.png)
 
 ## Why This Runtime
 
@@ -52,12 +52,12 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Live adapter probes that check collection availability, sample time, required bands, and quality-mask bands
 - Typed `InvestigationSpec -> DatasetPlan -> AnalysisDAG` compiler with cost and evidence checks
 - Dry run, inline Earth Engine metrics, Drive export, task polling, cancellation, and retryable local export jobs
-- Direct Earth Engine raster tiles in MapLibre, without first downloading a GeoTIFF
+- Direct Earth Engine raster tiles in MapLibre 2D and CesiumJS 3D, without first downloading a GeoTIFF
 - Bounded geedim GeoTIFF export with scale/pixel review, manifest, byte count, and SHA-256
 - Safe CSV/JSON/GeoJSON statistics without arbitrary code execution
 - Generated `scoutpi.earth.skill.v1` drafts with confirmed publishing and overwrite protection
 - Automatic workflow candidates from verified successful jobs, explicit promotion, deterministic replay, cost assertions, and adapter-drift rejection
-- Vue Workbench for maps, plans, jobs, artifacts, recipes, workflows, and a responsive Runtime Center that consolidates capabilities, Context Packs, continuity, approvals, Agent traces, and token/cost telemetry
+- Pi-oriented Vue operator console with collapsible task/state rails, a synchronized 2D/3D spatial canvas, evidence, execution state, artifacts, workflows, and a responsive Runtime Center
 - Persistent English/Simplified Chinese Workbench localization for navigation, controls, dialogs, charts, runtime states, and observable roles while preserving user-authored evidence text verbatim
 - Pi Capability Broker over tools and commands, with a durable path-safe capability profile and operator-facing Extensions view, so market-provided research, MCP, memory, browser, context, goals, security, interoperability, evaluation, and subagent capabilities are reused rather than copied
 
@@ -295,6 +295,7 @@ The current live smoke path also verifies a real Dynamic World tile and a small 
 - [Browser Evidence Bridge](docs/scoutpi/BROWSER_EVIDENCE_BRIDGE.md)
 - [Evidence Reviewer](docs/scoutpi/EVIDENCE_REVIEWER.md)
 - [Workbench localization](docs/scoutpi/WORKBENCH_LOCALIZATION.md)
+- [Spatial canvas and 2D/3D runtime](docs/scoutpi/SPATIAL_CANVAS_RUNTIME.md)
 - [MCP compatibility server](docs/scoutpi/MCP_COMPATIBILITY.md)
 - [Durable triggers and delegation](docs/scoutpi/DURABLE_TRIGGERS_AND_DELEGATION.md)
 - [Workflow Compiler](docs/scoutpi/WORKFLOW_COMPILER.md)
@@ -316,6 +317,7 @@ The product direction and the `Pi -> typed investigation -> supervised compute -
 | [earendil-works/pi](https://github.com/earendil-works/pi) and upstream [badlogic/pi-mono](https://github.com/badlogic/pi-mono) | Typed extension lifecycle, RPC mode, commands, skills, user UI and active-tool APIs | Pi remains the host Agent loop; ScoutPi contributes domain tools plus event-only governance and tracing. |
 | [modelcontextprotocol/typescript-sdk](https://github.com/modelcontextprotocol/typescript-sdk) | Stable 1.x stdio server, resources, resource links, annotations, and in-memory protocol testing | ScoutPi exposes four high-level compatibility gateways; it does not replace Pi or implement another generic MCP client. |
 | [google/earthengine-api](https://github.com/google/earthengine-api) | Initialization, map IDs, batch exports, task status, and cancellation | The worker exposes typed operations and never evaluates generated Earth Engine code. |
+| [CesiumGS/cesium](https://github.com/CesiumGS/cesium) | 3D globe, imagery providers, camera control, workers, and Vite deployment boundaries | Optional lazy 3D renderer over ScoutPi's existing typed region and tile contracts; no separate Agent tool or scenario branch. |
 | [gee-community/geemap](https://github.com/gee-community/geemap) | Analyst-facing Earth Engine maps, charts, and export conventions | Optional review backend; BrowserBridge does not click through geemap widgets. |
 | [leftfield-geospatial/geedim](https://github.com/leftfield-geospatial/geedim) | Tiled local GeoTIFF, NumPy, and Xarray delivery | Used behind a bounded, supervised `export_local` contract. |
 | [gee-community/geetools](https://github.com/gee-community/geetools) | Reusable Earth Engine preprocessing and object extensions | Pipeline dependency; future operations remain reviewed and typed. |

@@ -1,17 +1,20 @@
 <template>
-  <div class="app-shell">
+  <div :class="['app-shell', { 'left-collapsed': !leftPanelOpen, 'right-collapsed': !rightPanelOpen }]">
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark"><Orbit :size="20" /></div>
-        <div><strong>ScoutPi Earth</strong><span>{{ t('Investigation Workbench') }}</span></div>
+        <div><strong>ScoutPi Earth</strong><span>{{ t('Spatial Runtime') }}</span></div>
       </div>
       <div class="top-context" v-if="selectedPlan">
+        <Bot :size="14" />
         <span>{{ selectedPlan.spec.region.name || selectedPlan.spec.investigationId }}</span>
         <ChevronRight :size="14" />
         <strong>{{ selectedPlan.spec.period.startYear }}-{{ selectedPlan.spec.period.endYear }}</strong>
       </div>
       <div class="top-actions">
         <div class="locale-switch" role="group" :aria-label="t('Language')"><button :class="{ active: locale === 'en' }" @click="setLocale('en')">EN</button><button :class="{ active: locale === 'zh-CN' }" @click="setLocale('zh-CN')">中</button></div>
+        <button class="icon-button desktop-panel-toggle" :class="{ active: leftPanelOpen }" :title="leftPanelOpen ? t('Hide Pi tasks') : t('Show Pi tasks')" @click="leftPanelOpen = !leftPanelOpen"><PanelLeft :size="17" /></button>
+        <button class="icon-button desktop-panel-toggle" :class="{ active: rightPanelOpen }" :title="rightPanelOpen ? t('Hide spatial state') : t('Show spatial state')" @click="rightPanelOpen = !rightPanelOpen"><PanelRight :size="17" /></button>
         <button :class="['runtime-launch', { attention: runtimeAttention > 0, ready: runtimeAttention === 0 && environment.authenticated }]" :title="t('Open Runtime Center')" @click="mobileActionMenu = false; registryDialog = true"><span class="runtime-dot"></span><span>{{ t('Runtime') }}</span><strong>{{ runtimeAttention ? t('count.review', { count: runtimeAttention }) : environment.authenticated ? t('Ready') : t('Dry run') }}</strong><Waypoints :size="15" /></button>
         <button class="icon-button mobile-only" :title="t('Investigations')" @click="mobileActionMenu = false; showSidebar = !showSidebar"><PanelLeft :size="18" /></button>
         <button class="icon-button compact-on-mobile" :title="t('Refresh workspace')" :disabled="loading" @click="refresh"><RefreshCw :class="{ spin: loading }" :size="17" /></button>
@@ -31,22 +34,22 @@
 
     <aside :class="['sidebar', { open: showSidebar }]">
       <div class="sidebar-head">
-        <div><span>{{ t('Workspace') }}</span><strong>{{ t('Investigations') }}</strong></div>
-        <button class="icon-button primary-icon" :title="t('New investigation')" @click="newDialog = true"><Plus :size="18" /></button>
+        <div><span>{{ t('Pi runtime') }}</span><strong>{{ t('Spatial tasks') }}</strong></div>
+        <button class="icon-button" :title="t('Create local test task')" @click="newDialog = true"><Plus :size="18" /></button>
       </div>
-      <label class="search-box"><Search :size="15" /><input v-model="search" :placeholder="t('Search investigations')"></label>
+      <label class="search-box"><Search :size="15" /><input v-model="search" :placeholder="t('Search Pi tasks')"></label>
       <div class="plan-list">
         <button v-for="plan in filteredPlans" :key="plan.planId" :class="['plan-item', { active: plan.planId === selectedPlanId }]" @click="selectPlan(plan.planId)">
           <span class="plan-state" :class="latestJob(plan.planId)?.state || 'draft'"></span>
           <span class="plan-copy"><strong>{{ plan.spec.region.name || plan.spec.investigationId }}</strong><small>{{ plan.spec.question }}</small></span>
           <span class="plan-years">{{ plan.spec.period.startYear }}-{{ plan.spec.period.endYear }}</span>
         </button>
-        <div v-if="!filteredPlans.length" class="sidebar-empty"><FolderSearch :size="26" /><span>{{ t('No investigations') }}</span></div>
+        <div v-if="!filteredPlans.length" class="sidebar-empty"><FolderSearch :size="26" /><span>{{ t('No spatial tasks') }}</span></div>
       </div>
       <div class="environment-block">
-        <div><Server :size="15" /><span>{{ t('Earth runtime') }}</span><strong>{{ environment.installed ? environment.earthengineVersion || t('installed') : t('missing') }}</strong></div>
-        <div><KeyRound :size="15" /><span>{{ t('Authentication') }}</span><strong>{{ environment.authenticated ? t('connected') : t('required for live') }}</strong></div>
-        <div><Database :size="15" /><span>{{ t('Plans / runs') }}</span><strong>{{ plans.length }} / {{ jobs.length }}</strong></div>
+        <div><Server :size="15" /><span>{{ t('Spatial engine') }}</span><strong>{{ environment.installed ? environment.earthengineVersion || t('installed') : t('missing') }}</strong></div>
+        <div><KeyRound :size="15" /><span>{{ t('Data access') }}</span><strong>{{ environment.authenticated ? t('connected') : t('required for live') }}</strong></div>
+        <div><Database :size="15" /><span>{{ t('Tasks / runs') }}</span><strong>{{ plans.length }} / {{ jobs.length }}</strong></div>
         <button :title="t('Open Runtime Center')" @click="registryDialog = true"><Waypoints :size="15" /><span>{{ t('Runtime center') }}</span><strong>{{ runtimeAttention ? t('count.review', { count: runtimeAttention }) : t('count.adapters', { count: adapters.length }) }}</strong></button>
       </div>
     </aside>
@@ -66,19 +69,19 @@
       <div v-else class="empty-workspace">
         <div class="empty-map-grid"></div>
         <Orbit :size="36" />
-        <h1>{{ t('Earth Investigation Workbench') }}</h1>
-        <p>{{ t('Create a typed investigation to compile datasets, evidence checks and an executable analysis graph.') }}</p>
-        <button class="primary" @click="newDialog = true"><Plus :size="16" />{{ t('New investigation') }}</button>
+        <h1>{{ t('Pi Spatial Runtime') }}</h1>
+        <p>{{ t('Waiting for Pi to attach a spatial task.') }}</p>
+        <button class="secondary" @click="newDialog = true"><Plus :size="16" />{{ t('Create local test task') }}</button>
       </div>
     </main>
 
     <aside class="inspector">
       <template v-if="selectedPlan">
         <header class="inspector-head">
-          <div><span>{{ t('Investigation') }}</span><h1>{{ selectedPlan.spec.question }}</h1></div>
+          <div><span>{{ t('Pi spatial state') }}</span><h1>{{ selectedPlan.spec.question }}</h1></div>
           <button class="icon-button" :title="t('Runtime registry')" @click="registryDialog = true"><MoreHorizontal :size="18" /></button>
         </header>
-        <div class="role-strip"><span v-for="item in selectedPlan.datasets" :key="item.role">{{ roleLabel(item.role) }}</span></div>
+        <div class="role-strip"><strong>{{ t('Layers') }}</strong><span v-for="item in selectedPlan.datasets" :key="item.role">{{ roleLabel(item.role) }}</span></div>
         <nav class="inspector-tabs">
           <button v-for="tab in tabs" :key="tab.id" :class="{ active: activeTab === tab.id }" :title="tab.label" @click="activeTab = tab.id"><component :is="tab.icon" :size="16" /><span>{{ tab.label }}</span></button>
         </nav>
@@ -153,7 +156,7 @@
 
 <script setup lang="ts">
 import { computed, markRaw, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { AlertCircle, AlertTriangle, Ban, BarChart3, BookOpen, ChevronLeft, ChevronRight, Database, Download, ExternalLink, FileText, FlaskConical, FolderSearch, GitBranch, Info, KeyRound, Languages, Layers3, ListChecks, LoaderCircle, MoreHorizontal, Orbit, PanelLeft, Play, Plus, RefreshCw, RotateCcw, RotateCw, ScanSearch, Search, Server, Waypoints, X } from "lucide-vue-next";
+import { AlertCircle, AlertTriangle, Ban, BarChart3, BookOpen, Bot, ChevronLeft, ChevronRight, Database, Download, ExternalLink, FileText, FlaskConical, FolderSearch, GitBranch, Info, KeyRound, Languages, Layers3, ListChecks, LoaderCircle, MoreHorizontal, Orbit, PanelLeft, PanelRight, Play, Plus, RefreshCw, RotateCcw, RotateCw, ScanSearch, Search, Server, Waypoints, X } from "lucide-vue-next";
 import { api } from "./api";
 import { useI18n } from "./i18n";
 import InvestigationMap from "./components/InvestigationMap.vue";
@@ -218,13 +221,15 @@ const savingRecipe = ref(false);
 const registryDialog = ref(false);
 const savingRegistry = ref(false);
 const showSidebar = ref(false);
+const leftPanelOpen = ref(true);
+const rightPanelOpen = ref(true);
 const mobileActionMenu = ref(false);
 const error = ref("");
 const tabs = computed(() => [
   { id: "evidence", label: t("Evidence"), icon: markRaw(ListChecks) },
-  { id: "metrics", label: t("Metrics"), icon: markRaw(BarChart3) },
-  { id: "plan", label: t("Plan"), icon: markRaw(GitBranch) },
-  { id: "runs", label: t("Runs"), icon: markRaw(Layers3) },
+  { id: "metrics", label: t("Spatial data"), icon: markRaw(BarChart3) },
+  { id: "plan", label: t("Analysis"), icon: markRaw(GitBranch) },
+  { id: "runs", label: t("Execution"), icon: markRaw(Layers3) },
 ]);
 
 const selectedPlan = computed(() => plans.value.find((plan) => plan.planId === selectedPlanId.value));

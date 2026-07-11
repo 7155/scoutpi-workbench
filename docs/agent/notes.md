@@ -175,3 +175,14 @@
 - Known runtime states and observable roles use bounded bilingual label maps; unknown values remain visible through a readable fallback.
 - Visual QA: English and Chinese switch immediately on desktop and mobile, the mobile language action remains available without crowding primary controls, 1440x1000 and 390x844 have no horizontal overflow, and a fresh browser session reports zero console errors/warnings.
 - Verification: all 66 tests, TypeScript, Python compile, Earth/MCP harnesses, extracted Pi package boot, and production Workbench build pass. Package size is 51 entries, 143,529 packed bytes, and 519,388 unpacked bytes.
+
+## 2026-07-11 11:49 - Pi spatial canvas and Cesium switching
+
+- Corrected the product boundary: Pi is the primary operator; the Workbench is a runtime console for observing tasks, spatial state, evidence and execution rather than a scenario-specific manual dashboard.
+- Added a persistent MapLibre 2D / lazy CesiumJS 3D switch over the same generic bbox/GeoJSON region, selected layer, GEE tile URL, legend and year. No new Pi tool or download path was introduced.
+- Added self-hosted Cesium workers/assets for Vite, OSM plus ellipsoid terrain without an ion token, pitched region framing, renderer resize observation, visible attribution and a bounded 3D failure state.
+- Renamed the interface around Pi tasks and Pi spatial state, made both desktop rails independently collapsible, and kept local task creation as a secondary testing action.
+- Added bilingual labels, deterministic geometry/mode tests, a public architecture document, Cesium reference and a new README screenshot.
+- Visual QA: desktop and 390x844 Playwright runs have zero console errors/warnings and no horizontal overflow. Cesium reports two frames, one region feature and one live analysis layer; collapsed rails expand canvas to 1439x872.
+- Pixel scan over the rendered 3D canvas: YMIN 28, YAVG 182.274, YMAX 235 and SATAVG 15.7683, rejecting a blank frame.
+- Verification: `pnpm check` passes 68 tests, TypeScript, Python compile, Earth/MCP harnesses, extracted package boot and production build. Package is 51 entries, 143,845 packed bytes and 520,148 unpacked bytes. `pnpm audit --prod`, built Cesium asset checks and `git diff --check` pass.

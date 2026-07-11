@@ -57,8 +57,8 @@ Current verified package budget:
 
 ```text
 entries:       51
-packed:        143,529 bytes
-unpacked:      519,388 bytes
+packed:        143,845 bytes
+unpacked:      520,148 bytes
 extensions:    7
 skill:         loaded
 ```

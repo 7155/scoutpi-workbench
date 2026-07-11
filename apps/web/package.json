@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
+    "cesium": "^1.143.0",
     "echarts": "^6.0.0",
     "lucide-vue-next": "^0.468.0",
     "maplibre-gl": "^5.12.0",
@@ -18,6 +19,7 @@
     "@types/geojson": "^7946.0.16",
     "@vitejs/plugin-vue": "^6.0.0",
     "vite": "^7.0.0",
+    "vite-plugin-static-copy": "^4.1.1",
     "vue-tsc": "^3.0.0"
   }
 }

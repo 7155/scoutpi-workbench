@@ -5,6 +5,8 @@ import { translate, translateRole, translateStatus } from "../apps/web/src/i18n.
 test("Workbench localization switches stable product labels without changing domain identifiers", () => {
   assert.equal(translate("Evidence graph", {}, "en"), "Evidence graph");
   assert.equal(translate("Evidence graph", {}, "zh-CN"), "证据图谱");
+  assert.equal(translate("Spatial Runtime", {}, "zh-CN"), "空间运行时");
+  assert.equal(translate("3D globe", {}, "zh-CN"), "三维地球");
   assert.equal(translate("count.review", { count: 3 }, "en"), "3 review");
   assert.equal(translate("count.review", { count: 3 }, "zh-CN"), "3 项待审核");
   assert.equal(translateRole("built_surface", "zh-CN"), "建成区");

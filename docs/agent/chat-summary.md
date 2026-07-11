@@ -130,3 +130,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Core navigation, dialogs, maps, evidence, charts, Runtime Center, status/role labels, and automation controls are localized. User-authored and evidence-bearing domain content remains verbatim by design.
 - Desktop/mobile screenshots, locale persistence, document metadata, no-overflow checks, zero-console-error checks, all 66 tests, full build, and extracted Pi package verification pass.
 - Next: commit and push this UI milestone, then return to privacy-safe real Pi Agent evaluation artifacts and outcome scoring.
+
+### 2026-07-11 - Pi-operated spatial canvas
+
+- The Workbench now presents Pi tasks on the left, the shared spatial canvas in the center, and Pi spatial/evidence/execution state on the right; both desktop rails can be collapsed for a full-canvas view.
+- The same typed region and visualization contracts drive MapLibre 2D and a lazy CesiumJS 3D renderer. Renderer selection is browser-local, persists across reloads, and adds no model-facing tool.
+- Generic bbox, GeoJSON geometry, Feature and FeatureCollection inputs share one bounds/feature normalizer. Live GEE imagery is streamed to both renderers without a GeoTIFF download.
+- Desktop/mobile screenshots, canvas frame/state checks, pixel analysis, all 68 tests, full build/package verification and dependency audit pass.
+- Next: restore the stashed privacy-safe Pi evaluation scorer work and continue real Pi Agent outcome evaluation.
