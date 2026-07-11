@@ -30,7 +30,7 @@ const contracts: Record<EarthRuntimeContractName, Record<string, unknown>> = {
       qualityMask: { mode: "all", rules: [{ band: "QA", op: "eq | neq | lt | lte | gt | gte | bit_clear | bit_set", value: 0, bit: 0 }] },
       visualization: { min: 0, max: 1, palette: ["f7fcf5", "238b45"] },
     },
-    guardrails: [{ id: "interpretation-boundary", severity: "warning", message: "A claim this adapter cannot prove" }],
+    guardrails: [{ id: "interpretation-boundary", severity: "warning", message: "A claim this adapter cannot prove", claimRule: { forbiddenTerms: ["direct causal claim"], requiredQualifiers: ["proxy"] } }],
   },
   adapter_pack: {
     schemaVersion: "scoutpi.earth.adapter-pack.v1",

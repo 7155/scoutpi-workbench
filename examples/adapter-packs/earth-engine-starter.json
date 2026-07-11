@@ -79,7 +79,7 @@
       "cadence": "monthly",
       "limitations": ["Night lights are not GDP.", "Outliers, background and temporary events require control."],
       "analysis": { "metric": "band_mean", "bands": ["avg_rad"], "outputName": "night_light_mean", "visualization": { "min": 0, "max": 50, "palette": ["081d58", "225ea8", "41b6c4", "c7e9b4", "ffffd9"] } },
-      "guardrails": [{ "id": "proxy-boundary", "severity": "blocking", "message": "Nighttime lights cannot be reported as GDP or economic output.", "resolution": "Describe it as an activity proxy and add independent evidence." }]
+      "guardrails": [{ "id": "proxy-boundary", "severity": "blocking", "message": "Nighttime lights cannot be reported as GDP or economic output.", "resolution": "Describe it as an activity proxy and add independent evidence.", "claimRule": { "forbiddenTerms": ["GDP", "economic output"], "requiredQualifiers": ["proxy", "activity indicator", "nighttime light"] } }]
     },
     {
       "schemaVersion": "scoutpi.earth.adapter.v1",

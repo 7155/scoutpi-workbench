@@ -324,9 +324,9 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
     async execute(toolCallId, input, _signal, onUpdate) {
       const started = performance.now();
       try {
-        update(onUpdate, "earth_story", "Validating claims, findings and provenance before writing EarthStory...");
+        update(onUpdate, "earth_story", "Reviewing claim, computation, counterevidence and provenance bindings...");
         const result = await workspace.story(input.story as EarthStoryArtifact);
-        const output = compact(`story ok investigation=${result.story.investigationId}\njson=${result.jsonPath}\nmarkdown=${result.markdownPath}`, { operation: "earth_story", jsonPath: result.jsonPath, markdownPath: result.markdownPath });
+        const output = compact(`story ok investigation=${result.story.investigationId} review=${result.review.status} warnings=${result.review.summary.warnings}\njson=${result.jsonPath}\nreview=${result.reviewPath}`, { operation: "earth_story", jsonPath: result.jsonPath, markdownPath: result.markdownPath, reviewPath: result.reviewPath, reviewStatus: result.review.status });
         await workspace.recordToolTelemetry("earth_story", input, resultText(output), performance.now() - started, "ok", toolCallId);
         return output;
       } catch (error) {

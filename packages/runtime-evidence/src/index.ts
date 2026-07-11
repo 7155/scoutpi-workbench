@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { copyFile, link, mkdir, readFile, readdir, realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, delimiter, dirname, extname, join, resolve, sep } from "node:path";
 
+export * from "./reviewer.ts";
+
 export type BrowserEvidenceSourceType = "local_ui" | "public_webpage" | "docs" | "dataset_page";
 export type BrowserEvidenceTrust = "high" | "medium" | "low";
 export type EvidenceRelation = "supports" | "contradicts" | "contextualizes" | "documents";

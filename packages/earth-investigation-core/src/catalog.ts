@@ -58,6 +58,11 @@ export function validateDatasetDescriptor(input: DatasetDescriptor): DatasetDesc
   for (const guardrail of adapter.guardrails || []) {
     safeId(guardrail.id, "guardrail id");
     if (!["info", "warning", "blocking"].includes(guardrail.severity) || !guardrail.message?.trim() || guardrail.message.length > 500 || (guardrail.resolution?.length || 0) > 500) invalid(`${adapter.datasetId} has an invalid guardrail`);
+    if (guardrail.claimRule) {
+      const { forbiddenTerms, requiredQualifiers = [] } = guardrail.claimRule;
+      const validTerms = (terms: unknown) => Array.isArray(terms) && terms.length <= 16 && terms.every((term) => typeof term === "string" && term.trim().length > 0 && term.length <= 80);
+      if (!validTerms(forbiddenTerms) || !forbiddenTerms.length || !validTerms(requiredQualifiers)) invalid(`${adapter.datasetId} has an invalid claimRule`);
+    }
   }
   return adapter;
 }

@@ -1,4 +1,4 @@
-import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph, InvestigationPlan, InvestigationSpec, JobArtifact, PiEcosystemProfile, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "./types";
+import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph, EvidenceReviewReport, InvestigationPlan, InvestigationSpec, JobArtifact, PiEcosystemProfile, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...init, headers: { "content-type": "application/json", ...(init?.headers || {}) } });
@@ -28,6 +28,7 @@ export const api = {
   contextWritebacks: async () => (await request<{ writebacks: ContextWritebackSummary[] }>("/api/context/writebacks?limit=100")).writebacks,
   evidence: async (investigationId?: string) => (await request<{ evidence: BrowserEvidenceRecord[] }>(`/api/evidence?limit=200${investigationId ? `&investigationId=${encodeURIComponent(investigationId)}` : ""}`)).evidence,
   evidenceGraph: (investigationId: string) => request<EvidenceGraph>(`/api/evidence/graph/${encodeURIComponent(investigationId)}`),
+  evidenceReview: (investigationId: string) => request<EvidenceReviewReport>(`/api/evidence/review/${encodeURIComponent(investigationId)}`),
   contract: (name: string) => request<{ name: string; template: Record<string, unknown> }>(`/api/contracts/${encodeURIComponent(name)}`),
   adapters: async () => (await request<{ adapters: RegisteredAdapter[] }>("/api/adapters")).adapters,
   importRegistry: (payload: Record<string, unknown>) => payload.schemaVersion === "scoutpi.earth.adapter-pack.v1"

@@ -101,6 +101,12 @@ export interface EvidenceGraph {
   edges: Array<{ edgeId: string; from: string; to: string; relation: string }>;
   coverage: { browserEvidence: number; claims: number; computedRuns: number; hypotheses: number; coveredHypotheses: number; uncoveredHypothesisIds: string[] };
 }
+export interface EvidenceReviewReport {
+  schemaVersion: "scoutpi.evidence-review.v1"; reviewId: string; investigationId: string; planId: string; reviewedAt: string; status: "passed" | "warning" | "blocked";
+  summary: { blocking: number; warnings: number; info: number; claims: number; findings: number; referencedJobs: number; completedLiveJobs: number; supportingSources: number; contradictingSources: number };
+  issues: Array<{ issueId: string; code: string; severity: "info" | "warning" | "blocking"; message: string; resolution: string; refs: { claimId?: string; hypothesisId?: string; jobId?: string; datasetId?: string; metricId?: string } }>;
+  provenance: { storySha256: string; evidenceIds: string[]; jobIds: string[] };
+}
 export interface ScoutPiMcpProfile {
   schemaVersion: "scoutpi.mcp-profile.v1";
   name: string;

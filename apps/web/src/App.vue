@@ -85,7 +85,7 @@
           <div v-if="activeTab === 'evidence'" class="panel-section evidence-section">
             <section>
               <div class="section-heading"><h2>Evidence graph</h2><span>{{ evidenceGraph?.nodes.length || 0 }} nodes</span></div>
-              <EvidenceGraph :graph="evidenceGraph" :records="selectedEvidence" />
+              <EvidenceGraph :graph="evidenceGraph" :records="selectedEvidence" :review="evidenceReview" />
             </section>
             <section>
               <div class="section-heading"><h2>Hypotheses</h2><span>{{ selectedPlan.spec.hypotheses.length }}</span></div>
@@ -162,7 +162,7 @@ import PlanGraph from "./components/PlanGraph.vue";
 import RecipeDialog from "./components/RecipeDialog.vue";
 import RuntimeRegistryDialog from "./components/RuntimeRegistryDialog.vue";
 import RunLedger from "./components/RunLedger.vue";
-import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph as EvidenceGraphState, InvestigationPlan, InvestigationSpec, JobArtifact, PiEcosystemProfile, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "./types";
+import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph as EvidenceGraphState, EvidenceReviewReport, InvestigationPlan, InvestigationSpec, JobArtifact, PiEcosystemProfile, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "./types";
 
 const plans = ref<InvestigationPlan[]>([]);
 const jobs = ref<EarthJob[]>([]);
@@ -179,6 +179,7 @@ const contextPacks = ref<ContextPackSummary[]>([]);
 const contextWritebacks = ref<ContextWritebackSummary[]>([]);
 const evidenceRecords = ref<BrowserEvidenceRecord[]>([]);
 const evidenceGraph = ref<EvidenceGraphState>();
+const evidenceReview = ref<EvidenceReviewReport>();
 const approvals = ref<RuntimeApproval[]>([]);
 const workflows = ref<EarthWorkflowSummary[]>([]);
 const workflowRuns = ref<EarthWorkflowReplay[]>([]);
@@ -273,9 +274,11 @@ async function refresh() {
   finally { loading.value = false; }
 }
 async function loadEvidenceGraph(investigationId: string) {
-  evidenceGraph.value = undefined;
-  try { evidenceGraph.value = await api.evidenceGraph(investigationId); }
-  catch (value) { error.value = value instanceof Error ? value.message : String(value); }
+  evidenceGraph.value = undefined; evidenceReview.value = undefined;
+  try {
+    const [graph, review] = await Promise.all([api.evidenceGraph(investigationId), api.evidenceReview(investigationId).catch(() => undefined)]);
+    evidenceGraph.value = graph; evidenceReview.value = review;
+  } catch (value) { error.value = value instanceof Error ? value.message : String(value); }
 }
 async function createPlan(spec: InvestigationSpec) {
   saving.value = true; error.value = "";

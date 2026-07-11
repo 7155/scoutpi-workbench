@@ -157,3 +157,12 @@
 - Result: 50 entries, 138,909 packed bytes, 501,989 unpacked bytes, 9 registered commands, 7 loaded extensions, and the skill discovered; no model or network request occurs.
 - Commands: `npm view scoutpi-workbench` currently returns 404, proving this work prepares publication but does not falsely claim the package is already in the official catalog. `pnpm package:verify`, all 62 tests, Earth/MCP harnesses, Python compile, production build, `pnpm audit --prod`, and `git diff --check` pass.
 - Git snapshot: seven tracked files plus the new release guide and verifier are scoped to this milestone before final verification.
+
+## 2026-07-11 10:52 - Deterministic Evidence Reviewer
+
+- Problem: EarthStory validated shape and evidence URLs, but could still phrase a dry run as computed evidence, cite a missing/wrong job, overstate a proxy, omit a hypothesis finding, or mark a conclusion supported without a matching evidence relation.
+- Decision: add a deterministic runtime gate rather than another model-facing tool or a scenario-specific reviewer. Adapter-specific interpretation boundaries remain declarative `claimRule` metadata.
+- Changes: added plan/job/source provenance checks, finding support checks, dry-run blocking, metric-unit and counterevidence warnings, claim binding/time/place drift checks, content-minimal persisted reports, an API endpoint, compact Pi output, and a Workbench review card above the Evidence Graph.
+- Safety: blocked candidates persist their review but never replace the last accepted EarthStory. Claim rules accept bounded literal terms only and cannot execute arbitrary code or regular expressions.
+- Visual QA: 1440x1000 and 390x844 Evidence views show the review status without horizontal overflow; console reports zero errors and warnings.
+- Verification: all 65 tests, TypeScript, Python compile, Earth/MCP harnesses, package extraction/RPC boot, and production build pass. The package remains 7 extensions/1 skill and is now 51 entries, 143,405 packed bytes, and 518,945 unpacked bytes. Production audit is clean; real Pi RPC initializes `gpt-5.6`, `xhigh`, all extensions, and no extension errors.

@@ -166,6 +166,11 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
         sendJson(response, 200, await workspace.evidenceGraph(evidenceGraphId));
         return;
       }
+      const evidenceReviewId = routeId(url.pathname, "/api/evidence/review/");
+      if (request.method === "GET" && evidenceReviewId) {
+        sendJson(response, 200, await workspace.getEvidenceReview(evidenceReviewId));
+        return;
+      }
       const bindEvidenceId = routeId(url.pathname, "/api/evidence/", "/bind");
       if (request.method === "POST" && bindEvidenceId) {
         sendJson(response, 200, await workspace.bindEvidence(bindEvidenceId, await readBody(request)));

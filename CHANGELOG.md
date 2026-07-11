@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a deterministic Evidence Reviewer with plan/job/source provenance gates, dry-run and unsupported-claim blocking, counterevidence/unit warnings, declarative adapter proxy rules, persisted reports, API access, and Workbench review status.
+
 - Added content-minimal durable Agent checkpoints with atomic writes, integrity verification, compaction preservation, interrupted-call recovery, API access, and Workbench visibility.
 - Added a zero-tool Context Bridge with provider-neutral candidate input, provenance, mixed-text token budgeting, exact run-trace attachment, and user-reviewed writeback outbox.
 - Added a dedicated Workbench Context view for packs, durable checkpoints, and writeback review state.

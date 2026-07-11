@@ -220,11 +220,15 @@ test("Earth Workspace and Workbench API expose investigation-scoped evidence and
       const base = `http://127.0.0.1:${address.port}`;
       const evidence: any = await (await fetch(`${base}/api/evidence?investigationId=evidence-api-investigation`)).json();
       const graph: any = await (await fetch(`${base}/api/evidence/graph/evidence-api-investigation`)).json();
+      const review: any = await (await fetch(`${base}/api/evidence/review/evidence-api-investigation`)).json();
       assert.equal(evidence.evidence.length, 1);
       assert.equal(graph.coverage.browserEvidence, 1);
       assert.equal(graph.coverage.computedRuns, 0);
       assert.equal(graph.coverage.coveredHypotheses, 1);
       assert.equal(graph.nodes.some((node: any) => node.kind === "finding"), true);
+      assert.equal(review.investigationId, "evidence-api-investigation");
+      assert.equal(review.status, "passed");
+      assert.equal(review.summary.blocking, 0);
     } finally { await runtime.close(); }
   } finally {
     if (previousRoots === undefined) delete process.env.SCOUTPI_BROWSER_EVIDENCE_ROOTS; else process.env.SCOUTPI_BROWSER_EVIDENCE_ROOTS = previousRoots;

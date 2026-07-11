@@ -43,6 +43,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Event-only durable checkpoint extension with atomic revisions, integrity checks, compaction hints, and one-time recovery context
 - Event-only Context Bridge with provider-neutral candidates, mixed-text token budgets, provenance, user-reviewed writeback staging, and an opt-in idempotent Wisdom Weasel RAG Core adapter
 - Event-only Browser Evidence Bridge with allowed-root import, artifact hashes, explicit claim/hypothesis relations, and Agent-trace attachment
+- Deterministic Evidence Reviewer that blocks dry-run claims, unsupported findings, broken plan/job/source provenance, and adapter-declared proxy overclaims before EarthStory persistence
 - Event-only durable trigger extension with identity-bound HMAC grants, manual/interval/event conditions, idempotent replay, cooldown/expiry/run limits, and no additional model tool
 - Local stdio MCP compatibility server with four compact gateways, resource links, and no live/admin operations
 - Reviewed Backend Plugin SDK with manifests, validation hooks, bounded progress, cancellation, timeouts, and result limits
@@ -222,6 +223,7 @@ Temporary Earth Engine tile URLs are for visualization. Download/export is used 
 | `POST /api/evidence/import` | Import and artifactize an allowlisted BrowserBridge evidence file |
 | `POST /api/evidence/:id/bind` | Bind a source to an investigation, claim, hypothesis, and explicit relation |
 | `GET /api/evidence/graph/:id` | Browser claims, hypotheses, completed live runs, and finding coverage |
+| `GET /api/evidence/review/:id` | Persisted claim, computation, provenance, counterevidence, and proxy review |
 | `GET/POST /api/triggers` | List durable triggers or create a reviewable draft |
 | `POST /api/triggers/:id/approve` | Issue a loopback-operator dry-run delegation |
 | `POST /api/triggers/:id/state` | Pause, resume, or revoke a trigger |
@@ -290,6 +292,7 @@ The current live smoke path also verifies a real Dynamic World tile and a small 
 - [Durable Agent checkpoints](docs/scoutpi/DURABLE_AGENT_CHECKPOINTS.md)
 - [Context Bridge](docs/scoutpi/CONTEXT_BRIDGE.md)
 - [Browser Evidence Bridge](docs/scoutpi/BROWSER_EVIDENCE_BRIDGE.md)
+- [Evidence Reviewer](docs/scoutpi/EVIDENCE_REVIEWER.md)
 - [MCP compatibility server](docs/scoutpi/MCP_COMPATIBILITY.md)
 - [Durable triggers and delegation](docs/scoutpi/DURABLE_TRIGGERS_AND_DELEGATION.md)
 - [Workflow Compiler](docs/scoutpi/WORKFLOW_COMPILER.md)

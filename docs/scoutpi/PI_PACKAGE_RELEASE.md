@@ -56,9 +56,9 @@ The verifier:
 Current verified package budget:
 
 ```text
-entries:       50
-packed:        138,909 bytes
-unpacked:      501,989 bytes
+entries:       51
+packed:        143,405 bytes
+unpacked:      518,945 bytes
 extensions:    7
 skill:         loaded
 ```

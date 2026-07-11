@@ -68,7 +68,13 @@ export interface DatasetDescriptor {
   limitations: string[];
   analysis: DatasetAnalysis;
   analysisByRole?: Record<string, DatasetAnalysis>;
-  guardrails?: Array<{ id: string; severity: "info" | "warning" | "blocking"; message: string; resolution?: string }>;
+  guardrails?: Array<{
+    id: string;
+    severity: "info" | "warning" | "blocking";
+    message: string;
+    resolution?: string;
+    claimRule?: { forbiddenTerms: string[]; requiredQualifiers?: string[] };
+  }>;
 }
 
 export interface EarthAdapterPack {

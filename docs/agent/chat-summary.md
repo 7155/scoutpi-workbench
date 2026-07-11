@@ -114,3 +114,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - `pnpm package:verify` packs and extracts the real archive, checks metadata/content/size/privacy, and boots every extension plus the skill through offline Pi RPC without a model request.
 - The verified archive is 138,909 packed bytes, 501,989 unpacked bytes, and 50 entries. Publication remains an explicit operator release action rather than an automated side effect.
 - All 62 tests, Earth/MCP harnesses, Python compile, extracted-package RPC verification, production build, dependency audit, and diff checks pass. Next: commit, push, and confirm CI.
+
+### 2026-07-11 - Evidence review gate
+
+- EarthStory now passes a deterministic review before persistence; the gate adds no Pi tool and makes no second model request.
+- The reviewer binds metrics to the current plan and completed live jobs, rejects dry-run/computed confusion and unsupported statuses, validates browser-evidence bindings, and surfaces time/place drift, missing units, and missing counterevidence.
+- Proxy semantics are declared by reviewed adapters through bounded literal `claimRule` metadata rather than hard-coded project branches.
+- Review reports are content-minimal artifacts available through the API and the Workbench Evidence view. A blocked candidate does not overwrite the last accepted story.
+- Desktop/mobile QA, all 65 tests, full package verification, production build/audit, and a real `gpt-5.6` Pi RPC startup pass. Next: commit and push this reviewer milestone, then continue with the real Pi Agent evaluation layer.

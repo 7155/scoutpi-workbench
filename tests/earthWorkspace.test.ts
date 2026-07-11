@@ -237,10 +237,21 @@ test("workspace writes plan, dry-run artifacts, recipes, analysis and story", as
 
     const story = await workspace.story({
       schemaVersion: "scoutpi.earth.story.v1", investigationId: "generic-change-test", question: "What changed?", claims: [],
-      findings: [{ hypothesisId: "h1", status: "mixed", evidence: ["Computed metric increased, but no control region was available."] }],
-      metrics: { value: 4 }, layers: [], charts: [], uncertainties: ["Example values are test fixtures."], provenance: { planId: planned.plan.planId },
+      findings: [{ hypothesisId: "h1", status: "unknown", evidence: ["The dry-run plan completed; no computed metric is claimed."] }],
+      metrics: {}, layers: [], charts: [], uncertainties: ["A reviewed live computation is still required."], provenance: { planId: planned.plan.planId },
     });
-    assert.match(await readFile(story.markdownPath, "utf8"), /## Uncertainty/);
+    const storyMarkdown = await readFile(story.markdownPath, "utf8");
+    assert.match(storyMarkdown, /## Uncertainty/);
+    assert.match(storyMarkdown, /## Evidence Review/);
+    assert.equal(story.review.status, "passed");
+    assert.equal((await workspace.getEvidenceReview("generic-change-test")).reviewId, story.review.reviewId);
+    await assert.rejects(() => workspace.story({
+      schemaVersion: "scoutpi.earth.story.v1", investigationId: "generic-change-test", question: "What changed?", claims: [],
+      findings: [{ hypothesisId: "h1", status: "supported", evidence: ["The computed metric proves the change increased."] }],
+      metrics: { value: { value: 4 } }, layers: [], charts: [], uncertainties: [], provenance: { planId: planned.plan.planId, jobIds: [job.jobId] },
+    }), /STORY_REVIEW_BLOCKED/);
+    assert.equal((await workspace.getEvidenceReview("generic-change-test")).status, "blocked");
+    assert.equal((await workspace.getStory("generic-change-test")).findings[0].status, "unknown");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

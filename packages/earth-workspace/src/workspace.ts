@@ -8,6 +8,7 @@ import { EarthBackendRegistry, type EarthBackendExecution, type EarthBackendMani
 import { RuntimeTelemetryStore, type RuntimeTelemetryEvent, type RuntimeTelemetrySummary } from "../../runtime-telemetry/src/index.ts";
 import { ApprovalStore, type RuntimeApproval } from "../../runtime-governance/src/index.ts";
 import { EvidenceStore, type BrowserEvidenceRecord, type EvidenceBinding, type EvidenceGraph } from "../../runtime-evidence/src/index.ts";
+import { reviewEvidence, type EvidenceReviewReport } from "../../runtime-evidence/src/reviewer.ts";
 import { AgentRunStore, type AgentRunSummary } from "../../runtime-observability/src/index.ts";
 import { compileEarthWorkflow, earthWorkflowFingerprint, instantiateWorkflowSpec, type EarthWorkflowReplayRecord, type StoredEarthWorkflow } from "../../earth-workflow-compiler/src/index.ts";
 import { createBuiltinBackendProviders } from "./backends.ts";
@@ -103,7 +104,7 @@ export class EarthWorkspace {
   }
 
   async init(): Promise<void> {
-    await Promise.all(["plans", "jobs", "recipes", "stories", "analysis", "adapters", "skills", "workflows", "workflow_runs"].map((name) => mkdir(join(this.root, name), { recursive: true })));
+    await Promise.all(["plans", "jobs", "recipes", "stories", "stories/reviews", "analysis", "adapters", "skills", "workflows", "workflow_runs"].map((name) => mkdir(join(this.root, name), { recursive: true })));
     await this.telemetry.init();
     await this.approvals.init();
     await this.agentRuns.init();
@@ -900,6 +901,11 @@ export class EarthWorkspace {
     return await readJson<EarthStoryArtifact>(join(this.root, "stories", `${investigationId}.json`));
   }
 
+  async getEvidenceReview(investigationId: string): Promise<EvidenceReviewReport> {
+    safeId(investigationId, "investigationId");
+    return await readJson<EvidenceReviewReport>(join(this.root, "stories", "reviews", `${investigationId}.json`));
+  }
+
   async listJobArtifacts(jobId: string): Promise<Array<{ name: string; path: string; size: number; kind: string }>> {
     safeId(jobId, "jobId");
     const directory = join(this.root, "jobs", jobId);
@@ -938,7 +944,7 @@ export class EarthWorkspace {
     return result;
   }
 
-  async story(input: EarthStoryArtifact): Promise<{ story: EarthStoryArtifact; jsonPath: string; markdownPath: string }> {
+  async story(input: EarthStoryArtifact): Promise<{ story: EarthStoryArtifact; jsonPath: string; markdownPath: string; review: EvidenceReviewReport; reviewPath: string }> {
     await this.init();
     if (input.schemaVersion !== "scoutpi.earth.story.v1" || !input.investigationId || !input.question) throw new Error("STORY_INVALID: schemaVersion, investigationId and question are required");
     safeId(input.investigationId, "investigationId");
@@ -960,17 +966,31 @@ export class EarthWorkspace {
       if (!["supported", "mixed", "not_supported", "unknown"].includes(finding.status) || !Array.isArray(finding.evidence) || finding.evidence.length > 100 || finding.evidence.some((value) => typeof value !== "string" || !value.trim() || value.length > 2000)) throw Object.assign(new Error("STORY_INVALID: finding is invalid"), { code: "STORY_INVALID" });
     }
     if (input.uncertainties.some((value) => typeof value !== "string" || !value.trim() || value.length > 2000)) throw Object.assign(new Error("STORY_INVALID: uncertainty is invalid"), { code: "STORY_INVALID" });
+    const plan = (await this.listPlans()).filter((item) => item.spec.investigationId === input.investigationId).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    if (!plan) throw Object.assign(new Error("STORY_REVIEW_BLOCKED: no persisted investigation plan exists"), { code: "STORY_REVIEW_BLOCKED" });
+    const [jobs, records] = await Promise.all([
+      this.listJobs().then((rows) => rows.filter((job) => job.planId === plan.planId)),
+      this.listEvidence(input.investigationId, 1_000),
+    ]);
+    const review = reviewEvidence({ plan, story: input, jobs, records });
+    const reviewPath = join(this.root, "stories", "reviews", `${input.investigationId}.json`);
+    await writeJson(reviewPath, review);
+    if (review.status === "blocked") {
+      const error = Object.assign(new Error(`STORY_REVIEW_BLOCKED: ${review.summary.blocking} blocking issue(s); review=${reviewPath}`), { code: "STORY_REVIEW_BLOCKED", reviewPath, review });
+      throw error;
+    }
     const jsonPath = join(this.root, "stories", `${input.investigationId}.json`);
     const markdownPath = join(this.root, "stories", `${input.investigationId}.md`);
     const markdown = [
       `# ${input.question}`, "", "## Claims", ...input.claims.map((claim) => `- ${claim.claim} (${claim.sourceUrl})`), "",
       "## Findings", ...input.findings.map((finding) => `- **${finding.hypothesisId}**: ${finding.status}. ${finding.evidence.join(" ")}`), "",
+      "## Evidence Review", `- Status: ${review.status}`, `- Blocking: ${review.summary.blocking}`, `- Warnings: ${review.summary.warnings}`, ...review.issues.map((row) => `- **${row.severity} / ${row.code}**: ${row.message}`), "",
       "## Uncertainty", ...input.uncertainties.map((item) => `- ${item}`), "", "## Reproducibility", "```json", JSON.stringify(input.provenance, null, 2), "```", "",
     ].join("\n");
     await writeJson(jsonPath, input);
     await writeFile(markdownPath, markdown);
     await this.evidenceGraph(input.investigationId);
-    return { story: input, jsonPath, markdownPath };
+    return { story: input, jsonPath, markdownPath, review, reviewPath };
   }
 
   private async writeRegistryEvent(event: Record<string, unknown>): Promise<void> {
