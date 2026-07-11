@@ -1,6 +1,6 @@
 import type { AgentToolResult, AgentToolUpdateCallback, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Type, type Static } from "typebox";
-import { EarthWorkspace, earthOperationRisk, type EarthStoryArtifact, type InvestigationSpec } from "../../../packages/earth-workspace/src/index.ts";
+import { EarthWorkspace, earthOperationRisk, type EarthJob, type EarthStoryArtifact, type InvestigationSpec, type SpatialViewPhase } from "../../../packages/earth-workspace/src/index.ts";
 import { formatPiEcosystemProfile, inspectPiEcosystem, PiEcosystemStore } from "../../../packages/pi-ecosystem/src/index.ts";
 
 interface EarthToolDetails {
@@ -71,6 +71,13 @@ function profileForPrompt(prompt: string): string[] {
   if (/analysis|analy[sz]e|metric|csv|统计|分析|数值|校验/i.test(prompt)) tools.push("python_analysis");
   if (/story|report|claim|evidence|conclusion|报告|结论|证据|叙事/i.test(prompt)) tools.push("earth_story");
   return tools;
+}
+
+function spatialPhaseForJob(state: EarthJob["state"]): SpatialViewPhase {
+  if (state === "queued" || state === "running") return "computing";
+  if (state === "completed") return "reviewing";
+  if (state === "blocked_auth" || state === "cancelled") return "blocked";
+  return "failed";
 }
 
 export default async function setup(pi: ExtensionAPI): Promise<void> {
@@ -199,38 +206,58 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
         }
         if (input.op === "evidence_graph") {
           const graph = await workspace.evidenceGraph(String(input.id || options.investigationId || ""));
+          const current = await workspace.getSpatialView();
+          if (current.target?.investigationId === graph.investigationId) await workspace.setSpatialView({ source: "pi", planId: current.target.planId, role: current.target.role, year: current.target.year, mode: current.mode, phase: "reviewing", operation: input.op, toolCallId, jobId: current.target.jobId });
           return await respond(`evidence graph investigation=${graph.investigationId} nodes=${graph.nodes.length} edges=${graph.edges.length} browser=${graph.coverage.browserEvidence} computed=${graph.coverage.computedRuns} covered=${graph.coverage.coveredHypotheses}/${graph.coverage.hypotheses}`, { investigationId: graph.investigationId, graphId: graph.graphId, coverage: graph.coverage });
+        }
+        if (input.op === "view_get") {
+          const view = await workspace.getSpatialView();
+          return await respond(view.target
+            ? `view revision=${view.revision} source=${view.control.source} phase=${view.phase} mode=${view.mode} plan=${view.target.planId} role=${view.target.role} year=${view.target.year}`
+            : `view revision=${view.revision} source=${view.control.source} phase=${view.phase} mode=${view.mode} target=none`,
+          { viewRevision: view.revision, source: view.control.source, phase: view.phase, mode: view.mode, planId: view.target?.planId, role: view.target?.role, year: view.target?.year });
+        }
+        if (input.op === "view_set") {
+          const view = await workspace.setSpatialView({ source: "pi", planId: String(input.id || ""), role: input.role, year: input.year, mode: options.mode, phase: "observing", operation: input.op, toolCallId });
+          return await respond(`view focused revision=${view.revision} mode=${view.mode} plan=${view.target!.planId} role=${view.target!.role} year=${view.target!.year}`, { viewRevision: view.revision, source: view.control.source, phase: view.phase, mode: view.mode, planId: view.target!.planId, role: view.target!.role, year: view.target!.year });
         }
         if (input.op === "plan") {
           update(onUpdate, "plan", "Compiling the InvestigationSpec into a dataset plan and analysis graph...");
           const result = await workspace.plan(payload as InvestigationSpec);
-          return await respond(`plan ok id=${result.plan.planId} datasets=${result.plan.datasets.length} nodes=${result.plan.dag.length} approval=${result.plan.estimatedCost.requiresApproval}\nartifact=${result.path}`, { planId: result.plan.planId, artifactPath: result.path });
+          const view = await workspace.setSpatialView({ source: "pi", planId: result.plan.planId, phase: "planning", operation: input.op, toolCallId });
+          return await respond(`plan ok id=${result.plan.planId} datasets=${result.plan.datasets.length} nodes=${result.plan.dag.length} approval=${result.plan.estimatedCost.requiresApproval}\nartifact=${result.path}`, { planId: result.plan.planId, viewRevision: view.revision, artifactPath: result.path });
         }
         if (input.op === "preview") {
           const result = await workspace.preview(String(input.id || ""));
-          return await respond(`preview ok id=${input.id} datasets=${(result.datasets as any[]).length} checks=${(result.criticChecks as any[]).length}\n${(result.datasets as any[]).map((row) => `${row.role}:${row.datasetId}`).join(" ")}`, { planId: input.id });
+          const view = await workspace.setSpatialView({ source: "pi", planId: String(input.id || ""), role: input.role, year: input.year, mode: options.mode, phase: "observing", operation: input.op, toolCallId });
+          return await respond(`preview ok id=${input.id} datasets=${(result.datasets as any[]).length} checks=${(result.criticChecks as any[]).length}\n${(result.datasets as any[]).map((row) => `${row.role}:${row.datasetId}`).join(" ")}`, { planId: input.id, viewRevision: view.revision });
         }
         if (input.op === "visualize") {
           update(onUpdate, "visualize", "Creating a short-lived Earth Engine tile contract...");
           const layer = await workspace.visualize(String(input.id || ""), { role: String(input.role || ""), year: Number(input.year), cloudProject: options.cloudProject, signal });
-          return await respond(`visualization ready plan=${layer.planId} role=${layer.role} year=${layer.year} dataset=${layer.datasetId} cache=${layer.cacheHit ? "hit" : "miss"}`, { planId: layer.planId, role: layer.role, year: layer.year, mapId: layer.mapId });
+          const view = await workspace.setSpatialView({ source: "pi", planId: layer.planId, role: layer.role, year: layer.year, mode: options.mode, phase: "observing", operation: input.op, toolCallId });
+          return await respond(`visualization ready plan=${layer.planId} role=${layer.role} year=${layer.year} dataset=${layer.datasetId} cache=${layer.cacheHit ? "hit" : "miss"}`, { planId: layer.planId, role: layer.role, year: layer.year, mapId: layer.mapId, viewRevision: view.revision });
         }
         if (input.op === "run") {
           update(onUpdate, "run", options.mode === "live" ? "Submitting the approved Earth Engine run..." : "Executing a deterministic dry run...");
           const job = await workspace.run(String(input.id || ""), { ...options, signal, confirmed: risk !== undefined, confirmedUnverifiedAdapters: options.confirmedUnverifiedAdapters === true });
-          return await respond(`run ${job.state} job=${job.jobId} mode=${job.mode} tasks=${job.taskIds.length}\nartifact=${job.artifactDir}${job.result?.workflowCandidate ? `\nworkflow_candidate=${(job.result.workflowCandidate as any).workflowId}` : ""}${job.error ? `\nerror=${job.error}` : ""}`, { jobId: job.jobId, state: job.state, artifactPath: job.artifactDir, workflowCandidate: job.result?.workflowCandidate });
+          const view = await workspace.setSpatialView({ source: "pi", planId: job.planId, phase: spatialPhaseForJob(job.state), operation: input.op, toolCallId, jobId: job.jobId });
+          return await respond(`run ${job.state} job=${job.jobId} mode=${job.mode} tasks=${job.taskIds.length}\nartifact=${job.artifactDir}${job.result?.workflowCandidate ? `\nworkflow_candidate=${(job.result.workflowCandidate as any).workflowId}` : ""}${job.error ? `\nerror=${job.error}` : ""}`, { planId: job.planId, jobId: job.jobId, state: job.state, viewRevision: view.revision, artifactPath: job.artifactDir, workflowCandidate: job.result?.workflowCandidate });
         }
         if (input.op === "status") {
           const job = await workspace.status(String(input.id || ""), options.refresh === true, signal);
-          return await respond(`status job=${job.jobId} state=${job.state} tasks=${job.taskIds.length}${job.error ? ` error=${job.error}` : ""}`, { jobId: job.jobId, state: job.state, artifactPath: job.artifactDir });
+          const view = await workspace.setSpatialView({ source: "pi", planId: job.planId, phase: spatialPhaseForJob(job.state), operation: input.op, toolCallId, jobId: job.jobId });
+          return await respond(`status job=${job.jobId} state=${job.state} tasks=${job.taskIds.length}${job.error ? ` error=${job.error}` : ""}`, { planId: job.planId, jobId: job.jobId, state: job.state, viewRevision: view.revision, artifactPath: job.artifactDir });
         }
         if (input.op === "cancel") {
           const job = await workspace.cancel(String(input.id || ""), options.cloudProject);
-          return await respond(`cancel job=${job.jobId} state=${job.state}`, { jobId: job.jobId, state: job.state, artifactPath: job.artifactDir });
+          const view = await workspace.setSpatialView({ source: "pi", planId: job.planId, phase: spatialPhaseForJob(job.state), operation: input.op, toolCallId, jobId: job.jobId });
+          return await respond(`cancel job=${job.jobId} state=${job.state}`, { planId: job.planId, jobId: job.jobId, state: job.state, viewRevision: view.revision, artifactPath: job.artifactDir });
         }
         if (input.op === "retry") {
           const job = await workspace.retryLocalExport(String(input.id || ""), true);
-          return await respond(`retry queued job=${job.jobId} state=${job.state}\nartifact=${job.artifactDir}`, { jobId: job.jobId, state: job.state, artifactPath: job.artifactDir });
+          const view = await workspace.setSpatialView({ source: "pi", planId: job.planId, phase: spatialPhaseForJob(job.state), operation: input.op, toolCallId, jobId: job.jobId });
+          return await respond(`retry queued job=${job.jobId} state=${job.state}\nartifact=${job.artifactDir}`, { planId: job.planId, jobId: job.jobId, state: job.state, viewRevision: view.revision, artifactPath: job.artifactDir });
         }
         if (input.op === "artifacts") {
           const artifacts = await workspace.listJobArtifacts(String(input.id || ""));
@@ -239,12 +266,14 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
         if (input.op === "export") {
           update(onUpdate, "export", "Submitting the approved Google Drive export...");
           const job = await workspace.run(String(input.id || ""), { ...options, signal, mode: "live", execution: "drive", confirmed: true, confirmedUnverifiedAdapters: options.confirmedUnverifiedAdapters === true });
-          return await respond(`export ${job.state} job=${job.jobId} tasks=${job.taskIds.length}\nartifact=${job.artifactDir}${job.error ? `\nerror=${job.error}` : ""}`, { jobId: job.jobId, state: job.state, taskIds: job.taskIds, artifactPath: job.artifactDir });
+          const view = await workspace.setSpatialView({ source: "pi", planId: job.planId, phase: spatialPhaseForJob(job.state), operation: input.op, toolCallId, jobId: job.jobId });
+          return await respond(`export ${job.state} job=${job.jobId} tasks=${job.taskIds.length}\nartifact=${job.artifactDir}${job.error ? `\nerror=${job.error}` : ""}`, { planId: job.planId, jobId: job.jobId, state: job.state, taskIds: job.taskIds, viewRevision: view.revision, artifactPath: job.artifactDir });
         }
         if (input.op === "export_local") {
           update(onUpdate, "export_local", "Queueing the approved supervised GeoTIFF export...");
           const job = await workspace.exportLocal(String(input.id || ""), { ...options, role: String(input.role || options.role || ""), kind: String(options.kind || "year") as "year" | "change", year: input.year ?? options.year, confirmed: true });
-          return await respond(`local export queued job=${job.jobId} state=${job.state} backend=geedim\nartifact=${job.artifactDir}`, { jobId: job.jobId, state: job.state, artifactPath: job.artifactDir });
+          const view = await workspace.setSpatialView({ source: "pi", planId: job.planId, role: String(input.role || options.role || ""), year: input.year ?? options.year, phase: spatialPhaseForJob(job.state), operation: input.op, toolCallId, jobId: job.jobId });
+          return await respond(`local export queued job=${job.jobId} state=${job.state} backend=geedim\nartifact=${job.artifactDir}`, { planId: job.planId, jobId: job.jobId, state: job.state, viewRevision: view.revision, artifactPath: job.artifactDir });
         }
         if (input.op === "save_recipe") {
           const recipe = await workspace.saveRecipe((Object.keys(payload).length ? payload : options.recipe) as any);
@@ -253,7 +282,8 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
         if (input.op === "load_recipe") {
           const spec = await workspace.loadRecipe(String(input.id || ""), options.patch || {});
           const result = await workspace.plan(spec);
-          return await respond(`recipe loaded id=${input.id} plan=${result.plan.planId}\nartifact=${result.path}`, { recipeId: input.id, planId: result.plan.planId, artifactPath: result.path });
+          const view = await workspace.setSpatialView({ source: "pi", planId: result.plan.planId, phase: "planning", operation: input.op, toolCallId });
+          return await respond(`recipe loaded id=${input.id} plan=${result.plan.planId}\nartifact=${result.path}`, { recipeId: input.id, planId: result.plan.planId, viewRevision: view.revision, artifactPath: result.path });
         }
         if (input.op === "list_recipes") {
           const recipes = await workspace.listRecipes();
@@ -279,11 +309,13 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
         if (input.op === "workflow_replay") {
           update(onUpdate, "workflow_replay", "Checking workflow preconditions and adapter fingerprints...");
           const result = await workspace.replayWorkflow(String(input.id || ""), { patch: options.patch, confirmed: true, confirmedCostIncrease: options.confirmedCostIncrease === true, cloudProject: options.cloudProject, signal });
-          return await respond(`workflow replay ${result.replay.state} replay=${result.replay.replayId} plan=${result.replay.planId || "n/a"} job=${result.replay.jobId || "n/a"}`, { workflowId: input.id, replayId: result.replay.replayId, state: result.replay.state, planId: result.replay.planId, jobId: result.replay.jobId });
+          const view = result.replay.planId ? await workspace.setSpatialView({ source: "pi", planId: result.replay.planId, phase: result.replay.state === "running" ? "computing" : result.replay.state === "completed" ? "reviewing" : result.replay.state === "blocked" ? "blocked" : "failed", operation: input.op, toolCallId, jobId: result.replay.jobId }) : undefined;
+          return await respond(`workflow replay ${result.replay.state} replay=${result.replay.replayId} plan=${result.replay.planId || "n/a"} job=${result.replay.jobId || "n/a"}`, { workflowId: input.id, replayId: result.replay.replayId, state: result.replay.state, planId: result.replay.planId, jobId: result.replay.jobId, viewRevision: view?.revision });
         }
         if (input.op === "workflow_status") {
           const replay = await workspace.refreshWorkflowReplay(String(input.id || ""));
-          return await respond(`workflow status replay=${replay.replayId} state=${replay.state} plan=${replay.planId || "n/a"} job=${replay.jobId || "n/a"}${replay.error ? ` error=${replay.error}` : ""}`, { replayId: replay.replayId, workflowId: replay.workflowId, state: replay.state, planId: replay.planId, jobId: replay.jobId });
+          const view = replay.planId ? await workspace.setSpatialView({ source: "pi", planId: replay.planId, phase: replay.state === "running" ? "computing" : replay.state === "completed" ? "reviewing" : replay.state === "blocked" ? "blocked" : "failed", operation: input.op, toolCallId, jobId: replay.jobId }) : undefined;
+          return await respond(`workflow status replay=${replay.replayId} state=${replay.state} plan=${replay.planId || "n/a"} job=${replay.jobId || "n/a"}${replay.error ? ` error=${replay.error}` : ""}`, { replayId: replay.replayId, workflowId: replay.workflowId, state: replay.state, planId: replay.planId, jobId: replay.jobId, viewRevision: view?.revision });
         }
         throw Object.assign(new Error(`INVALID_OPERATION: ${input.op}`), { code: "INVALID_OPERATION" });
       } catch (error) {
@@ -326,6 +358,8 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
       try {
         update(onUpdate, "earth_story", "Reviewing claim, computation, counterevidence and provenance bindings...");
         const result = await workspace.story(input.story as EarthStoryArtifact);
+        const current = await workspace.getSpatialView();
+        if (current.target?.investigationId === result.story.investigationId) await workspace.setSpatialView({ source: "pi", planId: current.target.planId, role: current.target.role, year: current.target.year, mode: current.mode, phase: "complete", operation: "earth_story", toolCallId, jobId: current.target.jobId });
         const output = compact(`story ok investigation=${result.story.investigationId} review=${result.review.status} warnings=${result.review.summary.warnings}\njson=${result.jsonPath}\nreview=${result.reviewPath}`, { operation: "earth_story", jsonPath: result.jsonPath, markdownPath: result.markdownPath, reviewPath: result.reviewPath, reviewStatus: result.review.status });
         await workspace.recordToolTelemetry("earth_story", input, resultText(output), performance.now() - started, "ok", toolCallId);
         return output;

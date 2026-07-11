@@ -405,12 +405,46 @@ const zh: Record<string, string> = {
   "Hide spatial state": "收起空间状态",
   "Show spatial state": "展开空间状态",
   "No region selected": "未选择区域",
+  "Pi control": "Pi 主控",
+  "Operator menu": "操作员菜单",
+  "Local test controls": "本地测试控制",
+  "Task stream": "任务流",
+  "Search task history": "搜索任务历史",
+  "No Pi tasks": "暂无 Pi 任务",
+  "Pi session": "Pi 会话",
+  "Spatial contracts": "空间数据合约",
+  "Pi spatial canvas": "Pi 空间画布",
+  "Waiting for the next Pi task.": "等待下一个 Pi 任务。",
+  "Pi context": "Pi 上下文",
+  "Observables": "观测量",
+  "Pi sees": "Pi 所见",
+  "Activity": "活动",
+  "Pi working": "Pi 工作中",
+  "Pi attached": "Pi 已接入",
+  "Waiting for Pi": "等待 Pi",
+  "Following Pi spatial focus": "正在跟随 Pi 空间焦点",
+  "Resume following Pi": "恢复跟随 Pi",
+  "Following Pi": "跟随 Pi",
+  "Local inspection": "本地查看",
+  "Focus year": "焦点年份",
+  "Spatial sources": "空间数据源",
+  "View": "视图",
+  "Pi focus": "Pi 焦点",
+  "Controller": "控制方",
+  "Revision": "修订号",
+  "Region contract": "区域合约",
+  "Region": "区域",
+  "Geometry": "几何",
+  "Time window": "时间窗口",
+  "Structured spatial inputs": "结构化空间输入",
+  "Earth Engine asset": "Earth Engine 资产",
+  "GeoJSON geometry": "GeoJSON 几何",
 };
 
 const statusZh: Record<string, string> = {
   running: "运行中", completed: "已完成", interrupted: "已中断", failed: "失败", cancelled: "已取消", queued: "排队中", blocked: "已阻断", blocked_auth: "认证阻断",
   pending: "待审核", approved: "已批准", rejected: "已拒绝", delivered: "已送达", staged: "已暂存", active: "活动", paused: "已暂停", revoked: "已撤销", draft: "草稿",
-  passed: "通过", warning: "警告", unknown: "未知", supported: "支持", mixed: "混合", not_supported: "不支持", available: "可用", unavailable: "不可用", idle: "空闲", settled: "已稳定", recover: "可恢复", ready: "就绪", attention: "待处理", bounded: "受限", connected: "已连接", inspected: "已检查", probed: "已探测", not_probed: "未探测", supports: "支持", contradicts: "反驳", contextualizes: "提供背景", documents: "记录", high: "高", medium: "中", low: "低",
+  passed: "通过", warning: "警告", unknown: "未知", supported: "支持", mixed: "混合", not_supported: "不支持", available: "可用", unavailable: "不可用", idle: "空闲", planning: "规划中", observing: "观测中", computing: "计算中", reviewing: "审核中", complete: "已完成", settled: "已稳定", recover: "可恢复", ready: "就绪", attention: "待处理", bounded: "受限", connected: "已连接", inspected: "已检查", probed: "已探测", not_probed: "未探测", supports: "支持", contradicts: "反驳", contextualizes: "提供背景", documents: "记录", high: "高", medium: "中", low: "低",
 };
 
 const roleZh: Record<string, string> = {
@@ -450,7 +484,7 @@ export function setAppLocale(locale: AppLocale): void {
   if (typeof window !== "undefined") window.localStorage.setItem(storageKey, locale);
   if (typeof document !== "undefined") {
     document.documentElement.lang = locale;
-    document.title = locale === "zh-CN" ? "ScoutPi Earth 调查工作台" : "ScoutPi Earth Workbench";
+    document.title = locale === "zh-CN" ? "ScoutPi Pi 空间运行时" : "ScoutPi Pi Spatial Runtime";
   }
 }
 
@@ -468,5 +502,5 @@ export function useI18n() {
 
 if (typeof document !== "undefined") {
   document.documentElement.lang = localeState.value;
-  document.title = localeState.value === "zh-CN" ? "ScoutPi Earth 调查工作台" : "ScoutPi Earth Workbench";
+  document.title = localeState.value === "zh-CN" ? "ScoutPi Pi 空间运行时" : "ScoutPi Pi Spatial Runtime";
 }

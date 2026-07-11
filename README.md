@@ -13,6 +13,16 @@ Forest, flood, agriculture, urban change, water, climate, and disaster tasks are
 
 ![ScoutPi Spatial Runtime with a live Earth Engine layer in Cesium](docs/assets/workbench-spatial-runtime-3d.png)
 
+The interface is deliberately not a manual GIS editor:
+
+| Surface | Meaning |
+| --- | --- |
+| Left rail: Pi task stream | Investigations created or selected by Pi, with persisted run state |
+| Center: spatial canvas | The region, observable, year, imagery, and 2D/3D perspective currently focused by Pi |
+| Right rail: Pi context | The structured region contract, datasets, evidence, plan, and execution state available to Pi |
+
+The canvas follows Pi by default. A human can temporarily inspect another task, year, layer, or renderer without mutating Pi's state, then select **Follow Pi** to return to the current Agent focus. Direct plan/run/export controls are hidden in the normal product surface; developers can opt into local test controls with `VITE_SCOUTPI_MANUAL_CONTROLS=1`.
+
 ## Why This Runtime
 
 ```text
@@ -53,6 +63,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Typed `InvestigationSpec -> DatasetPlan -> AnalysisDAG` compiler with cost and evidence checks
 - Dry run, inline Earth Engine metrics, Drive export, task polling, cancellation, and retryable local export jobs
 - Direct Earth Engine raster tiles in MapLibre 2D and CesiumJS 3D, without first downloading a GeoTIFF
+- Durable `scoutpi.spatial-view.v1` state so Pi can focus a plan, observable, year, and 2D/3D renderer while the Workbench follows without browser automation
 - Bounded geedim GeoTIFF export with scale/pixel review, manifest, byte count, and SHA-256
 - Safe CSV/JSON/GeoJSON statistics without arbitrary code execution
 - Generated `scoutpi.earth.skill.v1` drafts with confirmed publishing and overwrite protection
@@ -133,6 +144,7 @@ Important `earth_workspace` operations:
 adapter_register / adapter_import / adapter_list
 adapter_probe / adapter_enable / adapter_disable
 contract / catalog_search / plan / preview / visualize
+view_get / view_set
 run / status / cancel / retry
 export / export_local / artifacts
 skill_save / skill_list / skill_publish

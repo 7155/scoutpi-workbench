@@ -59,7 +59,7 @@ test("investigation validation rejects ambiguous time and hypothesis contracts",
 test("runtime contracts are disclosed on demand instead of inflating the permanent Pi schema", () => {
   const workspace = new EarthWorkspace(".scoutpi/contract-test", process.execPath);
   const index = workspace.contract() as { contracts: string[] };
-  assert.deepEqual(index.contracts, ["investigation", "adapter", "adapter_pack", "skill", "local_export", "browser_evidence"]);
+  assert.deepEqual(index.contracts, ["investigation", "adapter", "adapter_pack", "skill", "local_export", "browser_evidence", "spatial_view"]);
   const adapter = workspace.contract("adapter") as any;
   assert.equal(adapter.template.schemaVersion, "scoutpi.earth.adapter.v1");
   assert.throws(() => workspace.contract("arbitrary_code"), /CONTRACT_INVALID/);
@@ -148,6 +148,40 @@ test("identical map requests reuse a short-lived tile contract", async () => {
     assert.equal(first.cacheHit, false);
     assert.equal(second.cacheHit, true);
     assert.equal(workspace.calls, 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Pi spatial view state is validated, revisioned and durable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "scoutpi-spatial-view-"));
+  try {
+    const workspace = new EarthWorkspace(root, process.execPath);
+    await seedWorkspace(workspace);
+    const { plan } = await workspace.plan(spec({ investigationId: "pi-spatial-focus" }));
+    assert.deepEqual(await workspace.getSpatialView(), {
+      schemaVersion: "scoutpi.spatial-view.v1",
+      revision: 0,
+      updatedAt: "1970-01-01T00:00:00.000Z",
+      mode: "2d",
+      phase: "idle",
+      control: { source: "system" },
+    });
+
+    const first = await workspace.setSpatialView({ source: "pi", planId: plan.planId, mode: "3d", phase: "observing", operation: "view_set", toolCallId: "tool-call-1" });
+    assert.equal(first.revision, 1);
+    assert.equal(first.mode, "3d");
+    assert.equal(first.target?.role, "vegetation");
+    assert.equal(first.target?.year, 2021);
+
+    const [second, third] = await Promise.all([
+      workspace.setSpatialView({ source: "pi", planId: plan.planId, year: 2020, operation: "view_set" }),
+      workspace.setSpatialView({ source: "pi", planId: plan.planId, year: 2019, operation: "view_set" }),
+    ]);
+    assert.deepEqual([second.revision, third.revision], [2, 3]);
+    assert.equal((await new EarthWorkspace(root, process.execPath).getSpatialView()).target?.year, 2019);
+    await assert.rejects(() => workspace.setSpatialView({ source: "pi", planId: plan.planId, role: "missing" }), /role missing/);
+    await assert.rejects(() => workspace.setSpatialView({ source: "pi", planId: plan.planId, mode: "terrain" as any }), /mode must be 2d or 3d/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -339,6 +373,11 @@ test("Pi extension exposes exactly three compact Earth gateway tools", async () 
     const planned = await executeEarth({ op: "plan", spec: spec({ investigationId: "pi-tool-plan" }) });
     assert.match(planned.content[0].text, /plan ok/);
     assert.equal(typeof planned.details.artifactPath, "string");
+    const focused = await executeEarth({ op: "view_set", id: planned.details.planId, role: "vegetation", year: 2020, options: { mode: "3d" } });
+    assert.match(focused.content[0].text, /view focused/);
+    const currentView = await executeEarth({ op: "view_get" });
+    assert.match(currentView.content[0].text, /source=pi/);
+    assert.match(currentView.content[0].text, /mode=3d/);
   } finally {
     if (previousRoot === undefined) delete process.env.SCOUTPI_EARTH_ROOT;
     else process.env.SCOUTPI_EARTH_ROOT = previousRoot;
@@ -363,6 +402,11 @@ test("Earth Workbench API persists plans, runs and bounded artifacts", async () 
     const contract: any = await (await fetch(`${base}/api/contracts/local_export`)).json();
     assert.equal(contract.template.format, "geotiff");
     const created: any = await createdResponse.json();
+    await workspace.setSpatialView({ source: "pi", planId: created.plan.planId, mode: "3d", operation: "view_set" });
+    const spatialView: any = await (await fetch(`${base}/api/spatial-view`)).json();
+    assert.equal(spatialView.control.source, "pi");
+    assert.equal(spatialView.mode, "3d");
+    assert.equal(spatialView.target.planId, created.plan.planId);
     const listed: any = await (await fetch(`${base}/api/plans`)).json();
     assert.equal(listed.plans[0].planId, created.plan.planId);
     const run: any = await (await fetch(`${base}/api/plans/${created.plan.planId}/run`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode: "dry_run" }) })).json();

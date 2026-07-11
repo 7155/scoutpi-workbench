@@ -140,6 +140,10 @@ export async function createEarthWorkspaceServer(options: EarthWorkspaceServerOp
         sendJson(response, 200, { runs: await workspace.listAgentRuns(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
         return;
       }
+      if (request.method === "GET" && url.pathname === "/api/spatial-view") {
+        sendJson(response, 200, await workspace.getSpatialView());
+        return;
+      }
       if (request.method === "GET" && url.pathname === "/api/checkpoints") {
         sendJson(response, 200, { checkpoints: await checkpointStore.list(url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : undefined) });
         return;

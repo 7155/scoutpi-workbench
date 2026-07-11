@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
-import { access, appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { access, appendFile, mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { delimiter, dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { compileInvestigation, getEarthRuntimeContract, listEarthRuntimeContracts, searchCatalog, validateAdapterPack, validateDatasetDescriptor, validateInvestigationSpec, type AdapterVerification, type DatasetDescriptor, type EarthAdapterPack, type EarthJob, type EarthLocalExportRequest, type EarthSkillDefinition, type EarthStoryArtifact, type EarthVisualization, type InvestigationPlan, type InvestigationSpec } from "../../earth-investigation-core/src/index.ts";
+import { compileInvestigation, getEarthRuntimeContract, listEarthRuntimeContracts, searchCatalog, validateAdapterPack, validateDatasetDescriptor, validateInvestigationSpec, type AdapterVerification, type DatasetDescriptor, type EarthAdapterPack, type EarthJob, type EarthLocalExportRequest, type EarthSkillDefinition, type EarthStoryArtifact, type EarthVisualization, type InvestigationPlan, type InvestigationSpec, type SpatialViewPhase, type SpatialViewState, type SpatialViewUpdate } from "../../earth-investigation-core/src/index.ts";
 import { EarthBackendRegistry, type EarthBackendExecution, type EarthBackendManifest, type EarthBackendProbe, type EarthBackendProgress, type EarthBackendProvider } from "../../earth-backend-sdk/src/index.ts";
 import { RuntimeTelemetryStore, type RuntimeTelemetryEvent, type RuntimeTelemetrySummary } from "../../runtime-telemetry/src/index.ts";
 import { ApprovalStore, type RuntimeApproval } from "../../runtime-governance/src/index.ts";
@@ -18,10 +18,47 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 async function readJson<T>(path: string): Promise<T> { return JSON.parse(await readFile(path, "utf8")) as T; }
 async function writeJson(path: string, value: unknown): Promise<void> { await mkdir(dirname(path), { recursive: true }); await writeFile(path, `${JSON.stringify(value, null, 2)}\n`); }
+async function writeJsonAtomic(path: string, value: unknown): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
+  const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
+  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`);
+  await rename(temporary, path);
+}
 
 function safeId(value: string, label: string): string {
   if (!/^[a-z0-9][a-z0-9._-]{0,100}$/i.test(value)) throw Object.assign(new Error(`${label} is invalid`), { code: "INVALID_ID" });
   return value;
+}
+
+const spatialViewPhases = new Set<SpatialViewPhase>(["idle", "planning", "observing", "computing", "reviewing", "complete", "blocked", "failed"]);
+
+function emptySpatialView(): SpatialViewState {
+  return {
+    schemaVersion: "scoutpi.spatial-view.v1",
+    revision: 0,
+    updatedAt: "1970-01-01T00:00:00.000Z",
+    mode: "2d",
+    phase: "idle",
+    control: { source: "system" },
+  };
+}
+
+function validateSpatialViewState(value: unknown): SpatialViewState {
+  const state = value as SpatialViewState;
+  const control = state?.control;
+  if (state?.schemaVersion !== "scoutpi.spatial-view.v1" || !Number.isInteger(state.revision) || state.revision < 0) throw Object.assign(new Error("SPATIAL_VIEW_INVALID"), { code: "SPATIAL_VIEW_INVALID" });
+  if (!Number.isFinite(Date.parse(state.updatedAt)) || !["2d", "3d"].includes(state.mode) || !spatialViewPhases.has(state.phase)) throw Object.assign(new Error("SPATIAL_VIEW_INVALID"), { code: "SPATIAL_VIEW_INVALID" });
+  if (!control || !["pi", "operator", "system"].includes(control.source)) throw Object.assign(new Error("SPATIAL_VIEW_INVALID"), { code: "SPATIAL_VIEW_INVALID" });
+  if (control.operation !== undefined && !/^[a-z][a-z0-9_]{1,63}$/.test(control.operation)) throw Object.assign(new Error("SPATIAL_VIEW_INVALID"), { code: "SPATIAL_VIEW_INVALID" });
+  if (control.toolCallId !== undefined && (!/^[a-zA-Z0-9._:-]{1,160}$/.test(control.toolCallId))) throw Object.assign(new Error("SPATIAL_VIEW_INVALID"), { code: "SPATIAL_VIEW_INVALID" });
+  if (state.target) {
+    safeId(state.target.planId, "planId");
+    safeId(state.target.investigationId, "investigationId");
+    safeId(state.target.role, "role");
+    if (!Number.isInteger(state.target.year) || state.target.year < 1900 || state.target.year > 2200) throw Object.assign(new Error("SPATIAL_VIEW_INVALID"), { code: "SPATIAL_VIEW_INVALID" });
+    if (state.target.jobId !== undefined) safeId(state.target.jobId, "jobId");
+  }
+  return state;
 }
 
 type EarthTaskStatus = { state?: string; error_message?: string; errorMessage?: string; [key: string]: unknown };
@@ -87,6 +124,7 @@ export class EarthWorkspace {
   private readonly activeWorkers = new Map<string, ReturnType<typeof spawn>>();
   private readonly activeLocalExports = new Map<string, Promise<void>>();
   private readonly visualizationCache = new Map<string, { value: EarthVisualization; expiresAt: number }>();
+  private spatialViewWrites: Promise<void> = Promise.resolve();
 
   constructor(root = process.env.SCOUTPI_EARTH_ROOT ?? ".scoutpi/earth_workspace", python = process.env.SCOUTPI_EARTH_PYTHON ?? resolve(".venv/bin/python"), skillPublishRoot = process.env.SCOUTPI_SKILL_PUBLISH_ROOT ?? resolve(".pi", "skills"), backendProviders: EarthBackendProvider[] = []) {
     this.root = resolve(root);
@@ -162,6 +200,60 @@ export class EarthWorkspace {
 
   async getAgentRun(runId: string): Promise<AgentRunSummary> {
     return await this.agentRuns.get(runId);
+  }
+
+  async getSpatialView(): Promise<SpatialViewState> {
+    await this.init();
+    try {
+      return validateSpatialViewState(await readJson<SpatialViewState>(join(this.root, "spatial_view.json")));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return emptySpatialView();
+      throw error;
+    }
+  }
+
+  async setSpatialView(input: SpatialViewUpdate): Promise<SpatialViewState> {
+    const write = async (): Promise<SpatialViewState> => {
+      await this.init();
+      const planId = safeId(String(input.planId || ""), "planId");
+      const plan = await this.getPlan(planId);
+      const current = await this.getSpatialView();
+      const samePlan = current.target?.planId === planId ? current.target : undefined;
+      const role = String(input.role || samePlan?.role || plan.datasets[0]?.role || "");
+      if (!plan.datasets.some((item) => item.role === role)) throw Object.assign(new Error(`role ${role} is not part of plan ${planId}`), { code: "SPATIAL_VIEW_ROLE_INVALID" });
+      const year = input.year ?? samePlan?.year ?? plan.spec.period.endYear;
+      if (!Number.isInteger(year) || year < plan.spec.period.startYear || year > plan.spec.period.endYear) throw Object.assign(new Error("spatial view year is outside the plan period"), { code: "SPATIAL_VIEW_YEAR_INVALID" });
+      const mode = input.mode ?? current.mode;
+      if (mode !== "2d" && mode !== "3d") throw Object.assign(new Error("spatial view mode must be 2d or 3d"), { code: "SPATIAL_VIEW_MODE_INVALID" });
+      const phase = input.phase ?? "observing";
+      if (!spatialViewPhases.has(phase)) throw Object.assign(new Error("spatial view phase is invalid"), { code: "SPATIAL_VIEW_PHASE_INVALID" });
+      if (!["pi", "operator", "system"].includes(input.source)) throw Object.assign(new Error("spatial view source is invalid"), { code: "SPATIAL_VIEW_SOURCE_INVALID" });
+      const operation = input.operation === undefined ? undefined : String(input.operation);
+      if (operation !== undefined && !/^[a-z][a-z0-9_]{1,63}$/.test(operation)) throw Object.assign(new Error("spatial view operation is invalid"), { code: "SPATIAL_VIEW_OPERATION_INVALID" });
+      const toolCallId = input.toolCallId === undefined ? undefined : String(input.toolCallId);
+      if (toolCallId !== undefined && !/^[a-zA-Z0-9._:-]{1,160}$/.test(toolCallId)) throw Object.assign(new Error("spatial view toolCallId is invalid"), { code: "SPATIAL_VIEW_TOOL_CALL_INVALID" });
+      const jobId = input.jobId === undefined ? (samePlan?.jobId) : safeId(String(input.jobId), "jobId");
+      const state: SpatialViewState = validateSpatialViewState({
+        schemaVersion: "scoutpi.spatial-view.v1",
+        revision: current.revision + 1,
+        updatedAt: new Date().toISOString(),
+        mode,
+        phase,
+        control: { source: input.source, ...(operation ? { operation } : {}), ...(toolCallId ? { toolCallId } : {}) },
+        target: {
+          planId,
+          investigationId: plan.spec.investigationId,
+          role,
+          year,
+          ...(jobId ? { jobId } : {}),
+        },
+      });
+      await writeJsonAtomic(join(this.root, "spatial_view.json"), state);
+      return state;
+    };
+    const result = this.spatialViewWrites.then(write);
+    this.spatialViewWrites = result.then(() => undefined, () => undefined);
+    return await result;
   }
 
   async importBrowserEvidence(path: string, options: { binding?: Partial<EvidenceBinding>; timeReferences?: string[]; placeReferences?: string[]; runId?: string; snapshotId?: string } = {}) {

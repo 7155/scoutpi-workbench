@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a durable `scoutpi.spatial-view.v1` control contract with `view_get` / `view_set`, atomic revisions, Pi-driven task/layer/year/renderer focus, Workbench follow/local-inspection modes, and a Pi-context-first interface with direct manual controls hidden by default.
 - Reframed the Workbench as a Pi-operated spatial runtime console, added collapsible Pi-task and spatial-state rails, and added a persistent MapLibre 2D / CesiumJS 3D switch over the same generic region and Earth Engine tile contracts.
 - Added persistent English/Simplified Chinese Workbench switching across core navigation, dialogs, maps, evidence, runtime controls, status labels, and responsive mobile actions.
 - Added a deterministic Evidence Reviewer with plan/job/source provenance gates, dry-run and unsupported-claim blocking, counterevidence/unit warnings, declarative adapter proxy rules, persisted reports, API access, and Workbench review status.

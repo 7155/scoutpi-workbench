@@ -186,3 +186,14 @@
 - Visual QA: desktop and 390x844 Playwright runs have zero console errors/warnings and no horizontal overflow. Cesium reports two frames, one region feature and one live analysis layer; collapsed rails expand canvas to 1439x872.
 - Pixel scan over the rendered 3D canvas: YMIN 28, YAVG 182.274, YMAX 235 and SATAVG 15.7683, rejecting a blank frame.
 - Verification: `pnpm check` passes 68 tests, TypeScript, Python compile, Earth/MCP harnesses, extracted package boot and production build. Package is 51 entries, 143,845 packed bytes and 520,148 unpacked bytes. `pnpm audit --prod`, built Cesium asset checks and `git diff --check` pass.
+
+## 2026-07-11 12:47 - Durable Pi spatial focus and console hierarchy
+
+- Problem: although the rails were renamed around Pi, the Workbench still read like a human-operated GIS dashboard and the direct run/export controls obscured that Pi is the controller.
+- Decision: make Pi control a persisted runtime contract. The Workbench follows that state by default and treats human map changes as temporary local inspection rather than runtime mutation.
+- Added atomic, revisioned `scoutpi.spatial-view.v1` state plus `view_get` / `view_set` inside the existing `earth_workspace` gateway. Plan, preview, visualization, run/status, exports, evidence review, story completion, and workflow replay update the same state without adding a fourth tool.
+- Reframed the visible hierarchy as Pi task stream / shared spatial canvas / Pi context. The right rail now shows the exact structured region, observable, year, datasets and current operation instead of a generic metrics dashboard.
+- Direct create/run/export commands are absent by default and available only through the secondary local-test menu when `VITE_SCOUTPI_MANUAL_CONTROLS=1`. Governance remains authoritative for real Pi actions.
+- Follow mode dynamically switched a live browser from a Yangtze Delta 2D `built_surface` focus to a Shanghai 3D `land_cover` visualization after a state revision. Manual 2D selection detached to local inspection; Follow Pi restored the durable 3D focus.
+- Visual QA: 1440x1000 and 390x844 have no horizontal overflow or console errors. Cesium reports ready=true, two frames, one region feature, one live analysis layer and an 869x872 canvas.
+- Verification: `pnpm check` passes all 73 tests, Python compile, Earth/MCP harnesses, extracted Pi package boot, and production build. Package is 51 entries, 146,815 packed bytes and 533,936 unpacked bytes; production audit and diff checks pass.

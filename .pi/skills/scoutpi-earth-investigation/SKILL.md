@@ -17,13 +17,14 @@ Use progressive disclosure and existing Pi plugins before adding new capabilitie
 6. Inspect `earth_workspace(environment)` and `earth_workspace(catalog_search)` before planning. The runtime begins with no scenario-specific dataset assumptions.
 7. If an observable role has no adapter, read primary dataset documentation, draft a `scoutpi.earth.adapter.v1` object, register it, and run `adapter_probe`. An adapter contains declarative bands, masks, metrics, visualization, limitations, and guardrails; it never contains executable Python or JavaScript.
 8. Compile a typed plan only from enabled adapters. Run a dry run before live compute. High-risk actions are intercepted by `scoutpi-governance`; never treat a model-generated `confirmed` field as user approval.
-9. Use `export_local` for a bounded GeoTIFF artifact through the optional geedim backend. Use Drive export for long asynchronous Earth Engine delivery. Poll job state instead of repeatedly rebuilding the plan.
-10. Use `python_analysis` only for deterministic validation of exported local data.
-11. Call `earth_workspace(evidence_graph)` before `earth_story` so browser sources, claims, hypotheses, computed runs, and findings have an auditable graph. Use `earth_story` last; every finding must point to computed evidence, uncertainty, and provenance.
-12. A successful job with verified adapter bindings and no blocking critic check creates a workflow candidate automatically. Review or promote it with `workflow_compile`; use `workflow_replay` only while fingerprints, roles, and cost assertions still pass. Never work around `WORKFLOW_ADAPTER_DRIFT`.
-13. Query `telemetry` when diagnosing cost, retries, context pressure, or cache behavior. Do not pull telemetry into every ordinary turn.
-14. A `ready` dry-run workflow may be attached to a manual, interval, or named-event trigger only after direct operator authorization. Trigger delegation is identity-bound, signed, expiring, run-limited, and never authorizes live compute or export.
-15. After a workflow remains useful, save a declarative Earth skill. Publishing into `.pi/skills` requires a direct user approval receipt and a Pi reload.
+9. The Workbench follows Pi's durable spatial view state. Use `view_set` with a plan ID, observable role, year, and optional `mode: "2d" | "3d"` when the user asks to inspect a particular layer or perspective; use `view_get` to verify the current focus. `plan`, `preview`, `visualize`, `run`, and workflow replay also advance this state automatically.
+10. Use `export_local` for a bounded GeoTIFF artifact through the optional geedim backend. Use Drive export for long asynchronous Earth Engine delivery. Poll job state instead of repeatedly rebuilding the plan.
+11. Use `python_analysis` only for deterministic validation of exported local data.
+12. Call `earth_workspace(evidence_graph)` before `earth_story` so browser sources, claims, hypotheses, computed runs, and findings have an auditable graph. Use `earth_story` last; every finding must point to computed evidence, uncertainty, and provenance.
+13. A successful job with verified adapter bindings and no blocking critic check creates a workflow candidate automatically. Review or promote it with `workflow_compile`; use `workflow_replay` only while fingerprints, roles, and cost assertions still pass. Never work around `WORKFLOW_ADAPTER_DRIFT`.
+14. Query `telemetry` when diagnosing cost, retries, context pressure, or cache behavior. Do not pull telemetry into every ordinary turn.
+15. A `ready` dry-run workflow may be attached to a manual, interval, or named-event trigger only after direct operator authorization. Trigger delegation is identity-bound, signed, expiring, run-limited, and never authorizes live compute or export.
+16. After a workflow remains useful, save a declarative Earth skill. Publishing into `.pi/skills` requires a direct user approval receipt and a Pi reload.
 
 ## Investigation Contract
 

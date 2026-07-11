@@ -17,7 +17,7 @@ export interface DatasetPlanItem {
   role: string;
   reason: string;
   hypothesisIds: string[];
-  dataset: { datasetId: string; title: string; provider: string; scaleMeters: number; cadence: string; limitations: string[]; analysis: { outputName: string; metric: string } };
+  dataset: { datasetId: string; title: string; provider: string; collectionId?: string; scaleMeters: number; cadence: string; limitations: string[]; analysis: { outputName: string; metric: string; bands?: string[] } };
   adapterBinding?: { datasetId: string; revision: number; fingerprint: string; verificationStatus: "not_run" | "passed" | "failed" };
 }
 export interface AnalysisNode { nodeId: string; op: string; dependsOn: string[]; params: Record<string, unknown> }
@@ -165,6 +165,15 @@ export interface EarthWorkflowReplay {
   assertions: Array<{ kind: string; ok: boolean; message: string }>;
 }
 export interface EarthVisualization { planId: string; role: string; year: number; datasetId: string; outputName: string; tileUrl: string; mapId: string; legend: { min: number; max: number; palette: string[] }; generatedAt: string; cacheHit?: boolean; cacheExpiresAt?: string }
+export interface SpatialViewState {
+  schemaVersion: "scoutpi.spatial-view.v1";
+  revision: number;
+  updatedAt: string;
+  mode: "2d" | "3d";
+  phase: "idle" | "planning" | "observing" | "computing" | "reviewing" | "complete" | "blocked" | "failed";
+  control: { source: "pi" | "operator" | "system"; operation?: string; toolCallId?: string };
+  target?: { planId: string; investigationId: string; role: string; year: number; jobId?: string };
+}
 export interface RegisteredAdapter {
   adapter: { datasetId: string; title: string; provider: string; collectionId: string; roles: string[]; scaleMeters: number; documentationUrl?: string };
   revision: number;

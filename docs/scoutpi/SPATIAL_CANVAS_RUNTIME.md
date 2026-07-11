@@ -6,6 +6,7 @@ ScoutPi is not a human-first remote-sensing dashboard. Pi is the primary operato
 user request
   -> Pi chooses tools, datasets and reviewed adapters
   -> typed spatial runtime computes or retrieves bounded results
+  -> durable Pi spatial focus state
   -> shared region, layer and evidence contracts
   -> MapLibre 2D or CesiumJS 3D
   -> operator reviews state, evidence and execution
@@ -17,11 +18,30 @@ The interface has three operational surfaces:
 
 | Surface | Purpose |
 | --- | --- |
-| Pi tasks | Current and previous spatial tasks plus runtime/data-access health |
-| Spatial canvas | The exact region and imagery state controlled by Pi, switchable between 2D and 3D |
-| Spatial state | Layers, evidence, analysis graph, metrics and execution records |
+| Left rail: Pi task stream | Current and previous investigations created or selected through Pi |
+| Center: spatial canvas | The exact region, observable, year, imagery, and renderer focused by Pi |
+| Right rail: Pi context | Structured region/dataset state, evidence, analysis graph, and execution activity available to Pi |
 
-The two side rails are secondary inspection surfaces and can be collapsed independently. The canvas resizes without recreating the task or requesting a new Earth Engine computation.
+The two side rails are read-oriented inspection surfaces and can be collapsed independently. They are not separate GIS toolboxes. The canvas resizes without recreating the task or requesting a new Earth Engine computation.
+
+## Pi Control Contract
+
+Pi controls the Workbench through the existing `earth_workspace` gateway rather than browser clicks or another model-facing tool:
+
+```text
+earth_workspace(view_set)
+  planId + role + year + mode(2d|3d)
+  -> validate against the persisted InvestigationPlan
+  -> write scoutpi.spatial-view.v1 atomically
+  -> Workbench observes the revision
+  -> select task/layer/year and switch renderer
+```
+
+`view_get` returns the current compact focus. `plan`, `preview`, `visualize`, `run`, `status`, export, evidence review, and workflow replay advance the same state automatically. The state contains only IDs, role, year, phase, renderer, operation, and a tool-call ID; it never stores prompts, model text, raster pixels, or credentials.
+
+The Workbench polls this tiny local state independently from long Earth Engine jobs. **Follow Pi** is enabled by default. Selecting another task, role, year, or renderer switches to local inspection without changing Pi's durable focus; selecting **Follow Pi** reapplies the latest revision.
+
+Normal builds do not display direct plan/run/export controls. `VITE_SCOUTPI_MANUAL_CONTROLS=1` enables a secondary local-test menu for development only. Production authorization still belongs to Pi lifecycle governance and its parameter-bound approval receipts.
 
 ## One Contract, Two Renderers
 
@@ -37,6 +57,8 @@ EarthVisualization
 
 MapLibre renders the conventional 2D view. CesiumJS is loaded only on the first 3D switch, then drapes the same short-lived Earth Engine XYZ tile URL over the globe and synchronizes the same investigation geometry and selected layer. Switching renderers does not download a GeoTIFF and does not add another Pi tool.
 
+When Pi is being followed, the Workbench requests a live tile only after Pi successfully calls `visualize`. A mere task or view change does not silently start Earth Engine work. In local inspection mode, the operator may preview another reviewed layer without mutating Pi's focus.
+
 The shared geometry normalizer derives bounds for generic GeoJSON, including geometry collections. Cesium starts with a pitched camera around those bounds so the operator can distinguish the 3D state immediately.
 
 ## Deployment
@@ -48,7 +70,7 @@ The default 3D base layer uses OpenStreetMap and ellipsoid terrain, so this path
 ## Runtime Safety
 
 - Pi still sees only the existing three Earth gateway tools.
-- Renderer switching is browser-local presentation state.
+- Pi renderer focus is durable runtime state; local inspection remains browser-only and cannot overwrite it.
 - Earth Engine tile URLs remain short-lived visualization artifacts.
 - Full GeoTIFF export remains a separate reviewed operation.
 - No arbitrary JavaScript or generated Cesium expression is executed.

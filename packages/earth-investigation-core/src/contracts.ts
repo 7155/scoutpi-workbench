@@ -1,4 +1,4 @@
-export type EarthRuntimeContractName = "investigation" | "adapter" | "adapter_pack" | "skill" | "local_export" | "browser_evidence";
+export type EarthRuntimeContractName = "investigation" | "adapter" | "adapter_pack" | "skill" | "local_export" | "browser_evidence" | "spatial_view";
 
 const contracts: Record<EarthRuntimeContractName, Record<string, unknown>> = {
   investigation: {
@@ -74,6 +74,15 @@ const contracts: Record<EarthRuntimeContractName, Record<string, unknown>> = {
     },
     timeReferences: ["2024"],
     placeReferences: ["review area"],
+  },
+  spatial_view: {
+    op: "view_get | view_set",
+    id: "plan-id",
+    role: "plan-observable-role",
+    year: 2024,
+    options: {
+      mode: "2d | 3d",
+    },
   },
 };
 

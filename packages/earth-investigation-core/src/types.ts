@@ -191,6 +191,50 @@ export interface EarthVisualization {
   cacheExpiresAt?: string;
 }
 
+export type SpatialViewMode = "2d" | "3d";
+
+export type SpatialViewPhase =
+  | "idle"
+  | "planning"
+  | "observing"
+  | "computing"
+  | "reviewing"
+  | "complete"
+  | "blocked"
+  | "failed";
+
+export interface SpatialViewState {
+  schemaVersion: "scoutpi.spatial-view.v1";
+  revision: number;
+  updatedAt: string;
+  mode: SpatialViewMode;
+  phase: SpatialViewPhase;
+  control: {
+    source: "pi" | "operator" | "system";
+    operation?: string;
+    toolCallId?: string;
+  };
+  target?: {
+    planId: string;
+    investigationId: string;
+    role: string;
+    year: number;
+    jobId?: string;
+  };
+}
+
+export interface SpatialViewUpdate {
+  source: "pi" | "operator" | "system";
+  planId: string;
+  role?: string;
+  year?: number;
+  mode?: SpatialViewMode;
+  phase?: SpatialViewPhase;
+  operation?: string;
+  toolCallId?: string;
+  jobId?: string;
+}
+
 export interface EarthLocalExportRequest {
   role: string;
   kind: "year" | "change";

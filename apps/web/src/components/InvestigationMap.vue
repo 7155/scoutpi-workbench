@@ -1,5 +1,5 @@
 <template>
-  <div class="map-shell" :data-map-mode="mapMode">
+  <div class="map-shell" :data-map-mode="mapMode" :data-control-source="followPi ? 'pi' : 'local'">
     <div ref="map2dContainer" :class="['map-surface', 'maplibre-surface', { active: mapMode === '2d' }]" :aria-hidden="mapMode !== '2d'"></div>
     <div
       ref="globe3dContainer"
@@ -20,13 +20,17 @@
     </div>
 
     <div class="map-mode" role="group" :aria-label="t('Switch map view')">
-      <button :class="{ active: mapMode === '2d' }" :aria-pressed="mapMode === '2d'" :title="t('2D map')" @click="setMapMode('2d')">
+      <button :class="{ active: mapMode === '2d' }" :aria-pressed="mapMode === '2d'" :title="t('2D map')" @click="selectMapMode('2d')">
         <MapIcon :size="15" /><span>2D</span>
       </button>
-      <button :class="{ active: mapMode === '3d' }" :aria-pressed="mapMode === '3d'" :title="t('3D globe')" @click="setMapMode('3d')">
+      <button :class="{ active: mapMode === '3d' }" :aria-pressed="mapMode === '3d'" :title="t('3D globe')" @click="selectMapMode('3d')">
         <Globe2 :size="15" /><span>3D</span>
       </button>
     </div>
+
+    <button :class="['map-follow', { active: followPi }]" :title="followPi ? t('Following Pi spatial focus') : t('Resume following Pi')" @click="emit('toggleFollow')">
+      <Crosshair :size="14" /><span>{{ followPi ? t('Following Pi') : t('Local inspection') }}</span>
+    </button>
 
     <div v-if="mapMode === '3d' && (globeLoading || globeError)" :class="['map-overlay', 'globe-status', { error: globeError }]" role="status">
       <LoaderCircle v-if="globeLoading" class="spin" :size="16" />
@@ -48,7 +52,7 @@
 <script setup lang="ts">
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";
-import { Globe2, LoaderCircle, Map as MapIcon } from "lucide-vue-next";
+import { Crosshair, Globe2, LoaderCircle, Map as MapIcon } from "lucide-vue-next";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "../i18n";
 import { loadMapViewMode, regionBounds, regionFeatureCollection, saveMapViewMode, type MapViewMode } from "../mapRuntime";
@@ -59,13 +63,13 @@ type CesiumViewer = import("cesium").Viewer;
 type CesiumRegionSource = import("cesium").GeoJsonDataSource;
 type CesiumImageryLayer = import("cesium").ImageryLayer;
 
-const props = defineProps<{ plan?: InvestigationPlan; selectedYear?: number; selectedRole?: string; visualization?: EarthVisualization; visualizationLoading?: boolean; visualizationError?: string }>();
-defineEmits<{ selectRole: [role: string] }>();
+const props = defineProps<{ plan?: InvestigationPlan; selectedYear?: number; selectedRole?: string; visualization?: EarthVisualization; visualizationLoading?: boolean; visualizationError?: string; requestedMode?: MapViewMode; followPi?: boolean }>();
+const emit = defineEmits<{ selectRole: [role: string]; modeChange: [mode: MapViewMode]; toggleFollow: [] }>();
 const { t, roleLabel } = useI18n();
 
 const map2dContainer = ref<HTMLElement>();
 const globe3dContainer = ref<HTMLElement>();
-const mapMode = ref<MapViewMode>(loadMapViewMode(typeof window === "undefined" ? undefined : window.localStorage));
+const mapMode = ref<MapViewMode>(props.requestedMode ?? loadMapViewMode(typeof window === "undefined" ? undefined : window.localStorage));
 const globeLoading = ref(false);
 const globeError = ref("");
 const globeReady = ref(false);
@@ -262,6 +266,11 @@ async function setMapMode(mode: MapViewMode) {
   }
 }
 
+async function selectMapMode(mode: MapViewMode) {
+  await setMapMode(mode);
+  emit("modeChange", mode);
+}
+
 onMounted(() => {
   const initialBounds = regionBounds(props.plan?.spec.region);
   map = new maplibregl.Map({
@@ -313,6 +322,9 @@ watch(() => props.visualization?.tileUrl, () => {
   syncMapVisualization();
   syncCesiumVisualization();
 });
+watch(() => props.requestedMode, (mode) => {
+  if (mode && mode !== mapMode.value) void setMapMode(mode);
+});
 
 onBeforeUnmount(() => {
   disposed = true;
@@ -341,6 +353,8 @@ onBeforeUnmount(() => {
 .map-mode button { display: flex; align-items: center; justify-content: center; gap: 5px; border: 0; border-radius: 3px; background: transparent; color: #617068; font: 700 11px/1 system-ui, sans-serif; cursor: pointer; }
 .map-mode button:hover { color: #1f6846; }
 .map-mode button.active { background: #1f6846; color: #fff; box-shadow: 0 2px 6px rgba(31, 104, 70, .2); }
+.map-follow { position: absolute; z-index: 5; top: 56px; left: 50%; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(43, 56, 49, .2); border-radius: 5px; padding: 6px 9px; background: rgba(252, 253, 251, .94); box-shadow: 0 6px 16px rgba(32, 45, 38, .09); color: #68756e; font-size: 9px; font-weight: 700; transform: translateX(-50%); backdrop-filter: blur(8px); }
+.map-follow.active { border-color: rgba(31, 104, 70, .38); background: rgba(239, 247, 242, .95); color: #1f6846; }
 .globe-status { top: 64px; left: 50%; display: flex; align-items: center; gap: 7px; max-width: min(420px, calc(100% - 28px)); padding: 8px 10px; border-radius: 5px; color: #2f5e48; transform: translateX(-50%); }
 .globe-status.error { color: #9d3341; }
 .globe-status small { max-width: 260px; overflow: hidden; color: #68756e; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
@@ -362,6 +376,7 @@ onBeforeUnmount(() => {
   .map-shell { min-height: 310px; }
   .map-title { top: 10px; left: 10px; max-width: calc(100% - 132px); padding: 8px 9px; }
   .map-mode { top: 10px; right: 10px; left: auto; grid-template-columns: repeat(2, 48px); transform: none; }
+  .map-follow { top: 54px; right: 10px; left: auto; transform: none; }
   .map-legend { display: none; }
   .globe-status { top: 58px; }
 }

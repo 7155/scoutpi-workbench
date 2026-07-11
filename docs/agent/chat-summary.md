@@ -138,3 +138,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Generic bbox, GeoJSON geometry, Feature and FeatureCollection inputs share one bounds/feature normalizer. Live GEE imagery is streamed to both renderers without a GeoTIFF download.
 - Desktop/mobile screenshots, canvas frame/state checks, pixel analysis, all 68 tests, full build/package verification and dependency audit pass.
 - Next: restore the stashed privacy-safe Pi evaluation scorer work and continue real Pi Agent outcome evaluation.
+
+### 2026-07-11 - Pi spatial focus contract
+
+- Corrected the remaining UI ambiguity: Pi now owns a durable, revisioned plan/role/year/renderer focus through `earth_workspace(view_set|view_get)`, while the Workbench follows it as a read-oriented runtime console.
+- Left is the Pi task stream, center is the shared spatial canvas, and right is the structured context Pi can reason over. Human map changes enter local inspection and never overwrite Pi state.
+- Normal product builds hide direct create/run/export controls; a development-only environment flag restores them in a secondary menu.
+- Desktop/mobile visual QA, dynamic follow/detach behavior, 73 tests, package extraction, full build, audit, and runtime harnesses pass.
+- Next: finish the privacy-safe real Pi RPC evaluation harness, including explicit skill loading and outcome-based scoring, without weakening the new Pi-first product boundary.

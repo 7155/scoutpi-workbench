@@ -3,7 +3,7 @@
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark"><Orbit :size="20" /></div>
-        <div><strong>ScoutPi Earth</strong><span>{{ t('Spatial Runtime') }}</span></div>
+        <div><strong>ScoutPi Earth</strong><span>{{ t('Pi Spatial Runtime') }}</span></div>
       </div>
       <div class="top-context" v-if="selectedPlan">
         <Bot :size="14" />
@@ -12,43 +12,46 @@
         <strong>{{ selectedPlan.spec.period.startYear }}-{{ selectedPlan.spec.period.endYear }}</strong>
       </div>
       <div class="top-actions">
+        <div :class="['pi-control-status', piControlTone]"><Bot :size="15" /><span>{{ t('Pi control') }}</span><strong>{{ piControlLabel }}</strong></div>
         <div class="locale-switch" role="group" :aria-label="t('Language')"><button :class="{ active: locale === 'en' }" @click="setLocale('en')">EN</button><button :class="{ active: locale === 'zh-CN' }" @click="setLocale('zh-CN')">中</button></div>
         <button class="icon-button desktop-panel-toggle" :class="{ active: leftPanelOpen }" :title="leftPanelOpen ? t('Hide Pi tasks') : t('Show Pi tasks')" @click="leftPanelOpen = !leftPanelOpen"><PanelLeft :size="17" /></button>
         <button class="icon-button desktop-panel-toggle" :class="{ active: rightPanelOpen }" :title="rightPanelOpen ? t('Hide spatial state') : t('Show spatial state')" @click="rightPanelOpen = !rightPanelOpen"><PanelRight :size="17" /></button>
         <button :class="['runtime-launch', { attention: runtimeAttention > 0, ready: runtimeAttention === 0 && environment.authenticated }]" :title="t('Open Runtime Center')" @click="mobileActionMenu = false; registryDialog = true"><span class="runtime-dot"></span><span>{{ t('Runtime') }}</span><strong>{{ runtimeAttention ? t('count.review', { count: runtimeAttention }) : environment.authenticated ? t('Ready') : t('Dry run') }}</strong><Waypoints :size="15" /></button>
         <button class="icon-button mobile-only" :title="t('Investigations')" @click="mobileActionMenu = false; showSidebar = !showSidebar"><PanelLeft :size="18" /></button>
         <button class="icon-button compact-on-mobile" :title="t('Refresh workspace')" :disabled="loading" @click="refresh"><RefreshCw :class="{ spin: loading }" :size="17" /></button>
-        <button class="icon-button compact-on-mobile" :title="t('Recipes and compiled workflows')" @click="recipeDialog = true"><BookOpen :size="17" /></button>
-        <button class="icon-button compact-on-mobile" :title="geedimReady ? t('Export selected layer') : t('Install the pipeline extra to export GeoTIFF')" :disabled="!selectedPlan || !environment.authenticated || !geedimReady" @click="exportDialog = true"><Download :size="17" /></button>
-        <button class="icon-button mobile-actions-only" :title="t('More workspace actions')" @click="mobileActionMenu = !mobileActionMenu"><MoreHorizontal :size="18" /></button>
-        <button class="secondary" :disabled="!selectedPlan || running" @click="runPlan('dry_run')"><FlaskConical :size="16" />{{ t('Dry run') }}</button>
-        <button class="primary" :disabled="!selectedPlan || running || !environment.authenticated" @click="runPlan('live')"><Play :size="16" />{{ t('Run live') }}</button>
+        <button class="icon-button" :title="t('Operator menu')" @click="mobileActionMenu = !mobileActionMenu"><MoreHorizontal :size="18" /></button>
         <div v-if="mobileActionMenu" class="mobile-action-menu">
           <button @click="toggleLocale"><Languages :size="16" /><span>{{ isChinese ? t('Switch to English') : t('Switch to Chinese') }}</span></button>
           <button :disabled="loading" @click="mobileActionMenu = false; refresh()"><RefreshCw :class="{ spin: loading }" :size="16" /><span>{{ t('Refresh workspace') }}</span></button>
           <button @click="mobileActionMenu = false; recipeDialog = true"><BookOpen :size="16" /><span>{{ t('Recipes and workflows') }}</span></button>
-          <button :disabled="!selectedPlan || !environment.authenticated || !geedimReady" @click="mobileActionMenu = false; exportDialog = true"><Download :size="16" /><span>{{ t('Export selected layer') }}</span></button>
+          <template v-if="manualControls">
+            <div class="menu-divider"><span>{{ t('Local test controls') }}</span></div>
+            <button @click="mobileActionMenu = false; newDialog = true"><Plus :size="16" /><span>{{ t('Create local test task') }}</span></button>
+            <button :disabled="!selectedPlan || running" @click="mobileActionMenu = false; runPlan('dry_run')"><FlaskConical :size="16" /><span>{{ t('Dry run') }}</span></button>
+            <button :disabled="!selectedPlan || running || !environment.authenticated" @click="mobileActionMenu = false; runPlan('live')"><Play :size="16" /><span>{{ t('Run live') }}</span></button>
+            <button :disabled="!selectedPlan || !environment.authenticated || !geedimReady" @click="mobileActionMenu = false; exportDialog = true"><Download :size="16" /><span>{{ t('Export selected layer') }}</span></button>
+          </template>
         </div>
       </div>
     </header>
 
     <aside :class="['sidebar', { open: showSidebar }]">
       <div class="sidebar-head">
-        <div><span>{{ t('Pi runtime') }}</span><strong>{{ t('Spatial tasks') }}</strong></div>
-        <button class="icon-button" :title="t('Create local test task')" @click="newDialog = true"><Plus :size="18" /></button>
+        <div><span>{{ t('Pi control') }}</span><strong>{{ t('Task stream') }}</strong></div>
+        <button v-if="manualControls" class="icon-button" :title="t('Create local test task')" @click="newDialog = true"><Plus :size="18" /></button>
       </div>
-      <label class="search-box"><Search :size="15" /><input v-model="search" :placeholder="t('Search Pi tasks')"></label>
+      <label class="search-box"><Search :size="15" /><input v-model="search" :placeholder="t('Search task history')"></label>
       <div class="plan-list">
-        <button v-for="plan in filteredPlans" :key="plan.planId" :class="['plan-item', { active: plan.planId === selectedPlanId }]" @click="selectPlan(plan.planId)">
+        <button v-for="plan in filteredPlans" :key="plan.planId" :class="['plan-item', { active: plan.planId === selectedPlanId }]" @click="inspectPlan(plan.planId)">
           <span class="plan-state" :class="latestJob(plan.planId)?.state || 'draft'"></span>
           <span class="plan-copy"><strong>{{ plan.spec.region.name || plan.spec.investigationId }}</strong><small>{{ plan.spec.question }}</small></span>
           <span class="plan-years">{{ plan.spec.period.startYear }}-{{ plan.spec.period.endYear }}</span>
         </button>
-        <div v-if="!filteredPlans.length" class="sidebar-empty"><FolderSearch :size="26" /><span>{{ t('No spatial tasks') }}</span></div>
+        <div v-if="!filteredPlans.length" class="sidebar-empty"><FolderSearch :size="26" /><span>{{ t('No Pi tasks') }}</span></div>
       </div>
       <div class="environment-block">
-        <div><Server :size="15" /><span>{{ t('Spatial engine') }}</span><strong>{{ environment.installed ? environment.earthengineVersion || t('installed') : t('missing') }}</strong></div>
-        <div><KeyRound :size="15" /><span>{{ t('Data access') }}</span><strong>{{ environment.authenticated ? t('connected') : t('required for live') }}</strong></div>
+        <div><Bot :size="15" /><span>{{ t('Pi session') }}</span><strong>{{ piControlLabel }}</strong></div>
+        <div><Database :size="15" /><span>{{ t('Spatial contracts') }}</span><strong>{{ adapters.length }}</strong></div>
         <div><Database :size="15" /><span>{{ t('Tasks / runs') }}</span><strong>{{ plans.length }} / {{ jobs.length }}</strong></div>
         <button :title="t('Open Runtime Center')" @click="registryDialog = true"><Waypoints :size="15" /><span>{{ t('Runtime center') }}</span><strong>{{ runtimeAttention ? t('count.review', { count: runtimeAttention }) : t('count.adapters', { count: adapters.length }) }}</strong></button>
       </div>
@@ -56,38 +59,39 @@
 
     <main class="workspace">
       <template v-if="selectedPlan">
-        <div class="map-region"><InvestigationMap :plan="selectedPlan" :selected-year="selectedYear" :selected-role="selectedRole" :visualization="visualization" :visualization-loading="visualizationLoading" :visualization-error="visualizationError" @select-role="selectedRole = $event" /></div>
+        <div class="map-region"><InvestigationMap :plan="selectedPlan" :selected-year="selectedYear" :selected-role="selectedRole" :visualization="visualization" :visualization-loading="visualizationLoading" :visualization-error="visualizationError" :requested-mode="followPi ? spatialView?.mode : undefined" :follow-pi="followPi" @select-role="inspectRole" @mode-change="detachPiFocus" @toggle-follow="togglePiFollow" /></div>
         <div class="timeline">
-          <button class="icon-button" :title="t('Previous year')" @click="stepYear(-1)"><ChevronLeft :size="17" /></button>
+          <button class="icon-button" :title="t('Previous year')" @click="inspectYearStep(-1)"><ChevronLeft :size="17" /></button>
           <div class="timeline-track">
-            <button v-for="year in years" :key="year" :class="{ active: year === selectedYear, edge: year === years[0] || year === years.at(-1) }" @click="selectedYear = year"><span></span><small>{{ year }}</small></button>
+            <button v-for="year in years" :key="year" :class="{ active: year === selectedYear, edge: year === years[0] || year === years.at(-1) }" @click="inspectYear(year)"><span></span><small>{{ year }}</small></button>
           </div>
-          <button class="icon-button" :title="t('Next year')" @click="stepYear(1)"><ChevronRight :size="17" /></button>
+          <button class="icon-button" :title="t('Next year')" @click="inspectYearStep(1)"><ChevronRight :size="17" /></button>
           <div class="year-readout"><span>{{ t('View year') }}</span><strong>{{ selectedYear }}</strong></div>
         </div>
       </template>
       <div v-else class="empty-workspace">
         <div class="empty-map-grid"></div>
         <Orbit :size="36" />
-        <h1>{{ t('Pi Spatial Runtime') }}</h1>
-        <p>{{ t('Waiting for Pi to attach a spatial task.') }}</p>
-        <button class="secondary" @click="newDialog = true"><Plus :size="16" />{{ t('Create local test task') }}</button>
+        <h1>{{ t('Pi spatial canvas') }}</h1>
+        <p>{{ t('Waiting for the next Pi task.') }}</p>
+        <button v-if="manualControls" class="secondary" @click="newDialog = true"><Plus :size="16" />{{ t('Create local test task') }}</button>
       </div>
     </main>
 
     <aside class="inspector">
       <template v-if="selectedPlan">
         <header class="inspector-head">
-          <div><span>{{ t('Pi spatial state') }}</span><h1>{{ selectedPlan.spec.question }}</h1></div>
+          <div><span>{{ t('Pi context') }}</span><h1>{{ selectedPlan.spec.question }}</h1></div>
           <button class="icon-button" :title="t('Runtime registry')" @click="registryDialog = true"><MoreHorizontal :size="18" /></button>
         </header>
-        <div class="role-strip"><strong>{{ t('Layers') }}</strong><span v-for="item in selectedPlan.datasets" :key="item.role">{{ roleLabel(item.role) }}</span></div>
+        <div class="role-strip"><strong>{{ t('Observables') }}</strong><span v-for="item in selectedPlan.datasets" :key="item.role" :class="{ active: item.role === selectedRole }">{{ roleLabel(item.role) }}</span></div>
         <nav class="inspector-tabs">
           <button v-for="tab in tabs" :key="tab.id" :class="{ active: activeTab === tab.id }" :title="tab.label" @click="activeTab = tab.id"><component :is="tab.icon" :size="16" /><span>{{ tab.label }}</span></button>
         </nav>
 
         <div class="inspector-scroll">
-          <div v-if="activeTab === 'evidence'" class="panel-section evidence-section">
+          <PiSpatialContext v-if="activeTab === 'context'" :plan="selectedPlan" :view="spatialView" :selected-role="selectedRole" :selected-year="selectedYear" :follow-pi="followPi" />
+          <div v-else-if="activeTab === 'evidence'" class="panel-section evidence-section">
             <section>
               <div class="section-heading"><h2>{{ t('Evidence graph') }}</h2><span>{{ t('count.nodes', { count: evidenceGraph?.nodes.length || 0 }) }}</span></div>
               <EvidenceGraph :graph="evidenceGraph" :records="selectedEvidence" :review="evidenceReview" />
@@ -111,7 +115,6 @@
               <article v-for="claim in selectedStory.claims" :key="claim.claimId" class="claim"><p>{{ claim.claim }}</p><a :href="claim.sourceUrl" target="_blank">{{ t('Open source') }} <ExternalLink :size="12" /></a></article>
             </section>
           </div>
-          <MetricsPanel v-else-if="activeTab === 'metrics'" :plan="selectedPlan" />
           <div v-else-if="activeTab === 'plan'" class="panel-section plan-section">
             <div class="section-heading"><h2>{{ t('Analysis graph') }}</h2><span>{{ t('count.nodes', { count: selectedPlan.dag.length }) }}</span></div>
             <PlanGraph :nodes="selectedPlan.dag" />
@@ -156,19 +159,19 @@
 
 <script setup lang="ts">
 import { computed, markRaw, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { AlertCircle, AlertTriangle, Ban, BarChart3, BookOpen, Bot, ChevronLeft, ChevronRight, Database, Download, ExternalLink, FileText, FlaskConical, FolderSearch, GitBranch, Info, KeyRound, Languages, Layers3, ListChecks, LoaderCircle, MoreHorizontal, Orbit, PanelLeft, PanelRight, Play, Plus, RefreshCw, RotateCcw, RotateCw, ScanSearch, Search, Server, Waypoints, X } from "lucide-vue-next";
+import { Activity, AlertCircle, AlertTriangle, Ban, BookOpen, Bot, ChevronLeft, ChevronRight, Database, Download, ExternalLink, Eye, FileText, FlaskConical, FolderSearch, GitBranch, Info, Languages, ListChecks, LoaderCircle, MoreHorizontal, Orbit, PanelLeft, PanelRight, Play, Plus, RefreshCw, RotateCcw, RotateCw, ScanSearch, Search, Waypoints, X } from "lucide-vue-next";
 import { api } from "./api";
 import { useI18n } from "./i18n";
 import InvestigationMap from "./components/InvestigationMap.vue";
 import EvidenceGraph from "./components/EvidenceGraph.vue";
 import LocalExportDialog from "./components/LocalExportDialog.vue";
-import MetricsPanel from "./components/MetricsPanel.vue";
 import NewInvestigationDialog from "./components/NewInvestigationDialog.vue";
+import PiSpatialContext from "./components/PiSpatialContext.vue";
 import PlanGraph from "./components/PlanGraph.vue";
 import RecipeDialog from "./components/RecipeDialog.vue";
 import RuntimeRegistryDialog from "./components/RuntimeRegistryDialog.vue";
 import RunLedger from "./components/RunLedger.vue";
-import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph as EvidenceGraphState, EvidenceReviewReport, InvestigationPlan, InvestigationSpec, JobArtifact, PiEcosystemProfile, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, TriggerRun, WorkflowTrigger } from "./types";
+import type { AgentCheckpointSummary, AgentRunSummary, BrowserEvidenceRecord, ContextPackSummary, ContextWritebackSummary, DelegationGrantSummary, EarthBackendManifest, EarthBackendProbe, EarthJob, EarthSkillSummary, EarthStory, EarthVisualization, EarthWorkflowReplay, EarthWorkflowSummary, EnvironmentStatus, EvidenceGraph as EvidenceGraphState, EvidenceReviewReport, InvestigationPlan, InvestigationSpec, JobArtifact, PiEcosystemProfile, RecipeSummary, RegisteredAdapter, RuntimeApproval, RuntimeTelemetrySummary, ScoutPiMcpProfile, SpatialViewState, TriggerRun, WorkflowTrigger } from "./types";
 
 const { locale, isChinese, t, statusLabel, roleLabel, setLocale, toggleLocale } = useI18n();
 
@@ -182,6 +185,7 @@ const backendManifests = ref<EarthBackendManifest[]>([]);
 const backendProbes = ref<Record<string, EarthBackendProbe>>({});
 const telemetry = ref<RuntimeTelemetrySummary>();
 const agentRuns = ref<AgentRunSummary[]>([]);
+const spatialView = ref<SpatialViewState>();
 const checkpoints = ref<AgentCheckpointSummary[]>([]);
 const contextPacks = ref<ContextPackSummary[]>([]);
 const contextWritebacks = ref<ContextWritebackSummary[]>([]);
@@ -206,7 +210,7 @@ const visualization = ref<EarthVisualization>();
 const visualizationLoading = ref(false);
 const visualizationError = ref("");
 const search = ref("");
-const activeTab = ref("evidence");
+const activeTab = ref("context");
 const loading = ref(false);
 const saving = ref(false);
 const running = ref(false);
@@ -224,12 +228,14 @@ const showSidebar = ref(false);
 const leftPanelOpen = ref(true);
 const rightPanelOpen = ref(true);
 const mobileActionMenu = ref(false);
+const followPi = ref(true);
 const error = ref("");
+const manualControls = import.meta.env.VITE_SCOUTPI_MANUAL_CONTROLS === "1";
 const tabs = computed(() => [
+  { id: "context", label: t("Pi sees"), icon: markRaw(Eye) },
   { id: "evidence", label: t("Evidence"), icon: markRaw(ListChecks) },
-  { id: "metrics", label: t("Spatial data"), icon: markRaw(BarChart3) },
   { id: "plan", label: t("Analysis"), icon: markRaw(GitBranch) },
-  { id: "runs", label: t("Execution"), icon: markRaw(Layers3) },
+  { id: "runs", label: t("Activity"), icon: markRaw(Activity) },
 ]);
 
 const selectedPlan = computed(() => plans.value.find((plan) => plan.planId === selectedPlanId.value));
@@ -237,6 +243,9 @@ const selectedStory = computed(() => stories.value.find((story) => story.investi
 const selectedEvidence = computed(() => evidenceRecords.value.filter((record) => record.binding?.investigationId === selectedPlan.value?.spec.investigationId));
 const geedimReady = computed(() => environment.value.backends?.some((backend) => backend.id === "geedim" && backend.installed) === true);
 const runtimeAttention = computed(() => contextWritebacks.value.filter((item) => item.state === "pending").length + checkpoints.value.filter((item) => item.recovery.recoverable).length + approvals.value.filter((item) => item.state === "pending").length + agentRuns.value.filter((item) => item.state === "interrupted").length + triggers.value.filter((item) => item.state === "draft").length);
+const latestAgentRun = computed(() => [...agentRuns.value].sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]);
+const piControlLabel = computed(() => latestAgentRun.value?.state === "running" ? t("Pi working") : spatialView.value?.control.source === "pi" && spatialView.value.revision > 0 ? t("Pi attached") : t("Waiting for Pi"));
+const piControlTone = computed(() => latestAgentRun.value?.state === "running" || spatialView.value?.phase === "computing" ? "working" : spatialView.value?.control.source === "pi" && spatialView.value.revision > 0 ? "attached" : "waiting");
 const planJobs = computed(() => jobs.value.filter((job) => job.planId === selectedPlanId.value).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
 const workflowSourceJob = computed(() => planJobs.value.find((job) => job.state === "completed"));
 const years = computed(() => selectedPlan.value ? Array.from({ length: selectedPlan.value.spec.period.endYear - selectedPlan.value.spec.period.startYear + 1 }, (_, index) => selectedPlan.value!.spec.period.startYear + index) : []);
@@ -265,17 +274,37 @@ function selectPlan(id: string) {
   if (plan) void loadEvidenceGraph(plan.spec.investigationId);
   showSidebar.value = false;
 }
+function applyPiSpatialView(view = spatialView.value) {
+  if (!followPi.value || !view?.target) return;
+  const plan = plans.value.find((item) => item.planId === view.target!.planId);
+  if (!plan) return;
+  if (selectedPlanId.value !== plan.planId) selectPlan(plan.planId);
+  if (plan.datasets.some((item) => item.role === view.target!.role)) selectedRole.value = view.target.role;
+  if (view.target.year >= plan.spec.period.startYear && view.target.year <= plan.spec.period.endYear) selectedYear.value = view.target.year;
+  const job = view.target.jobId ? jobs.value.find((item) => item.jobId === view.target!.jobId) : undefined;
+  if (job) void selectJob(job);
+}
+function detachPiFocus() { followPi.value = false; }
+function togglePiFollow() {
+  followPi.value = !followPi.value;
+  if (followPi.value) applyPiSpatialView();
+}
+function inspectPlan(id: string) { detachPiFocus(); selectPlan(id); }
+function inspectRole(role: string) { detachPiFocus(); selectedRole.value = role; }
+function inspectYear(year: number) { detachPiFocus(); selectedYear.value = year; }
 function stepYear(delta: number) {
   const index = years.value.indexOf(selectedYear.value);
   selectedYear.value = years.value[Math.max(0, Math.min(years.value.length - 1, index + delta))] ?? selectedYear.value;
 }
+function inspectYearStep(delta: number) { detachPiFocus(); stepYear(delta); }
 async function refresh() {
   loading.value = true; error.value = "";
   try {
-    const [nextEnvironment, nextMcp, nextPiEcosystem, nextTriggers, nextTriggerRuns, nextDelegations, nextPlans, nextJobs, nextStories, nextRecipes, nextAdapters, nextSkills, nextBackends, nextTelemetry, nextAgentRuns, nextCheckpoints, nextContextPacks, nextContextWritebacks, nextEvidence, nextApprovals, nextWorkflows, nextWorkflowRuns] = await Promise.all([api.environment(), api.mcp(), api.piEcosystem(), api.triggers(), api.triggerRuns(), api.delegations(), api.plans(), api.jobs(), api.stories(), api.recipes(), api.adapters(), api.skills(), api.backends(), api.telemetry(), api.agentRuns(), api.checkpoints(), api.contextPacks(), api.contextWritebacks(), api.evidence(), api.approvals(), api.workflows(), api.workflowRuns()]);
-    environment.value = nextEnvironment; mcpProfile.value = nextMcp; piEcosystem.value = nextPiEcosystem; triggers.value = nextTriggers; triggerRuns.value = nextTriggerRuns; delegations.value = nextDelegations; plans.value = nextPlans; jobs.value = nextJobs; stories.value = nextStories; recipes.value = nextRecipes; adapters.value = nextAdapters; skills.value = nextSkills; backendManifests.value = nextBackends; telemetry.value = nextTelemetry; agentRuns.value = nextAgentRuns; checkpoints.value = nextCheckpoints; contextPacks.value = nextContextPacks; contextWritebacks.value = nextContextWritebacks; evidenceRecords.value = nextEvidence; approvals.value = nextApprovals; workflows.value = nextWorkflows; workflowRuns.value = nextWorkflowRuns;
+    const [nextEnvironment, nextMcp, nextPiEcosystem, nextTriggers, nextTriggerRuns, nextDelegations, nextPlans, nextJobs, nextStories, nextRecipes, nextAdapters, nextSkills, nextBackends, nextTelemetry, nextAgentRuns, nextSpatialView, nextCheckpoints, nextContextPacks, nextContextWritebacks, nextEvidence, nextApprovals, nextWorkflows, nextWorkflowRuns] = await Promise.all([api.environment(), api.mcp(), api.piEcosystem(), api.triggers(), api.triggerRuns(), api.delegations(), api.plans(), api.jobs(), api.stories(), api.recipes(), api.adapters(), api.skills(), api.backends(), api.telemetry(), api.agentRuns(), api.spatialView(), api.checkpoints(), api.contextPacks(), api.contextWritebacks(), api.evidence(), api.approvals(), api.workflows(), api.workflowRuns()]);
+    environment.value = nextEnvironment; mcpProfile.value = nextMcp; piEcosystem.value = nextPiEcosystem; triggers.value = nextTriggers; triggerRuns.value = nextTriggerRuns; delegations.value = nextDelegations; plans.value = nextPlans; jobs.value = nextJobs; stories.value = nextStories; recipes.value = nextRecipes; adapters.value = nextAdapters; skills.value = nextSkills; backendManifests.value = nextBackends; telemetry.value = nextTelemetry; agentRuns.value = nextAgentRuns; spatialView.value = nextSpatialView; checkpoints.value = nextCheckpoints; contextPacks.value = nextContextPacks; contextWritebacks.value = nextContextWritebacks; evidenceRecords.value = nextEvidence; approvals.value = nextApprovals; workflows.value = nextWorkflows; workflowRuns.value = nextWorkflowRuns;
     if (selectedJob.value) await selectJob(nextJobs.find((job) => job.jobId === selectedJob.value?.jobId));
-    if (!selectedPlanId.value && nextPlans[0]) selectPlan(nextPlans[0].planId);
+    if (followPi.value && nextSpatialView.target && nextPlans.some((plan) => plan.planId === nextSpatialView.target?.planId)) applyPiSpatialView(nextSpatialView);
+    else if (!selectedPlanId.value && nextPlans[0]) selectPlan(nextPlans[0].planId);
     else {
       const activePlan = nextPlans.find((plan) => plan.planId === selectedPlanId.value);
       if (activePlan) await loadEvidenceGraph(activePlan.spec.investigationId);
@@ -286,7 +315,8 @@ async function refresh() {
 async function loadEvidenceGraph(investigationId: string) {
   evidenceGraph.value = undefined; evidenceReview.value = undefined;
   try {
-    const [graph, review] = await Promise.all([api.evidenceGraph(investigationId), api.evidenceReview(investigationId).catch(() => undefined)]);
+    const hasStory = stories.value.some((story) => story.investigationId === investigationId);
+    const [graph, review] = await Promise.all([api.evidenceGraph(investigationId), hasStory ? api.evidenceReview(investigationId).catch(() => undefined) : Promise.resolve(undefined)]);
     evidenceGraph.value = graph; evidenceReview.value = review;
   } catch (value) { error.value = value instanceof Error ? value.message : String(value); }
 }
@@ -454,6 +484,12 @@ async function loadVisualization() {
   const requestId = ++visualizationRequest;
   visualization.value = undefined; visualizationError.value = "";
   if (!environment.value.authenticated || !selectedPlan.value || !selectedRole.value) return;
+  const piVisualizationRequested = spatialView.value?.control.source === "pi"
+    && spatialView.value.control.operation === "visualize"
+    && spatialView.value.target?.planId === selectedPlan.value.planId
+    && spatialView.value.target.role === selectedRole.value
+    && spatialView.value.target.year === selectedYear.value;
+  if (followPi.value && !piVisualizationRequested) return;
   visualizationLoading.value = true;
   try {
     const next = await api.visualization(selectedPlan.value.planId, selectedRole.value, selectedYear.value);
@@ -491,7 +527,9 @@ function formatBytes(value: number) {
 }
 
 let pollTimer: number | undefined;
+let spatialPollTimer: number | undefined;
 let polling = false;
+let spatialPolling = false;
 async function pollJobs() {
   if (polling) return;
   const active = jobs.value.filter((job) => job.state === "running" || job.state === "queued");
@@ -510,7 +548,25 @@ async function pollJobs() {
   finally { polling = false; }
 }
 
-onMounted(async () => { await refresh(); pollTimer = window.setInterval(pollJobs, 4000); });
-onBeforeUnmount(() => { if (pollTimer !== undefined) window.clearInterval(pollTimer); });
-watch([selectedPlanId, selectedYear, selectedRole, () => environment.value.authenticated], () => { void loadVisualization(); });
+async function pollSpatialView() {
+  if (spatialPolling) return;
+  spatialPolling = true;
+  try {
+    const next = await api.spatialView();
+    if (next.revision !== spatialView.value?.revision || next.updatedAt !== spatialView.value?.updatedAt) {
+      spatialView.value = next;
+      applyPiSpatialView(next);
+      if (next.target?.jobId) {
+        const known = jobs.value.find((job) => job.jobId === next.target?.jobId);
+        if (known && (known.state === "running" || known.state === "queued")) replaceJob(await api.job(known.jobId, true));
+      }
+    }
+  } catch {
+    // The main refresh surface reports API failures; background focus polling stays quiet.
+  } finally { spatialPolling = false; }
+}
+
+onMounted(async () => { await refresh(); pollTimer = window.setInterval(pollJobs, 4000); spatialPollTimer = window.setInterval(pollSpatialView, 1800); });
+onBeforeUnmount(() => { if (pollTimer !== undefined) window.clearInterval(pollTimer); if (spatialPollTimer !== undefined) window.clearInterval(spatialPollTimer); });
+watch([selectedPlanId, selectedYear, selectedRole, () => environment.value.authenticated, () => spatialView.value?.revision, followPi], () => { void loadVisualization(); });
 </script>
