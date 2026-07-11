@@ -336,7 +336,8 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
 
   let ecosystem = inspectPiEcosystem([]);
   pi.on("session_start", async (_event, ctx) => {
-    ecosystem = inspectPiEcosystem(pi.getAllTools());
+    const commands = typeof pi.getCommands === "function" ? pi.getCommands() : [];
+    ecosystem = inspectPiEcosystem(pi.getAllTools(), commands.map((command) => ({ name: command.name, description: command.description, sourceInfo: command.sourceInfo })));
     setEarthProfile(["earth_workspace"]);
     ctx.ui.setStatus("scoutpi-earth", `Earth | core profile | ${ecosystem.detectedCount} peers`);
   });

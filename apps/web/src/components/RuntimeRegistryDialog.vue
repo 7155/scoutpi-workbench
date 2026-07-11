@@ -113,7 +113,11 @@
             <div class="context-budget"><span :style="{ width: `${budgetPercent(pack)}%` }"></span></div>
             <div class="context-row-meta"><span>{{ pack.budget.selectedCount }}/{{ pack.budget.candidateCount }} items</span><span>{{ pack.budget.deliveredTokens }}/{{ pack.budget.maxTokens }} tokens</span><span>{{ pack.budget.estimator }}</span><span v-if="pack.budget.truncated" class="warning-text">truncated</span></div>
             <p v-if="pack.items[0]">{{ pack.items[0].text }}</p>
-            <div class="provider-line"><span v-for="provider in pack.sourceProviders" :key="provider">{{ provider }}</span><small v-if="!pack.sourceProviders.length">{{ pack.detectedMemoryTools.length ? `Delegated to ${pack.detectedMemoryTools.join(' · ')}` : 'No provider data' }}</small></div>
+            <div class="provider-line">
+              <span v-for="provider in pack.providers || []" :key="provider.providerId" :class="['provider-status', provider.state]" :title="provider.errorCode || `${provider.itemCount} candidates in ${provider.latencyMs} ms`"><i></i>{{ provider.displayName }}<b v-if="provider.state === 'ready'">{{ provider.latencyMs }} ms · {{ provider.itemCount }}</b><b v-else>{{ provider.state }}</b></span>
+              <span v-for="provider in pack.sourceProviders.filter((providerId) => !(pack.providers || []).some((status) => status.providerId === providerId))" :key="provider">{{ provider }}</span>
+              <small v-if="!pack.sourceProviders.length && !(pack.providers || []).length">{{ pack.detectedMemoryTools.length ? `Delegated to ${pack.detectedMemoryTools.join(' · ')}` : 'No provider data' }}</small>
+            </div>
           </article>
           <div v-if="!contextPacks.length" class="empty-state"><BrainCircuit :size="27" /><strong>No context pack</strong><span>The next Pi turn can assemble a bounded pack from installed memory providers.</span></div>
         </section>
@@ -400,6 +404,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 .context-pack-row p { display: -webkit-box; overflow: hidden; margin: 0; color: #445249; font-size: 10px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .provider-line { display: flex; flex-wrap: wrap; gap: 5px; }
 .provider-line span { border-radius: 3px; padding: 2px 5px; background: #e9eef5; color: #42678b; font-size: 8px; }
+.provider-line .provider-status { display: inline-flex; align-items: center; gap: 4px; background: #eef2f0; color: #53635a; }.provider-status i { width: 5px; height: 5px; border-radius: 50%; background: #9ba69f; }.provider-status b { color: #7b8780; font-size: 8px; font-weight: 650; }.provider-status.ready { background: #e4f1e9; color: #216845; }.provider-status.ready i { background: #2a8057; }.provider-status.failed { background: #f7e6e7; color: #94434b; }.provider-status.failed i { background: #b64e57; }.provider-status.unavailable { background: #f2eee4; color: #806425; }.provider-status.unavailable i { background: #ad8126; }
 .provider-line small { color: #819087; font-size: 9px; }
 .context-state-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; align-items: center; border-top: 1px solid #e2e7e4; padding: 10px 0; }
 .context-state-row > svg { color: #527363; }

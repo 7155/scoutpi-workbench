@@ -74,3 +74,11 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - Pi's official package catalog will be treated as the generic capability supply layer. ScoutPi should broker compatible research, MCP, subagent, security, and context packages instead of cloning them.
 - Cross-application memory should come from the existing `wisdom-weasel-rag-ime` Core through a typed Context Provider and reviewed writeback protocol, while ScoutPi owns task ranking, token budgets, provenance, and runtime attachment.
 - Next: commit this Trigger milestone, then upgrade the capability broker and implement the IME Core provider integration.
+
+### 2026-07-11 - Pi market broker and Wisdom Weasel Context Provider
+
+- ScoutPi now treats Pi's official extension market as the reusable capability supply layer and detects both tool-based and command-only packages without auto-installing or silently activating them.
+- The existing `wisdom-weasel-rag-ime` Core is now the preferred opt-in memory source through a typed, query-only provider; ScoutPi still owns task ranking, token budgets, provenance, Context Pack attachment, and provider health.
+- The provider fails closed, rejects sensitive-looking material, caps process I/O and latency, and never enables raw-event retrieval or mutates the Core SQLite database.
+- Runtime Center shows provider readiness, latency, and selected candidate count. All 58 tests, Earth/MCP harnesses, Python compile, production build, and production dependency audit pass.
+- Next: deliver user-approved writebacks through a reviewed staging/import protocol rather than writing the Core database directly, then optimize cold-start latency only if measured runtime data justifies it.

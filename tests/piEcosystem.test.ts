@@ -22,6 +22,23 @@ test("Pi ecosystem profile keeps ScoutPi boundaries explicit when peers are abse
   assert.match(profile.capabilities.find((item) => item.id === "browser")?.scoutPiBoundary ?? "", /existing Edge session/);
 });
 
+test("Pi capability broker detects zero-tool market extensions from slash commands and preserves source provenance", () => {
+  const profile = inspectPiEcosystem(
+    [{ name: "earth_workspace" }],
+    [
+      { name: "goal", sourceInfo: { source: "npm:pi-goal", scope: "global" } },
+      { name: "intercom", sourceInfo: { source: "npm:pi-intercom", scope: "global" } },
+      { name: "access-guard", sourceInfo: { source: "git:github.com/sysid/pi-extensions", scope: "project" } },
+      { name: "extensions", sourceInfo: { source: "npm:pi-extmgr", scope: "global" } },
+    ],
+  );
+  assert.equal(profile.capabilities.find((item) => item.id === "goals")?.detected, true);
+  assert.deepEqual(profile.capabilities.find((item) => item.id === "interop")?.commands, ["intercom"]);
+  assert.match(profile.capabilities.find((item) => item.id === "security")?.sources[0] ?? "", /sysid\/pi-extensions/);
+  assert.match(profile.routing.find((item) => item.task === "package discovery and updates")?.preferred ?? "", /package manager UI/);
+  assert.match(formatPiEcosystemProfile(profile), /\/goal/);
+});
+
 test("the public Pi package loads the domain runtime plus zero-tool lifecycle extensions", async () => {
   const packageJson = JSON.parse(await readFile(resolve("package.json"), "utf8"));
   assert.deepEqual(packageJson.pi.extensions, [

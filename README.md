@@ -41,7 +41,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Event-only governance extension with parameter-bound, single-use user approval receipts
 - Event-only observability extension with privacy-preserving Agent run traces and provider-reported token/cost usage
 - Event-only durable checkpoint extension with atomic revisions, integrity checks, compaction hints, and one-time recovery context
-- Event-only Context Bridge with provider-neutral candidates, mixed-text token budgets, provenance, and user-reviewed writeback outbox
+- Event-only Context Bridge with provider-neutral candidates, mixed-text token budgets, provenance, user-reviewed writeback outbox, and a query-only Wisdom Weasel RAG Core adapter
 - Event-only Browser Evidence Bridge with allowed-root import, artifact hashes, explicit claim/hypothesis relations, and Agent-trace attachment
 - Event-only durable trigger extension with identity-bound HMAC grants, manual/interval/event conditions, idempotent replay, cooldown/expiry/run limits, and no additional model tool
 - Local stdio MCP compatibility server with four compact gateways, resource links, and no live/admin operations
@@ -57,7 +57,7 @@ The model does not execute generated Python, JavaScript, shell, or arbitrary Ear
 - Generated `scoutpi.earth.skill.v1` drafts with confirmed publishing and overwrite protection
 - Automatic workflow candidates from verified successful jobs, explicit promotion, deterministic replay, cost assertions, and adapter-drift rejection
 - Vue Workbench for maps, plans, jobs, artifacts, recipes, workflows, and a responsive Runtime Center that consolidates capabilities, Context Packs, continuity, approvals, Agent traces, and token/cost telemetry
-- Pi ecosystem detection so generic research, MCP, memory, browser, context, and subagent capabilities are reused rather than copied
+- Pi Capability Broker over tools and commands so market-provided research, MCP, memory, browser, context, goals, security, interoperability, evaluation, and subagent capabilities are reused rather than copied
 
 The core does not silently ship an active domain catalog. `examples/adapter-packs/earth-engine-starter.json` is an explicit demo pack and remains separate from runtime code.
 
@@ -140,6 +140,15 @@ workflow_compile / workflow_list / workflow_replay / workflow_status
 Pi starts with only `earth_workspace` active, then activates `python_analysis` and `earth_story` when the task reaches analysis or reporting. High-risk operations are intercepted by `scoutpi-governance` and require a real `ctx.ui.confirm()` receipt; model-authored `confirmed: true` is not trusted.
 
 Use `/earth-ecosystem` in Pi to inspect reusable peer capabilities. Cross-session memory comes from an installed Pi provider; this package does not register a second memory tool surface.
+
+To use the existing Wisdom Weasel input-method Core as the Context provider:
+
+```bash
+export SCOUTPI_IME_CORE_ROOT=/absolute/path/to/wisdom-weasel-rag-ime
+export SCOUTPI_IME_CORE_DB="$HOME/Library/Application Support/RagIme/rag-ime.sqlite"
+```
+
+The adapter queries the existing Core through a fixed, versioned subprocess contract. It does not enable raw debug output or mutate the IME database.
 
 Use `/earth-triggers` to inspect durable workflow automation and `/earth-trigger-approve <trigger-id>` to issue an identity-bound dry-run delegation after direct review. Trigger automation never expands the three-tool model surface.
 
@@ -283,6 +292,10 @@ The product direction and the `Pi -> typed investigation -> supervised compute -
 | [microsoft/Earth-Copilot](https://github.com/microsoft/Earth-Copilot) | Separation of discovery, analysis, and visualization | ScoutPi is local-first, Pi-native, and dynamically adapter-driven. |
 | [opengeos/segment-geospatial](https://github.com/opengeos/segment-geospatial) and [HYDRAFloods](https://github.com/Servir-Mekong/hydra-floods) | Examples of mature algorithm providers | Future optional backends, never hard-coded scenario branches. |
 | [7155/scoutpi-browserbridge](https://github.com/7155/scoutpi-browserbridge) | Existing-browser research, downloads, and evidence capture | Browser control stays a separate install so Earth tools remain compact. |
+| [Pi package catalog](https://pi.dev/packages?type=extension), [pi-extmgr](https://github.com/ayagmar/pi-extmgr), and [pi-goal](https://github.com/Michaelliv/pi-goal) | Native package discovery/management and persistent autonomous-goal state | ScoutPi detects and routes compatible peers; it never auto-installs packages or replaces the generic goal loop. |
+| [pi-intercom](https://github.com/nicobailon/pi-intercom), [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter), and [pi-subagents](https://github.com/nicobailon/pi-subagents) | Bounded session messaging, lazy schemas/output guards, atomic artifacts, budgets, and watchdog recovery | Reused as peer capabilities; ScoutPi owns only typed domain exchange contracts and deterministic execution. |
+| [sysid/pi-extensions](https://github.com/sysid/pi-extensions) | Event interception, symlink-aware path guards, default-deny writes, and optional OS sandboxing | Generic isolation composes with, but does not replace, ScoutPi's parameter-bound domain governance. |
+| [7155/wisdom-weasel-rag-ime](https://github.com/7155/wisdom-weasel-rag-ime) | Local cross-application RAG/memory, provenance lanes, anti-echo and memory governance | Used through a query-only provider contract; Context Bridge owns task ranking, token budget and runtime trace attachment. |
 
 See [PI_OPEN_SOURCE_ECOSYSTEM_REUSE_AUDIT.md](docs/scoutpi/PI_OPEN_SOURCE_ECOSYSTEM_REUSE_AUDIT.md) for the wider reuse decision.
 

@@ -1,6 +1,6 @@
 # Pi Open-Source Ecosystem Reuse Audit
 
-- Audit date: 2026-07-10
+- Audit date: 2026-07-11
 - Scope: capabilities that overlap with ScoutPi Earth Workspace and BrowserBridge
 - Decision rule: reuse mature generic infrastructure; implement only ScoutPi-owned domain contracts, safety boundaries, artifacts, and visualization.
 
@@ -39,6 +39,24 @@ Pi already has the extension primitives ScoutPi needs:
 - the event bus supports extension-to-extension coordination.
 
 The public package catalog and the targeted source audit showed mature generic solutions for research, MCP, browser automation, memory, output compression, and subagents. Reimplementing those layers would add tool schemas and maintenance work without creating a ScoutPi advantage.
+
+Pi's official extension gallery is [`pi.dev/packages`](https://pi.dev/packages?type=extension). The native package manager owns install, update, filtering, enable/disable, and removal. ScoutPi therefore treats the market as a capability supply layer, not as code to vendor or a catalog to duplicate in the Workbench.
+
+## 2026-07-11 Source Pass
+
+The audit used read-only shallow clones of the following repositories. Their commit snapshots are recorded so architecture claims remain reproducible without vendoring third-party source into this repository.
+
+| Project | Snapshot | Concrete mechanism studied | ScoutPi decision |
+| --- | --- | --- | --- |
+| [`ayagmar/pi-extmgr`](https://github.com/ayagmar/pi-extmgr) | `870af8a33fde` | Pi package catalog, cancellable npm discovery, persistent cache, staged configuration, RPC fallback | Use the official market/package manager. Capability Broker reports peers but never installs them. |
+| [`Michaelliv/pi-goal`](https://github.com/Michaelliv/pi-goal) | `3f100be54344` | Persistent goal state, token/time accounting, continuation and budget terminal states | Reuse a goal package for conversational autonomy; ScoutPi Trigger remains deterministic workflow replay. |
+| [`nicobailon/pi-intercom`](https://github.com/nicobailon/pi-intercom) | `e234a4446e2b` | Length-prefixed bounded frames and partial-read handling for local session messages | Reuse inter-session transport; ScoutPi emits typed evidence/context/trigger contracts. |
+| [`nicobailon/pi-mcp-adapter`](https://github.com/nicobailon/pi-mcp-adapter) | `82724dccc13a` | One lazy proxy instead of hundreds of schemas; byte/line guards and artifact spill | Keep third-party MCP behind the peer proxy; ScoutPi's server stays four compact domain gateways. |
+| [`nicobailon/pi-subagents`](https://github.com/nicobailon/pi-subagents) | `c940fe20e86d` | Atomic state, artifacts, tool/turn budgets, watchdog recovery and intercom result delivery | Reuse the package for independent review/research; do not turn the Earth DAG into a generic scheduler. |
+| [`sysid/pi-extensions`](https://github.com/sysid/pi-extensions) | `ec825d6a3acf` | Event interception, realpath/symlink-aware path guards, default-deny writes and sandbox policy | Compose generic isolation with ScoutPi's domain approvals and artifact-root enforcement. |
+| [`7155/wisdom-weasel-rag-ime`](https://github.com/7155/wisdom-weasel-rag-ime) | local active branch | Local SQLite/FTS/vector memory, anti-echo ranking, source lanes, governance and cross-application context | Added a typed query-only Context Provider; no second memory database or Pi memory schema. |
+
+`packages/pi-ecosystem` is now a Capability Broker rather than a tool-name-only detector. It inspects both `getAllTools()` and `getCommands()`, so command-only market packages such as goal, intercom, sandbox, and package managers can be recognized without adding their schemas to the model. Source metadata is retained when Pi exposes it. The broker recommends a provider and fallback but never auto-installs or silently activates a package.
 
 The targeted audit did not find a mature Pi-native package that combines all of the following:
 
@@ -96,7 +114,7 @@ The repository enforces the decision in code and tests:
 - `package.json#pi` bundles only the Earth extension and skill.
 - No local memory extension is bundled in the public Pi manifest; memory remains a peer capability.
 - The separate BrowserBridge package defaults to `browser_session`, `browser_observe`, and `browser_act`; legacy granular tools require `SCOUTPI_BROWSER_LEGACY_TOOLS=1` in that repository.
-- `packages/pi-ecosystem` detects peer capabilities and reports routing, but never loads or copies them.
+- `packages/pi-ecosystem` detects tool- and command-based peer capabilities, preserves source metadata, and reports routing, but never installs, loads, or copies them.
 - tests verify the public Earth package surface, task boundaries, and peer-capability routing without importing BrowserBridge source.
 
 ## Primary References

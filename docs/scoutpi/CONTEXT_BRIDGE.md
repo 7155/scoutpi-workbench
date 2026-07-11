@@ -23,6 +23,34 @@ The default inbox is ignored local state:
 
 Set `SCOUTPI_CONTEXT_CANDIDATES_FILE` when another provider writes elsewhere. ScoutPi reads the file; it does not import, duplicate, or mutate the provider's memory database.
 
+## Wisdom Weasel RAG Core Provider
+
+The first live provider adapter connects the user's existing `wisdom-weasel-rag-ime` Core. It does not enable the debug server's raw-text mode, copy the SQLite database, or add a Pi memory tool. Instead, the Context Bridge launches a reviewed, bounded JSON subprocess against the Core's existing Python environment:
+
+```text
+Pi before_agent_start
+  -> scoutpi.context-provider.request.v1
+  -> fixed ime_core_context_provider.py
+  -> LocalSqliteCoreClient.retrieve_candidates_v2()
+  -> scoutpi.context.candidates.v1
+  -> normal validation, ranking and token budget
+```
+
+Configure it outside the repository:
+
+```bash
+export SCOUTPI_IME_CORE_ROOT=/absolute/path/to/wisdom-weasel-rag-ime
+export SCOUTPI_IME_CORE_DB="$HOME/Library/Application Support/RagIme/rag-ime.sqlite"
+```
+
+When the Core has `.venv/bin/python`, the provider uses it directly. Otherwise it falls back to `uv run --project <core-root> python`. `SCOUTPI_IME_CONTEXT_USE_UV=0` and `SCOUTPI_IME_CONTEXT_PYTHON=/path/to/python` provide an explicit launcher override.
+
+The adapter allows query only. It rejects secret-looking queries and candidates, caps request/output size, limits results to 16, enforces a timeout, disables raw-event candidates, and returns stable memory IDs as provenance. Provider health, latency, candidate count, transport, and error code are stored in the Context Pack without storing the full user prompt.
+
+An unavailable provider fails closed and does not block Pi. Approved ScoutPi writebacks remain in the provider outbox; this release does not directly mutate the IME Core database.
+
+Local integration evidence on 2026-07-11: the real Core returned five bounded candidates through the versioned provider contract. Direct Core retrieval was about 67 ms; the cold Python process path was about 0.5 s. These are local measurements, not product guarantees.
+
 ## Candidate Contract
 
 ```json

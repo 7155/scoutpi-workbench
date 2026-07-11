@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { buildContextPack, ContextPackStore, renderContextPack, type ContextCandidate, type ContextWritebackCandidate } from "../../../packages/runtime-context/src/index.ts";
+import { basename } from "node:path";
+import { buildContextPack, configuredContextProviders, ContextPackStore, renderContextPack, validateContextCandidateEnvelope, type ContextCandidate, type ContextWritebackCandidate } from "../../../packages/runtime-context/src/index.ts";
 
 function objectOf(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -60,6 +61,7 @@ function candidate(event: { toolCallId: string; toolName: string; input: Record<
 export default async function setup(pi: ExtensionAPI): Promise<void> {
   const store = new ContextPackStore();
   await store.init();
+  const providers = configuredContextProviders();
   let sessionId: string | undefined;
   let currentPackId: string | undefined;
   const pending = new Map<string, ContextWritebackCandidate>();
@@ -70,19 +72,36 @@ export default async function setup(pi: ExtensionAPI): Promise<void> {
   });
 
   pi.on("before_agent_start", async (event, ctx) => {
-    sessionId = ctx.sessionManager.getSessionId();
+    const currentSessionId = ctx.sessionManager.getSessionId();
+    sessionId = currentSessionId;
     pending.clear();
     const tools = memoryTools(pi);
     let candidates: ContextCandidate[] = [];
-    let sourceError: string | undefined;
+    const sourceErrors: string[] = [];
     try { candidates = (await store.loadCandidates())?.items || []; }
-    catch (error) { sourceError = error instanceof Error ? error.message : String(error); }
+    catch (error) { sourceErrors.push(String((error as { code?: string }).code || "CONTEXT_FILE_SOURCE_REJECTED")); }
+    const providerTimeout = Math.max(200, Math.min(5_000, Number(process.env.SCOUTPI_CONTEXT_PROVIDER_TIMEOUT_MS || 1_500) || 1_500));
+    const providerResults = await Promise.all(providers.map((provider) => provider.query({
+      sessionId: currentSessionId,
+      query: event.prompt,
+      project: process.env.SCOUTPI_CONTEXT_PROJECT?.trim() || basename(process.cwd()),
+      maxItems: 12,
+      timeoutMs: providerTimeout,
+    })));
+    for (const result of providerResults) {
+      if (result.envelope) {
+        try { candidates.push(...validateContextCandidateEnvelope(result.envelope).items); }
+        catch (error) { sourceErrors.push(String((error as { code?: string }).code || "CONTEXT_PROVIDER_PAYLOAD_REJECTED")); }
+      }
+      if (result.status.state !== "ready") sourceErrors.push(result.status.errorCode || "CONTEXT_PROVIDER_FAILED");
+    }
     const rawBudget = Number(process.env.SCOUTPI_CONTEXT_MAX_TOKENS || 1_200);
-    const pack = buildContextPack({ sessionId, query: event.prompt, candidates, detectedMemoryTools: tools, maxTokens: Number.isFinite(rawBudget) ? rawBudget : 1_200 });
+    const pack = buildContextPack({ sessionId: currentSessionId, query: event.prompt, candidates, detectedMemoryTools: tools, providerStatuses: providerResults.map((result) => result.status), maxTokens: Number.isFinite(rawBudget) ? rawBudget : 1_200 });
     await store.savePack(pack);
     currentPackId = pack.packId;
-    pi.appendEntry("scoutpi:context-pack", { packId: pack.packId, queryHash: pack.queryHash, selectedCount: pack.items.length, deliveredTokens: pack.budget.deliveredTokens, sourceProviders: pack.sourceProviders, detectedMemoryTools: tools, sourceError });
-    ctx.ui.setStatus("scoutpi-context", sourceError ? "Context | source rejected" : `Context | ${pack.items.length} items · ${pack.budget.deliveredTokens} tokens`);
+    pi.appendEntry("scoutpi:context-pack", { packId: pack.packId, queryHash: pack.queryHash, selectedCount: pack.items.length, deliveredTokens: pack.budget.deliveredTokens, sourceProviders: pack.sourceProviders, detectedMemoryTools: tools, providers: pack.providers, sourceErrors: [...new Set(sourceErrors)] });
+    const readyProviders = pack.providers.filter((provider) => provider.state === "ready").length;
+    ctx.ui.setStatus("scoutpi-context", sourceErrors.length && !pack.items.length ? "Context | source unavailable" : `Context | ${pack.items.length} items · ${pack.budget.deliveredTokens} tokens${providers.length ? ` · ${readyProviders}/${providers.length} providers` : ""}`);
     const rendered = renderContextPack(pack);
     if (!rendered) return;
     return { systemPrompt: `${event.systemPrompt}\n\n${rendered}` };

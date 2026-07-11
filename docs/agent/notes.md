@@ -104,3 +104,13 @@
 - Pi package discovery research confirmed the official `pi.dev/packages` catalog and native `pi install/list/update/remove` flow. Future generic memory, MCP, subagent, web, and extension-management capability should be brokered from the market rather than reimplemented.
 - The user's `wisdom-weasel-rag-ime` Core remains the preferred memory provider. Next implementation should add a typed provider contract, provenance-aware query adapter, health probe, and approved writeback delivery rather than installing a second memory surface.
 - Verification: `pnpm check` passes 54 tests, Python compile, Earth and MCP harnesses, and production build. Real Pi RPC starts `gpt-5.6`, `xhigh`, all seven public extensions, and reports no extension errors.
+
+## 2026-07-11 08:35 - Pi capability broker and input-method Core provider
+
+- Audited Pi's official package catalog and read pinned source snapshots for package management, goals, inter-extension messaging, lazy MCP exposure, subagents, sandboxing, and access guards.
+- Replaced tool-name-only ecosystem detection with a Capability Broker that also recognizes command-only extensions, preserves exposed source metadata, and keeps installation and activation under operator control.
+- Added an opt-in, query-only Context Provider for the existing `wisdom-weasel-rag-ime` Core. It uses the Core's own `LocalSqliteCoreClient`, preserves memory IDs as provenance, disables raw-event candidates, and never writes the Core database.
+- Added bounded process I/O, timeout/cancellation, item/text/output caps, secret-pattern rejection, provider health state, graceful degradation, and Context Pack/UI provider telemetry.
+- Real local smoke reached the existing Core database and returned five bounded candidates without printing candidate text. Pi RPC initialized `gpt-5.6`, `xhigh`, all seven extensions, and no extension errors; no paid model turn containing private memory was sent.
+- Commands: `git status --short --branch` confirmed only this milestone's tracked/new files; `git diff --stat` was reviewed before verification.
+- Verification: `pnpm check` passes 58 tests, both harnesses, Python compile, and production build; `pnpm audit --prod` reports no known vulnerabilities.

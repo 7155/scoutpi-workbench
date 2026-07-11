@@ -2,6 +2,10 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { MixedTextTokenEstimator } from "../../runtime-telemetry/src/index.ts";
+import type { ContextProviderStatus } from "./providers.ts";
+
+export { configuredContextProviders, ImeCoreContextProvider } from "./providers.ts";
+export type { ContextProvider, ContextProviderCapability, ContextProviderQuery, ContextProviderResult, ContextProviderState, ContextProviderStatus, ImeCoreContextProviderConfig } from "./providers.ts";
 
 export type ContextItemKind = "preference" | "decision" | "procedure" | "fact" | "project_state" | "failure_pattern" | "workflow";
 export type ContextTrust = "user_confirmed" | "project_artifact" | "external_memory" | "untrusted_retrieval";
@@ -45,6 +49,7 @@ export interface ContextPack {
   createdAt: string;
   sourceProviders: string[];
   detectedMemoryTools: string[];
+  providers: ContextProviderStatus[];
   budget: {
     estimator: string;
     maxTokens: number;
@@ -189,6 +194,7 @@ export function buildContextPack(input: {
   query: string;
   candidates: ContextCandidate[];
   detectedMemoryTools?: string[];
+  providerStatuses?: ContextProviderStatus[];
   maxTokens?: number;
   now?: Date;
 }): ContextPack {
@@ -235,6 +241,7 @@ export function buildContextPack(input: {
     createdAt: now.toISOString(),
     sourceProviders: [...new Set(items.map((item) => item.provenance.providerId))],
     detectedMemoryTools: [...new Set(input.detectedMemoryTools || [])].filter((name) => /^[A-Za-z0-9_.:-]{1,120}$/.test(name)).slice(0, 32),
+    providers: (input.providerStatuses || []).map((provider) => ({ ...provider, capabilities: [...provider.capabilities] })).slice(0, 16),
     budget: { estimator: estimator.name, maxTokens, deliveredTokens, candidateCount: ranked.length, selectedCount: items.length, truncated },
     items,
   };
