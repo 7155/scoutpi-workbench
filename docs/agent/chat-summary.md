@@ -179,3 +179,10 @@ The architecture is Pi-first. Pi performs planning and tool selection. Memory re
 - The investigation runtime gained one on-demand generic impact contract, not another Pi tool: `hazard change × baseline exposure -> affected hectares/share + artifact`.
 - The authenticated Hengzhou sample computed a provisional 1,491.1 ha vegetation overlap (12.7%) from bounded Sentinel-1/Sentinel-2 windows. This is a thresholded satellite proxy, not a confirmed damage statistic.
 - Full verification passes 80 tests, all deterministic harnesses, package verification, production build, live GEE execution and zero-error UI checks.
+
+### 2026-07-13 - Cesium ion free-tier integration boundary
+
+- Added optional Cesium World Terrain and OSM Buildings behind ignored local environment configuration, while preserving ArcGIS terrain as the no-token fallback.
+- Browser-visible provider states and token-redacted errors make failure explicit without affecting GEE analysis.
+- The user-pasted value was incomplete and rejected by Cesium as `INVALID_TOKEN`; it was not retained or committed. A replacement should be a dedicated origin-restricted `assets:read` token.
+- Full verification passes 80 tests, deterministic harnesses, package verification, production build and the no-token real-browser path.

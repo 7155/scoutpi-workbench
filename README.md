@@ -105,6 +105,14 @@ uv run earthengine authenticate
 
 Set `EARTHENGINE_PROJECT` when the account or deployment requires an explicit Google Cloud project.
 
+Optional Cesium ion terrain and OSM buildings are configured in ignored local state:
+
+```bash
+cp apps/web/.env.example apps/web/.env.local
+```
+
+Set an origin-restricted, `assets:read`-only `VITE_CESIUM_ION_TOKEN`. Without a valid token the Workbench continues with ArcGIS WorldElevation3D and no hosted building layer; credentials are never required for the analytical runtime.
+
 External MCP hosts can start the separate local stdio surface with `pnpm mcp:stdio`. It does not alter Pi's three-tool surface and intentionally omits live execution, exports, registry mutation, publication, and approval issuance.
 
 ### Optional Python Profiles

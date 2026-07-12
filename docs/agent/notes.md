@@ -238,3 +238,10 @@
 - Added a generic typed `impactAssessment` contract and `impact_overlap` DAG node. The Earth Engine worker checks source coverage, compares bounded baseline/target windows, thresholds hazard change and baseline exposure, computes hectare overlap, and writes `impact_assessment.json`; no Guangxi or flood branch exists in core.
 - Added the Hengzhou flood/vegetation sample and dry/live harness. The authenticated bounded run used 2 baseline/1 target Sentinel-1 scenes and 10 baseline/4 target Sentinel-2 scenes. Its provisional proxy overlap was 1,491.1 ha, or 12.7% of 11,701.6 ha baseline vegetation, and is explicitly not field-confirmed damage.
 - Verification: 80 tests, complete `pnpm check`, dry and live Guangxi harnesses, package verification, production build, desktop/mobile 3D rendering and impact-card checks pass. Adding the eighth on-demand contract changed the measured eager-schema baseline to 1,478 -> 380 tokens (74.29%).
+
+## 2026-07-13 07:45 - Optional free Cesium ion scene content
+
+- Added ignored local Cesium configuration, a public `.env.example`, Cesium World Terrain preference, and optional Cesium OSM Buildings. ArcGIS WorldElevation3D remains the no-token fallback and an ion failure cannot break the GEE layer.
+- Added explicit terrain/building provider states to the DOM and bilingual status chips. Error text redacts the configured ion token and `access_token` query values before it reaches the UI.
+- The token pasted in chat returned `401 INVALID_TOKEN`; it decoded only to token metadata and was removed from `.env.local`. No token value appears in tracked files.
+- Verification: no-token browser path reports ArcGIS terrain ready, buildings disabled, a non-zero 659x592 canvas, zero horizontal overflow and zero console errors. Full `pnpm check` passes all 80 tests, harnesses, package verification and production build when run with loopback permissions.

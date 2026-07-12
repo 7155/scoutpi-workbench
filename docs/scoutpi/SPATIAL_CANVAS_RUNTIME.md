@@ -67,6 +67,8 @@ Cesium's `Workers`, `ThirdParty`, `Assets`, and `Widgets` directories are served
 
 The default 3D base layer uses OpenStreetMap and loads ArcGIS WorldElevation3D as a real elevation terrain provider without a Cesium ion token. `VITE_CESIUM_TERRAIN_URL` may point to a reviewed Cesium terrain service. A failed terrain request degrades explicitly to the ellipsoid provider; the canvas exposes `data-terrain-state` and `data-terrain-provider`, and the operator sees the fallback rather than a false “3D terrain ready” state. 3D Tiles, point clouds, and model layers must still enter through reviewed typed layer contracts rather than arbitrary page JavaScript.
 
+For non-commercial development, a local `apps/web/.env.local` may set `VITE_CESIUM_ION_TOKEN` and `VITE_CESIUM_ION_BUILDINGS=osm`. The renderer then prefers Cesium World Terrain and adds Cesium OSM Buildings; failures remain isolated and fall back to ArcGIS terrain without breaking the GEE analysis layer. Tokens are browser-visible by design, so use an `assets:read`-only token restricted to the deployment origins, never commit it, and rotate any token exposed in chat or screenshots. See `apps/web/.env.example`.
+
 ## Runtime Safety
 
 - Pi still sees only the existing three Earth gateway tools.

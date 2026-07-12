@@ -11,6 +11,8 @@
       :data-analysis-layer="globeHasAnalysisLayer"
       :data-terrain-state="terrainState"
       :data-terrain-provider="terrainProviderId"
+      :data-buildings-state="buildingsState"
+      :data-buildings-provider="buildingsProviderId"
     ></div>
 
     <div class="map-overlay map-title">
@@ -31,10 +33,17 @@
       </button>
     </div>
 
-    <div v-if="mapMode === '3d'" class="terrain-status" :class="terrainState" :title="terrainNotice || terrainLabel">
-      <LoaderCircle v-if="terrainState === 'loading'" class="spin" :size="13" />
-      <Mountain v-else :size="13" />
-      <span>{{ terrainState === 'ready' ? t('3D terrain') : terrainState === 'fallback' ? t('Ellipsoid fallback') : t('Loading terrain') }}</span>
+    <div v-if="mapMode === '3d'" class="scene-statuses">
+      <div class="terrain-status" :class="terrainState" :title="terrainNotice || terrainLabel">
+        <LoaderCircle v-if="terrainState === 'loading'" class="spin" :size="13" />
+        <Mountain v-else :size="13" />
+        <span>{{ terrainState === 'ready' ? t('3D terrain') : terrainState === 'fallback' ? t('Ellipsoid fallback') : t('Loading terrain') }}</span>
+      </div>
+      <div v-if="hasIonToken && buildingsRequested" class="buildings-status" :class="buildingsState" :title="buildingsNotice || t('OSM 3D buildings')">
+        <LoaderCircle v-if="buildingsState === 'loading'" class="spin" :size="13" />
+        <Building2 v-else :size="13" />
+        <span>{{ buildingsState === 'ready' ? t('OSM 3D buildings') : buildingsState === 'failed' ? t('Buildings unavailable') : t('Loading buildings') }}</span>
+      </div>
     </div>
 
     <button :class="['map-follow', { active: followPi }]" :title="followPi ? t('Following Pi spatial focus') : t('Resume following Pi')" @click="emit('toggleFollow')">
@@ -61,7 +70,7 @@
 <script setup lang="ts">
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";
-import { Crosshair, Globe2, LoaderCircle, Map as MapIcon, Mountain } from "lucide-vue-next";
+import { Building2, Crosshair, Globe2, LoaderCircle, Map as MapIcon, Mountain } from "lucide-vue-next";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "../i18n";
 import { loadMapViewMode, regionBounds, regionFeatureCollection, saveMapViewMode, type MapViewMode } from "../mapRuntime";
@@ -71,6 +80,7 @@ type CesiumModule = typeof import("cesium");
 type CesiumViewer = import("cesium").Viewer;
 type CesiumRegionSource = import("cesium").GeoJsonDataSource;
 type CesiumImageryLayer = import("cesium").ImageryLayer;
+type CesiumTileset = import("cesium").Cesium3DTileset;
 
 const props = defineProps<{ plan?: InvestigationPlan; selectedYear?: number; selectedRole?: string; visualization?: EarthVisualization; visualizationLoading?: boolean; visualizationError?: string; requestedMode?: MapViewMode; followPi?: boolean }>();
 const emit = defineEmits<{ selectRole: [role: string]; modeChange: [mode: MapViewMode]; toggleFollow: [] }>();
@@ -89,12 +99,16 @@ const terrainState = ref<"idle" | "loading" | "ready" | "fallback">("idle");
 const terrainProviderId = ref("none");
 const terrainLabel = ref("");
 const terrainNotice = ref("");
+const buildingsState = ref<"disabled" | "loading" | "ready" | "failed">("disabled");
+const buildingsProviderId = ref("none");
+const buildingsNotice = ref("");
 
 let map: MapLibreMap | undefined;
 let cesium: CesiumModule | undefined;
 let viewer: CesiumViewer | undefined;
 let cesiumRegionSource: CesiumRegionSource | undefined;
 let cesiumAnalysisLayer: CesiumImageryLayer | undefined;
+let cesiumBuildings: CesiumTileset | undefined;
 let removePostRenderListener: (() => void) | undefined;
 let resizeObserver: ResizeObserver | undefined;
 let regionSyncPending = false;
@@ -104,6 +118,9 @@ let cesiumInitRevision = 0;
 let disposed = false;
 
 const defaultTerrainUrl = "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
+const ionToken = String(import.meta.env.VITE_CESIUM_ION_TOKEN || "").trim();
+const hasIonToken = ionToken.length > 0;
+const buildingsRequested = String(import.meta.env.VITE_CESIUM_ION_BUILDINGS || "osm").toLowerCase() === "osm";
 
 const regionName = computed(() => props.plan?.spec.region.name || t("No region selected"));
 const periodLabel = computed(() => props.visualization ? `${props.visualization.year} · ${props.visualization.datasetId}` : props.plan ? `${props.plan.spec.period.startYear}-${props.plan.spec.period.endYear}` : "-");
@@ -167,14 +184,30 @@ async function resolveTerrainProvider(module: CesiumModule) {
   terrainState.value = "loading";
   terrainNotice.value = "";
   const customUrl = String(import.meta.env.VITE_CESIUM_TERRAIN_URL || "").trim();
-  try {
-    if (customUrl) {
+  if (customUrl) {
+    try {
       const provider = await module.CesiumTerrainProvider.fromUrl(customUrl);
       terrainProviderId.value = "custom-cesium-terrain";
       terrainLabel.value = t("Custom terrain");
       terrainState.value = "ready";
       return provider;
+    } catch (error) {
+      terrainNotice.value = safeCesiumError(error);
     }
+  }
+  if (hasIonToken) {
+    try {
+      module.Ion.defaultAccessToken = ionToken;
+      const provider = await module.createWorldTerrainAsync({ requestVertexNormals: true, requestWaterMask: true });
+      terrainProviderId.value = "cesium-world-terrain";
+      terrainLabel.value = "Cesium World Terrain";
+      terrainState.value = "ready";
+      return provider;
+    } catch (error) {
+      terrainNotice.value = safeCesiumError(error);
+    }
+  }
+  try {
     const provider = await module.ArcGISTiledElevationTerrainProvider.fromUrl(defaultTerrainUrl);
     terrainProviderId.value = "arcgis-world-elevation-3d";
     terrainLabel.value = "ArcGIS WorldElevation3D";
@@ -183,9 +216,33 @@ async function resolveTerrainProvider(module: CesiumModule) {
   } catch (error) {
     terrainProviderId.value = "ellipsoid-fallback";
     terrainLabel.value = t("Ellipsoid fallback");
-    terrainNotice.value = error instanceof Error ? error.message : String(error);
+    terrainNotice.value = safeCesiumError(error);
     terrainState.value = "fallback";
     return new module.EllipsoidTerrainProvider();
+  }
+}
+
+function safeCesiumError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const redacted = ionToken ? message.replaceAll(ionToken, "[redacted]") : message;
+  return redacted.replace(/access_token=[^&\s]+/gi, "access_token=[redacted]");
+}
+
+async function loadIonBuildings(module: CesiumModule) {
+  if (!viewer || !hasIonToken || !buildingsRequested) return;
+  buildingsState.value = "loading";
+  buildingsProviderId.value = "cesium-osm-buildings";
+  buildingsNotice.value = "";
+  try {
+    module.Ion.defaultAccessToken = ionToken;
+    const tileset = await module.createOsmBuildingsAsync({ enableShowOutline: false, showOutline: false });
+    if (disposed || !viewer || viewer.isDestroyed()) return;
+    cesiumBuildings = viewer.scene.primitives.add(tileset);
+    buildingsState.value = "ready";
+    viewer.scene.requestRender();
+  } catch (error) {
+    buildingsState.value = "failed";
+    buildingsNotice.value = safeCesiumError(error);
   }
 }
 
@@ -285,6 +342,7 @@ async function ensureCesium() {
         removePostRenderListener = undefined;
       }
     });
+    await loadIonBuildings(module);
     await syncCesiumRegion();
     syncCesiumVisualization();
     await nextTick();
@@ -378,6 +436,7 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect();
   map?.remove();
   if (viewer && !viewer.isDestroyed()) viewer.destroy();
+  cesiumBuildings = undefined;
 });
 </script>
 
@@ -398,9 +457,12 @@ onBeforeUnmount(() => {
 .map-mode button { display: flex; align-items: center; justify-content: center; gap: 5px; border: 0; border-radius: 3px; background: transparent; color: #617068; font: 700 11px/1 system-ui, sans-serif; cursor: pointer; }
 .map-mode button:hover { color: #1f6846; }
 .map-mode button.active { background: #1f6846; color: #fff; box-shadow: 0 2px 6px rgba(31, 104, 70, .2); }
-.terrain-status { position: absolute; z-index: 5; top: 56px; left: 14px; display: inline-flex; align-items: center; gap: 5px; max-width: 190px; border: 1px solid rgba(43, 56, 49, .2); border-radius: 5px; padding: 5px 7px; background: rgba(252, 253, 251, .94); box-shadow: 0 6px 16px rgba(32, 45, 38, .08); color: #5d6c64; font-size: 9px; font-weight: 700; backdrop-filter: blur(8px); }
+.scene-statuses { position: absolute; z-index: 5; top: 56px; left: 14px; display: grid; gap: 5px; justify-items: start; max-width: 210px; }
+.terrain-status, .buildings-status { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; border: 1px solid rgba(43, 56, 49, .2); border-radius: 5px; padding: 5px 7px; background: rgba(252, 253, 251, .94); box-shadow: 0 6px 16px rgba(32, 45, 38, .08); color: #5d6c64; font-size: 9px; font-weight: 700; backdrop-filter: blur(8px); }
 .terrain-status.ready { border-color: rgba(31, 104, 70, .36); color: #1f6846; }
 .terrain-status.fallback { border-color: rgba(167, 112, 25, .34); color: #8a5e12; }
+.buildings-status.ready { border-color: rgba(47, 104, 154, .34); color: #2f6897; }
+.buildings-status.failed { border-color: rgba(167, 112, 25, .34); color: #8a5e12; }
 .map-follow { position: absolute; z-index: 5; top: 56px; left: 50%; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(43, 56, 49, .2); border-radius: 5px; padding: 6px 9px; background: rgba(252, 253, 251, .94); box-shadow: 0 6px 16px rgba(32, 45, 38, .09); color: #68756e; font-size: 9px; font-weight: 700; transform: translateX(-50%); backdrop-filter: blur(8px); }
 .map-follow.active { border-color: rgba(31, 104, 70, .38); background: rgba(239, 247, 242, .95); color: #1f6846; }
 .globe-status { top: 64px; left: 50%; display: flex; align-items: center; gap: 7px; max-width: min(420px, calc(100% - 28px)); padding: 8px 10px; border-radius: 5px; color: #2f5e48; transform: translateX(-50%); }
@@ -425,7 +487,7 @@ onBeforeUnmount(() => {
   .map-title { top: 10px; left: 10px; max-width: calc(100% - 132px); padding: 8px 9px; }
   .map-mode { top: 10px; right: 10px; left: auto; grid-template-columns: repeat(2, 48px); transform: none; }
   .map-follow { top: 54px; right: 10px; left: auto; transform: none; }
-  .terrain-status { top: 54px; left: 10px; max-width: calc(100% - 155px); }
+  .scene-statuses { top: 54px; left: 10px; max-width: calc(100% - 155px); }
   .map-legend { display: none; }
   .globe-status { top: 58px; }
 }
